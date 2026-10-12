@@ -68,25 +68,25 @@ rep("      <li>Tap <b>Menu</b> at the top",
     "      <li>A referee checks every hit between captains, so cheating gets you removed from online play.</li>\n      <li>Tap <b>Menu</b> at the top")
 
 # ---- saving: Google = cloud, guest = nothing, no Firebase at all = this phone
-rep("function saveOpen(){if(MODE!=='open')return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({gold,earned,up,sunk}))}catch(e){}}",
+rep("function saveOpen(){if(MODE!=='open')return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(careerData()))}catch(e){}}",
 """let saveMode='local';
-function saveOpen(){if(MODE!=='open')return;const d={gold:gold|0,earned:earned|0,sunk:sunk|0,up:{...up}};
+function saveOpen(){if(MODE!=='open')return;const d=careerData();
   if(saveMode==='cloud'){if(FB)FB.save(d);}else if(saveMode==='local'){try{localStorage.setItem(SAVE_KEY,JSON.stringify(d))}catch(e){}}}""")
 rep("function startOpen(fresh){","function startOpen(fresh,sv){")
 rep("  const sv=fresh?null:loadOpen();","  if(sv===undefined)sv=fresh?null:loadOpen();NET.rs=0;")
 rep("  pw={speed:0,rapid:0,side:0};placeAtPort(p);updAim();updChips();","  pw={speed:0,rapid:0,side:0};NET.rs=(NET.rs|0)+1;placeAtPort(p);updAim();updChips();")
 
 # ---- start screen + join flow
-rep("function refreshStart(){const sv=loadOpen();",
-"""function refreshStart(){
+rep("function refreshStart(){waveNote();const sv=loadOpen();",
+"""function refreshStart(){waveNote();
   if(FB){$('savenote').hidden=true;$('newVoyage').hidden=true;$('goOpen').textContent='Open sea';
     const u=FB.user();if(u&&u.google){$('savenote').hidden=false;$('savenote').textContent='Signed in as '+u.name;
-      FB.loadSave().then(sv=>{if(!sv)return;$('goOpen').textContent='Continue voyage';$('savenote').textContent=`Signed in as ${u.name} · ${sv.gold|0} gold, ${sv.sunk|0} ships sunk`;
+      FB.loadSave().then(sv=>{if(!sv)return;$('goOpen').textContent='Continue voyage';$('savenote').textContent=`Signed in as ${u.name} · ${RANKS[rankOf(sv.xp|0)].n} · ${shipById(sv.ship).name} · ${sv.gold|0} gold`;
         $('newVoyage').hidden=false;$('newVoyage').textContent='Start a new voyage';$('newVoyage').classList.remove('warn');newArm=false;});}
     return;}
   const sv=loadOpen();""")
 rep("  try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshStart();};",
-    "  if(FB){FB.save({gold:0,earned:0,sunk:0,up:{hull:0,sails:0,reload:0,triple:0,broadside:0}});setTimeout(refreshStart,300);return;}\n  try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshStart();};")
+    "  if(FB){FB.save({gold:0,earned:0,sunk:0,up:{hull:0,sails:0,reload:0,triple:0,broadside:0},xp:0,ships:{brig:true},ship:'brig'});setTimeout(refreshStart,300);return;}\n  try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshStart();};")
 rep("""$('goOpen').onclick=()=>{audio();const b=$('goOpen');if(b.disabled)return;b.disabled=true;b.textContent='Charting the sea…';
   setTimeout(()=>{startOpen(false);b.disabled=false;musPlay();$('start').hidden=true;$('hint').hidden=false;state='play';showBanner(PORTS[0].name);},40);};""",
 """function launchOpen(sv){const b=$('goOpen');b.disabled=true;b.textContent='Charting the sea…';
@@ -129,7 +129,7 @@ rep("""(async()=>{
 function goOnline(){if(!FB||NET.room||NET.banned)return;const u=FB.user();if(!u)return;
   const R=FB.openRoom();NET.room=R;NET.ok=true;NET.myId=R.uid;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;
   R.onConnection(c=>{NET.ok=c;netUiKey='';});
-  R.onReward(r=>{NET.kills++;addGold(r.g|0);updHud();saveOpen();showBanner('You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
+  R.onReward(r=>{NET.kills++;addGold(r.g|0);addXP(XP_FOR.player);updHud();saveOpen();showBanner('You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
   R.onBanned(()=>{NET.banned=true;closeOnline();saveMode='none';showBanner('Removed from online play by the referee');});}
 function closeOnline(){if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
 if(FB)FB.ready.then(()=>{const u=FB.user();if(u&&!u.google){FB.signOut();}else if(u)goOnline();refreshStart();});""")
@@ -143,7 +143,7 @@ rep("function netShot(x,z,vx,vz){if(!NET.room)return;NET.shots.push({d:[++NET.sh
 rep("  const p={m:atSea?'open':'menu',c:NET.color,id:NET.myId||null};","  const p={m:atSea?'open':'menu',c:NET.color};")
 rep("x:+P.x.toFixed(1),z:+P.z.toFixed(1),a:+P.a.toFixed(2),","x:+P.x.toFixed(1),z:+P.z.toFixed(1),a:+(((P.a%TAU)+TAU)%TAU).toFixed(2),rs:NET.rs|0,")
 rep("v:+P.v.toFixed(1),hp:P.hp,","v:+Math.max(-9,Math.min(33,P.v)).toFixed(1),hp:Math.max(0,Math.min(maxHp(),P.hp)),")
-rep("else Object.assign(p,{al:null,","else Object.assign(p,{rs:null,al:null,")
+rep("else Object.assign(p,{sh:null,al:null,","else Object.assign(p,{sh:null,rs:null,al:null,")
 rep("function remoteName(r){const key=r.by||(r.pr&&r.pr.id);",
     "function remoteName(r){if(r.pr&&typeof r.pr.n==='string'){const n=FB?FB.cleanName(r.pr.n):r.pr.n;if(n.length>=2)return n;}const key=r.by||(r.pr&&r.pr.id);")
 rep("      if(pr.kb&&pr.kb===NET.myPeer){NET.kills++;","      if(!NET.fb&&pr.kb&&pr.kb===NET.myPeer){NET.kills++;")

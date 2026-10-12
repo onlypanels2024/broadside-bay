@@ -4,7 +4,7 @@
 //    plus referee calls: reportHit, reportDeath, onReward, onBanned, serverNow.
 (function () {
   'use strict';
-  const PLAYER_KEYS = ['x', 'z', 'a', 'v', 'hp', 'mx', 'rs', 'al', 'c', 'sg', 'dk', 'k', 'dn', 'kb', 's', 'm'];
+  const PLAYER_KEYS = ['x', 'z', 'a', 'v', 'hp', 'mx', 'sh', 'rs', 'al', 'c', 'sg', 'dk', 'k', 'dn', 'kb', 's', 'm'];
   const cleanName = n => String(n || '').replace(/[^\p{L}\p{N} '_-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 16);
 
   function nativeAuth() {

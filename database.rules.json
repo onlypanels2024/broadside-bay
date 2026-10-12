@@ -33,7 +33,7 @@
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= newData.parent().child('mx').val()"
         },
         "mx": {
-          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 8"
+          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 18 && (!newData.parent().child('sh').exists() ? newData.val() <= 8 : ((newData.parent().child('sh').val() === 0 && newData.val() <= 8) || (newData.parent().child('sh').val() === 1 && newData.val() <= 10) || (newData.parent().child('sh').val() === 2 && newData.val() <= 12) || (newData.parent().child('sh').val() === 3 && newData.val() <= 15) || (newData.parent().child('sh').val() === 4 && newData.val() <= 18)))"
         },
         "rs": {
           ".validate": "newData.isNumber() && newData.val() >= 0"
@@ -75,6 +75,9 @@
         },
         "$other": {
           ".validate": false
+        },
+        "sh": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4 && newData.val() % 1 === 0"
         }
       }
     },
@@ -175,6 +178,17 @@
         },
         "$other": {
           ".validate": false
+        },
+        "xp": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
+        },
+        "ship": {
+          ".validate": "newData.isString() && newData.val().matches(/^(brig|corvette|frigate|galleon|manowar)$/)"
+        },
+        "ships": {
+          "$sid": {
+            ".validate": "newData.val() === true && $sid.matches(/^(brig|corvette|frigate|galleon|manowar)$/)"
+          }
         }
       }
     }

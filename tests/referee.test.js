@@ -26,10 +26,22 @@ test('a shot fired from far away from the shooter is refused with a strike', () 
   assert.strictEqual(r.ok, false); assert.strictEqual(r.strike, 'A');
 });
 test('impossible fire rate gets a strike', () => {
-  const s = Array.from({ length: 10 }, (_, i) => [i + 1, 60, 37, 0, -30, T + i]);
+  // 6 separate volleys 20 ms apart: no ship reloads that fast
+  const s = Array.from({ length: 6 }, (_, i) => [i + 1, 60, 37, 0, -30, T + i * 50]);
   s[6] = [7, 60, 37, 0, -30, T];
   const r = R.judgeHit(hit(), shooter({ s }), victim(), T + 600);
   assert.strictEqual(r.ok, false); assert.strictEqual(r.strike, 'A');
+});
+test("a Man-o'-War broadside of 16 balls at once is not mistaken for cheating", () => {
+  const s = Array.from({ length: 16 }, (_, i) => [i + 1, 60, 37, 0, -30, T + (i % 3)]);
+  s.push([7, 60, 37, 0, -30, T]);
+  const r = R.judgeHit(hit(), shooter({ s: s.slice(-30) }), victim(), T + 600);
+  assert.deepStrictEqual(r, { ok: true });
+});
+test('normal rapid fire at the fastest legal reload is fine', () => {
+  const s = Array.from({ length: 10 }, (_, i) => [i + 1, 60, 37, 0, -30, T - 900 + i * 90]);
+  s[6] = [7, 60, 37, 0, -30, T];
+  assert.deepStrictEqual(R.judgeHit(hit(), shooter({ s }), victim(), T + 600), { ok: true });
 });
 test('the ball must actually reach the victim', () => {
   const r = R.judgeHit(hit({ x: 90, z: 25 }), shooter(), victim({ x: 90 }), T + 600);

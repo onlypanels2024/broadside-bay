@@ -9,7 +9,8 @@ const LIMITS = {
   hitTolerance: 9,          // how far the ball may be from the reported hit spot
   maxShipSpeed: 34,         // legit max ~30 (bigger sails x3 + speed power-up)
   originSlack: 10,          // shot must start near where the shooter was
-  burstWindow: 0.12,        // 10 shots inside this window is impossible
+  volleyGap: 40,            // shots closer than this (ms) are one volley (a broadside fires many balls at once)
+  minVolleyGap: 60,         // fastest legal reload is ~88 ms; 4 gaps in a row below this is a fire-rate hack
   killWindowMs: 6000,       // the last valid hit within this time gets the kill
   godModeExtraHits: 3,      // hits beyond max hull without sinking = ignoring damage
   strikesToBan: 5,
@@ -32,10 +33,16 @@ function judgeHit(hit, shooter, victim, now) {
   if (inHarbour(hit.x, hit.z)) return { ok: false, reason: 'victim in harbour', strike: null };
 
   const shots = Array.isArray(shooter.s) ? shooter.s : Object.values(shooter.s || {});
-  // Rapid-fire cheat: 10 recorded shots inside an impossible window.
+  // Rapid-fire cheat: group the recorded shots into volleys (a broadside is many balls at once),
+  // then look for several volleys in a row fired faster than any ship can reload.
   const times = shots.map(s => s && s[5]).filter(num).sort((a, b) => a - b);
-  if (times.length >= 10 && (times[times.length - 1] - times[0]) / 1000 < LIMITS.burstWindow)
-    return { ok: false, reason: 'impossible fire rate', strike: hit.s };
+  const volleys = [];
+  for (const t of times) if (!volleys.length || t - volleys[volleys.length - 1] > LIMITS.volleyGap) volleys.push(t);
+  let fastRun = 0;
+  for (let i = 1; i < volleys.length; i++) {
+    fastRun = volleys[i] - volleys[i - 1] < LIMITS.minVolleyGap ? fastRun + 1 : 0;
+    if (fastRun >= 4) return { ok: false, reason: 'impossible fire rate', strike: hit.s };
+  }
 
   const shot = shots.find(s => Array.isArray(s) && s[0] === hit.sid);
   if (!shot) return { ok: false, reason: 'shot no longer listed', strike: null }; // normal under heavy fire / lag

@@ -111,3 +111,24 @@ test('a hit report may carry the impact time, but not a silly one', () => {
   assert.strictEqual(writeAs(empty(), 'B', '/hits/h1', ok, T0).allowed, true);
   assert.strictEqual(writeAs(empty(), 'B', '/hits/h1', { ...ok, ti: T0 - 60000 }, T0).allowed, false);
 });
+
+test('bigger ships may report a bigger hull, but only what their class allows', () => {
+  // Man-o'-War (sh 4): hull 15 + 3 upgrades = 18
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh: 4, mx: 18, hp: 18 }), T0).allowed, true);
+  // a Brig (sh 0) claiming 18 hull is refused
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh: 0, mx: 18, hp: 18 }), T0).allowed, false);
+  // old app versions without a ship class stay capped at 8
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { mx: 8, hp: 8 }), T0).allowed, true);
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { mx: 12, hp: 12 }), T0).allowed, false);
+  // unknown ship classes are refused
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh: 9 }), T0).allowed, false);
+});
+
+test('a Google save can hold rank, owned ships and the chosen ship', () => {
+  const google = { uid: 'A', token: { firebase: { sign_in_provider: 'google.com' } } };
+  const base = { gold: 500, earned: 900, sunk: 3, up: { hull: 1, sails: 0, reload: 2, triple: 0, broadside: 1 } };
+  const db = targaryen.database(rules, {}, T0);
+  assert.strictEqual(db.as(google).write('/saves/A', { ...base, xp: 3100, ships: { brig: true, frigate: true }, ship: 'frigate' }, { now: T0 }).allowed, true);
+  assert.strictEqual(db.as(google).write('/saves/A', { ...base, ship: 'spaceship' }, { now: T0 }).allowed, false);
+  assert.strictEqual(db.as(google).write('/saves/A', { ...base, ships: { yacht: true } }, { now: T0 }).allowed, false);
+});
