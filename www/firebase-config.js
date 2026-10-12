@@ -1,5 +1,6 @@
 // Firebase web config for Broadside Bay's online play (project overboard-2104).
 // This block is public by design; access is controlled by database.rules.json and the referee.
+// Online play needs the referee and rules from functions/ and database.rules.json deployed.
 window.BB_FIREBASE_CONFIG = {
   apiKey: "AIzaSyCodQaUOy6GRF9yOHgqwwuoxJ_onE8zwQM",
   authDomain: "overboard-2104.firebaseapp.com",

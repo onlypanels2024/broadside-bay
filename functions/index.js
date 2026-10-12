@@ -1,4 +1,5 @@
 // Broadside Bay referee running on Firebase. Every hit and every sinking is checked here
+// Deployed automatically by .github/workflows/firebase.yml (project overboard-2104).
 // before it counts. Phones show hits instantly; gold and kills only arrive once approved.
 const { onValueCreated } = require('firebase-functions/v2/database');
 const { setGlobalOptions } = require('firebase-functions/v2');
