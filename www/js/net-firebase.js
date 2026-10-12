@@ -1,0 +1,136 @@
+// Firebase online play for Broadside Bay.
+//  - Sign in with Google (progress saved online) or play as a guest with a chosen name (nothing saved).
+//  - openRoom() exposes the small "room" interface the game uses (presence / peers / onConnection)
+//    plus referee calls: reportHit, reportDeath, onReward, onBanned, serverNow.
+(function () {
+  'use strict';
+  const PLAYER_KEYS = ['x', 'z', 'a', 'v', 'hp', 'mx', 'rs', 'al', 'c', 'sg', 'dk', 'k', 'dn', 'kb', 's', 'm'];
+  const cleanName = n => String(n || '').replace(/[^\p{L}\p{N} '_-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 16);
+
+  function nativeAuth() {
+    const cap = window.Capacitor;
+    return cap && cap.isNativePlatform && cap.isNativePlatform() && cap.Plugins && cap.Plugins.FirebaseAuthentication || null;
+  }
+
+  window.BBFirebase = {
+    cleanName,
+    init(config) {
+      if (!window.firebase || !config || !config.apiKey) return null;
+      const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(config);
+      const auth = app.auth(), db = app.database();
+      let guestName = '';
+      const ready = new Promise(res => { const off = auth.onAuthStateChanged(() => { off(); res(); }); });
+
+      const api = {
+        ready, cleanName,
+        user() {
+          const u = auth.currentUser; if (!u) return null;
+          const google = u.providerData.some(p => p.providerId === 'google.com');
+          const name = google ? (cleanName((u.displayName || '').split(' ')[0]) || 'Captain') : guestName;
+          return { uid: u.uid, google, name: name.length >= 2 ? name : 'Captain' };
+        },
+        async signInGoogle() {
+          const plug = nativeAuth();
+          if (plug) {
+            const res = await plug.signInWithGoogle({ skipNativeAuth: true });
+            const tok = res && res.credential && res.credential.idToken;
+            if (!tok) throw new Error('Google sign-in was cancelled');
+            await auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(tok));
+          } else {
+            await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+          }
+          return api.user();
+        },
+        async signInGuest(name) {
+          guestName = cleanName(name);
+          if (guestName.length < 2) throw new Error('Pick a captain name of 2 to 16 letters or numbers');
+          const u = auth.currentUser;
+          if (!u || !u.isAnonymous) { if (u) await api.signOut(); await auth.signInAnonymously(); }
+          return api.user();
+        },
+        async signOut() {
+          const plug = nativeAuth(); if (plug) { try { await plug.signOut(); } catch (e) {} }
+          await auth.signOut();
+        },
+        async loadSave() {
+          const u = api.user(); if (!u || !u.google) return null;
+          try { return (await db.ref('saves/' + u.uid).get()).val(); } catch (e) { return null; }
+        },
+        save(data) {
+          const u = api.user(); if (!u || !u.google) return;
+          db.ref('saves/' + u.uid).set(data).catch(() => {});
+        },
+        openRoom() { return openRoom(db, auth.currentUser.uid, () => api.user().name); },
+      };
+      return api;
+    }
+  };
+
+  function openRoom(db, uid, getName) {
+    let offset = 0, connected = false, mine = {}, others = new Map(), menuOnly = new Set(), snap = Object.freeze([]), dirty = true, closed = false;
+    const connHandlers = [], rewardHandlers = [], bannedHandlers = [], offs = [];
+    const listen = (ref, ev, fn) => { ref.on(ev, fn); offs.push(() => ref.off(ev, fn)); };
+    listen(db.ref('.info/serverTimeOffset'), 'value', s => { offset = s.val() || 0; });
+    listen(db.ref('.info/connected'), 'value', s => {
+      connected = !!s.val(); connHandlers.forEach(h => h(connected));
+      if (connected && !closed) {
+        const on = db.ref('online/' + uid); on.onDisconnect().remove(); on.set(true).catch(() => {});
+        db.ref('players/' + uid).onDisconnect().remove();
+      }
+    });
+    const players = db.ref('players');
+    const put = s => { if (s.key === uid) return; others.set(s.key, Object.freeze(s.val() || {})); dirty = true; };
+    listen(players, 'child_added', put); listen(players, 'child_changed', put);
+    listen(players, 'child_removed', s => { others.delete(s.key); dirty = true; });
+    listen(db.ref('online'), 'value', s => { menuOnly = new Set(Object.keys(s.val() || {})); dirty = true; });
+    listen(db.ref('rewards/' + uid), 'child_added', s => {
+      const r = s.val(); s.ref.remove().catch(() => {});
+      if (r && typeof r.g === 'number') rewardHandlers.forEach(h => h(r));
+    });
+    listen(db.ref('banned/' + uid), 'value', s => { if (s.val()) bannedHandlers.forEach(h => h()); });
+
+    function rebuild() {
+      const arr = [{ peer: uid, by: uid, isMe: true, sameTab: true, kind: 'viewer', guest: false, presence: Object.freeze({ ...mine }), updatedAt: Date.now() }];
+      for (const [k, v] of others) arr.push({ peer: k, by: k, isMe: false, sameTab: false, kind: 'viewer', guest: false, presence: v, updatedAt: Date.now() });
+      for (const k of menuOnly) if (k !== uid && !others.has(k)) arr.push({ peer: k, by: k, isMe: false, sameTab: false, kind: 'viewer', guest: false, presence: Object.freeze({ m: 'menu' }), updatedAt: Date.now() });
+      snap = Object.freeze(arr); dirty = false;
+    }
+
+    let lastAtSea = false, writing = false;
+    return {
+      firebase: true, uid,
+      serverNow: () => Date.now() + offset,
+      connected: () => connected,
+      onConnection(h) { connHandlers.push(h); setTimeout(() => h(connected)); return () => {}; },
+      onPeers() { return () => {}; },
+      peers() { if (dirty) rebuild(); return snap; },
+      async presence(patch) {
+        if (closed) return;
+        for (const k in patch) { if (patch[k] === null) delete mine[k]; else mine[k] = patch[k]; }
+        dirty = true;
+        const atSea = mine.m === 'open' && typeof mine.x === 'number';
+        if (!atSea) { if (lastAtSea) { lastAtSea = false; await db.ref('players/' + uid).remove().catch(() => {}); } return; }
+        if (writing) return; // never queue writes; the next tick sends fresh state
+        const rec = { t: firebase.database.ServerValue.TIMESTAMP, n: getName() };
+        for (const k of PLAYER_KEYS) if (mine[k] !== undefined && mine[k] !== null) rec[k] = mine[k];
+        if (Array.isArray(rec.s) && !rec.s.length) delete rec.s;
+        writing = true;
+        try { await db.ref('players/' + uid).set(rec); lastAtSea = true; }
+        catch (e) { /* refused by the rules (e.g. moved too fast); the next write sends fresh data */ }
+        finally { writing = false; }
+      },
+      reportHit(shooter, sid, x, z, ti) {
+        const h = { v: uid, s: String(shooter), sid: sid | 0, x: +x.toFixed(1), z: +z.toFixed(1), t: firebase.database.ServerValue.TIMESTAMP };
+        if (typeof ti === 'number') h.ti = Math.round(ti);
+        db.ref('hits').push(h).catch(() => {});
+      },
+      reportDeath() { db.ref('deaths').push({ v: uid, t: firebase.database.ServerValue.TIMESTAMP }).catch(() => {}); },
+      onReward(h) { rewardHandlers.push(h); },
+      onBanned(h) { bannedHandlers.push(h); },
+      async close() {
+        closed = true; offs.forEach(f => f());
+        try { await db.ref('players/' + uid).remove(); await db.ref('online/' + uid).remove(); } catch (e) {}
+      },
+    };
+  }
+})();

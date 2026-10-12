@@ -1,0 +1,182 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "online": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.val() === true"
+      }
+    },
+    "players": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && !root.child('banned').child($uid).exists()",
+        ".validate": "newData.hasChildren(['n','x','z','a','t','hp','mx','rs','al']) && newData.child('t').val() === now && (!data.exists() ? (((newData.child('x').val() - (0))*(newData.child('x').val() - (0)) + (newData.child('z').val() - (0))*(newData.child('z').val() - (0)) <= 1600) || ((newData.child('x').val() - (175))*(newData.child('x').val() - (175)) + (newData.child('z').val() - (-160))*(newData.child('z').val() - (-160)) <= 1600) || ((newData.child('x').val() - (-165))*(newData.child('x').val() - (-165)) + (newData.child('z').val() - (175))*(newData.child('z').val() - (175)) <= 1600)) : (newData.child('rs').val() === data.child('rs').val() ? (((newData.child('x').val() - data.child('x').val()))*((newData.child('x').val() - data.child('x').val())) + ((newData.child('z').val() - data.child('z').val()))*((newData.child('z').val() - data.child('z').val())) <= ((now - data.child('t').val()) / 1000 * 34 + 6) * ((now - data.child('t').val()) / 1000 * 34 + 6)) : (newData.child('rs').val() === data.child('rs').val() + 1 && (((newData.child('x').val() - (0))*(newData.child('x').val() - (0)) + (newData.child('z').val() - (0))*(newData.child('z').val() - (0)) <= 1600) || ((newData.child('x').val() - (175))*(newData.child('x').val() - (175)) + (newData.child('z').val() - (-160))*(newData.child('z').val() - (-160)) <= 1600) || ((newData.child('x').val() - (-165))*(newData.child('x').val() - (-165)) + (newData.child('z').val() - (175))*(newData.child('z').val() - (175)) <= 1600)))))",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 16"
+        },
+        "x": {
+          ".validate": "newData.isNumber() && newData.val() >= -285 && newData.val() <= 285"
+        },
+        "z": {
+          ".validate": "newData.isNumber() && newData.val() >= -285 && newData.val() <= 285"
+        },
+        "a": {
+          ".validate": "newData.isNumber() && newData.val() >= -20 && newData.val() <= 20"
+        },
+        "v": {
+          ".validate": "newData.isNumber() && newData.val() >= -10 && newData.val() <= 34"
+        },
+        "hp": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= newData.parent().child('mx').val()"
+        },
+        "mx": {
+          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 8"
+        },
+        "rs": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "c": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5"
+        },
+        "al": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+        },
+        "sg": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+        },
+        "dk": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+        },
+        "k": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "dn": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "t": {
+          ".validate": "newData.val() === now"
+        },
+        "kb": {
+          ".validate": "newData.isString() && newData.val().length <= 64"
+        },
+        "m": {
+          ".validate": "newData.isString() && newData.val().length <= 8"
+        },
+        "s": {
+          "$i": {
+            ".validate": "$i.length <= 2",
+            "$j": {
+              ".validate": "newData.isNumber()"
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "hits": {
+      "$id": {
+        ".write": "auth != null && !data.exists() && newData.child('v').val() === auth.uid",
+        ".validate": "newData.hasChildren(['v','s','sid','x','z','t']) && newData.child('t').val() === now",
+        "v": {
+          ".validate": "newData.isString()"
+        },
+        "s": {
+          ".validate": "newData.isString() && newData.val().length <= 64"
+        },
+        "sid": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "x": {
+          ".validate": "newData.isNumber() && newData.val() >= -300 && newData.val() <= 300"
+        },
+        "z": {
+          ".validate": "newData.isNumber() && newData.val() >= -300 && newData.val() <= 300"
+        },
+        "t": {
+          ".validate": "newData.val() === now"
+        },
+        "$other": {
+          ".validate": false
+        },
+        "ti": {
+          ".validate": "newData.isNumber() && newData.val() <= now + 500 && newData.val() >= now - 3000"
+        }
+      }
+    },
+    "deaths": {
+      "$id": {
+        ".write": "auth != null && !data.exists() && newData.child('v').val() === auth.uid",
+        ".validate": "newData.hasChildren(['v','t']) && newData.child('t').val() === now",
+        "v": {
+          ".validate": "newData.isString()"
+        },
+        "t": {
+          ".validate": "newData.val() === now"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "rewards": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$rid": {
+          ".write": "auth != null && auth.uid === $uid && !newData.exists()"
+        }
+      }
+    },
+    "stats": {
+      ".read": "auth != null"
+    },
+    "banned": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+    "saves": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && auth.token.firebase.sign_in_provider === 'google.com' && !root.child('banned').child($uid).exists()",
+        ".validate": "newData.hasChildren(['gold','earned','sunk','up'])",
+        "gold": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000"
+        },
+        "earned": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
+        },
+        "sunk": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "up": {
+          "hull": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+          },
+          "sails": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+          },
+          "reload": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+          },
+          "triple": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+          },
+          "broadside": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

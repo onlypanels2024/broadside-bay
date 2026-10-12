@@ -1,0 +1,15 @@
+{
+  "name": "overboard-android",
+  "private": true,
+  "scripts": {},
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor-firebase/authentication": "^6.3.1",
+    "firebase": "^10.14.1"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.2.0"
+  }
+}

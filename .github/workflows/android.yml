@@ -1,0 +1,83 @@
+# Builds the OverBoard Android app. Every push to main makes a new release with:
+#  - OverBoard.apk  : install on a phone directly
+#  - OverBoard.aab  : upload to Google Play
+name: Build Android app
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["www/**", "android-app/**", ".github/workflows/android.yml"]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: android-app } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - name: Copy the game into the app
+        run: rm -rf www && cp -r ../www ./www
+      - run: npm install --no-audit --no-fund
+      - run: npx cap add android
+      - name: Google sign-in setup
+        run: |
+          if [ -f google-services.json ]; then cp google-services.json android/app/; else echo "::warning::google-services.json missing - Google sign-in will not work in this build"; fi
+          # include the Google provider of the sign-in plugin
+          sed -i 's/^ext {/ext {\n    rgcfaIncludeGoogle = true/' android/variables.gradle
+      - name: Portrait only, keep the screen on
+        run: |
+          sed -i 's/android:name=".MainActivity"/android:name=".MainActivity"\n            android:screenOrientation="portrait"/' android/app/src/main/AndroidManifest.xml
+          grep -n "screenOrientation" android/app/src/main/AndroidManifest.xml
+      - name: App icon and splash
+        run: npx @capacitor/assets generate --android --iconBackgroundColor '#071a24' --splashBackgroundColor '#071a24'
+      - run: npx cap sync android
+      - name: Signing key
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KS" ]; then echo "::warning::No signing key secret - building a debug app"; exit 0; fi
+          echo "$KS" | base64 -d > android/app/release.jks
+          cat >> android/app/build.gradle <<GRADLE
+          android {
+            signingConfigs { release { storeFile file("release.jks"); storePassword System.getenv("KS_PASS"); keyAlias "overboard"; keyPassword System.getenv("KS_PASS") } }
+            buildTypes { release { signingConfig signingConfigs.release; minifyEnabled false } }
+          }
+          GRADLE
+      - name: Build
+        working-directory: android-app/android
+        env:
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          HAS_KEY: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+        run: |
+          VC=$(( $(date +%s) / 60 - 29000000 ))
+          sed -i "s/versionCode [0-9]*/versionCode $VC/; s/versionName \"[^\"]*\"/versionName \"1.0.$GITHUB_RUN_NUMBER\"/" app/build.gradle
+          if [ "$HAS_KEY" = "true" ]; then
+            ./gradlew assembleRelease bundleRelease --no-daemon
+            cp app/build/outputs/apk/release/app-release.apk ../OverBoard.apk
+            cp app/build/outputs/bundle/release/app-release.aab ../OverBoard.aab
+          else
+            ./gradlew assembleDebug --no-daemon
+            cp app/build/outputs/apk/debug/app-debug.apk ../OverBoard.apk
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OverBoard
+          path: |
+            android-app/OverBoard.apk
+            android-app/OverBoard.aab
+          if-no-files-found: warn
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: OverBoard 1.0.${{ github.run_number }}
+          make_latest: true
+          body: Download OverBoard.apk on your phone and open it to install or update. OverBoard.aab is for Google Play.
+          files: |
+            android-app/OverBoard.apk
+            android-app/OverBoard.aab

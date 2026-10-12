@@ -1,0 +1,10 @@
+{
+  "appId": "com.overboardgame.app",
+  "appName": "OverBoard",
+  "webDir": "www",
+  "backgroundColor": "#071a24",
+  "android": { "allowMixedContent": false },
+  "plugins": {
+    "FirebaseAuthentication": { "skipNativeAuth": true, "providers": ["google.com"] }
+  }
+}
