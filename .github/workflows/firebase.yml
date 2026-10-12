@@ -1,4 +1,5 @@
 # Deploys the referee (Cloud Functions, Node 22) and the database security rules to Firebase (overboard-2104).
+# It runs when functions/, database.rules.json, firebase.json or this file change (or by hand from the Actions tab).
 name: Deploy referee and rules
 permissions:
   contents: write
