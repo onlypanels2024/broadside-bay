@@ -47,8 +47,13 @@ jobs:
           if ! npx --yes firebase-tools@13 deploy --only database,functions --project "$PROJECT" --non-interactive --force 2>&1 | tee deploy.log; then
             # surface the important lines where they can be read without opening the full log
             # one annotation holding the real error (GitHub shows at most 10 annotations per step)
-            ERR=$(sed 's/\x1b\[[0-9;]*m//g' deploy.log | grep -vE "ensuring required API|required API .* is enabled|Enabling now" | tail -25 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
-            echo "::error title=Firebase deploy failed::$ERR"
+            python3 - <<'PY' || true
+          import re
+          lines = [re.sub(r'\x1b\[[0-9;]*m', '', l.rstrip()) for l in open('deploy.log', errors='replace')]
+          keep = [l for l in lines if l.strip() and not re.search(r'ensuring required API|required API .* is enabled|Enabling now', l)]
+          msg = '%0A'.join(x.replace('%', '%25') for x in keep[-30:])
+          print('::error title=Firebase deploy failed::' + msg)
+          PY
             exit 1
           fi
-          grep -iE "Deploy complete|Successful|released rules" deploy.log | while read -r l; do echo "::notice::$l"; done
+          grep -iE "Deploy complete|Successful|released rules" deploy.log | while read -r l; do echo "::notice::$l"; done || true
