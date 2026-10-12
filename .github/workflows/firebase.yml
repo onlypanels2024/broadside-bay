@@ -1,4 +1,4 @@
-# Deploys the referee (Cloud Functions) and the database security rules to Firebase.
+# Deploys the referee (Cloud Functions) and the database security rules to Firebase (overboard-2104).
 name: Deploy referee and rules
 on:
   workflow_dispatch:
