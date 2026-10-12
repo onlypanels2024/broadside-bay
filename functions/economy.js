@@ -58,6 +58,12 @@
     if (s.rl && typeof s.rl === 'object') o.rl = { ...s.rl }; else delete o.rl;
     const pt = s.paint && checkPaint(s.paint.lk, s.paint.dw, o.xp);
     if (pt) o.paint = pt; else delete o.paint;
+    // drawings the checker has approved for this captain (newest last), and the last check's answer
+    o.dok = {};
+    if (s.dok && typeof s.dok === 'object') { const keys = Object.keys(s.dok).filter(k => DW_RE.test(k)).sort((a, b) => (s.dok[a] | 0) - (s.dok[b] | 0)).slice(-12); for (const k of keys) o.dok[k] = num(s.dok[k]) ? s.dok[k] : 1; }
+    if (!Object.keys(o.dok).length) delete o.dok;
+    if (s.dchk && typeof s.dchk === 'object' && DW_RE.test(s.dchk.dw || '')) o.dchk = { dw: s.dchk.dw, ok: !!s.dchk.ok, why: String(s.dchk.why || '').slice(0, 80), t: num(s.dchk.t) ? s.dchk.t : 0 }; else delete o.dchk;
+    if (s.ck && typeof s.ck === 'object' && num(s.ck.n) && num(s.ck.t)) o.ck = { n: s.ck.n, t: s.ck.t }; else delete o.ck;
     return o;
   }
   // Is this paint allowed for a captain with this much XP? Returns the cleaned paint or null.
@@ -72,6 +78,28 @@
     if (parseInt(lk[6], 36) === DRAW_E) { if (typeof dw !== 'string' || !DW_RE.test(dw)) return null; return { lk, dw }; }
     return { lk };
   }
+  /*DRAWRULES*/function drawRules(dw){
+  // Built-in check for well-known hate symbols in a 16x16 drawing (64 hex digits, row by row).
+  // Backs up the AI check; the same code is in the game (a test keeps the two identical).
+  if(typeof dw!=='string'||!/^[0-9a-f]{64}$/.test(dw))return{ok:false,why:'not a drawing'};
+  const on=(x,y)=>x>=0&&y>=0&&x<16&&y<16&&((parseInt(dw[(y*16+x)>>2],16)>>(3-((y*16+x)&3)))&1)===1;
+  let n=0;for(let i=0;i<256;i++)if(on(i&15,i>>4))n++;
+  if(n<3)return{ok:false,why:'too empty'};
+  for(let a=2;a<=7;a++)for(const th of [1,2])for(const mir of [1,-1]){
+    if(a*th*2+th>16)continue;
+    const cells=new Set(),c=a;
+    const put=(x,y)=>{for(let i=0;i<th;i++)for(let j=0;j<th;j++)cells.add(((mir>0?x:2*a-x)*th+i)+','+(y*th+j));};
+    for(let k=-a;k<=a;k++){put(c,c+k);put(c+k,c);}
+    for(let k=0;k<=a;k++){put(c+k,c-a);put(c+a,c+k);put(c-k,c+a);put(c-a,c-k);}
+    const size=(2*a+1)*th;
+    for(let oy=0;oy+size<=16;oy++)for(let ox=0;ox+size<=16;ox++){
+      let miss=0,extra=0;
+      for(let y=0;y<size;y++)for(let x=0;x<size;x++){const want=cells.has(x+','+y),got=on(ox+x,oy+y);if(want&&!got)miss++;if(!want&&got)extra++;}
+      if(miss<=(a>=4?1:0)&&extra<=Math.max(1,Math.floor((size*size-cells.size)*.06)))return{ok:false,why:'hate symbol'};
+    }
+  }
+  return{ok:true};
+}/*ENDDRAWRULES*/
   const docked = p => !!p && inHarbour(p.x, p.z);
   const atSea = (p, now) => !!p && p.al === 1 && num(p.t) && now - p.t <= RATE.freshMs && !inHarbour(p.x, p.z);
 
@@ -129,6 +157,7 @@
       case 'look': {
         const pt = checkPaint(req.lk, req.dw, s.xp);
         if (!pt) return no('paint not unlocked');
+        if (pt.dw && !(s.dok && s.dok[pt.dw])) return no('drawing not approved');
         s.paint = pt; return { save: s, ok: true };
       }
       case 'reset': {
@@ -139,11 +168,32 @@
       default: return no('unknown request');
     }
   }
+  // Drawing checks cost a little money (AI), so each captain gets CHECKS.perHour of them.
+  const CHECKS = { perHour: 15 };
+  function checkQuota(saveIn, now) {
+    const s = norm(saveIn); const ck = s.ck && now - s.ck.t < 3600000 ? { ...s.ck } : { n: 0, t: now };
+    if (ck.n >= CHECKS.perHour) return { save: s, ok: false };
+    ck.n++; s.ck = ck; return { save: s, ok: true };
+  }
+  // Record the checker's answer; approved drawings may then be used as an emblem.
+  function applyCheck(saveIn, dw, ok, why, now) {
+    const s = norm(saveIn);
+    s.dchk = { dw, ok: !!ok, why: String(why || '').slice(0, 80), t: now };
+    if (ok) { s.dok = { ...(s.dok || {}), [dw]: now }; const k = Object.keys(s.dok).sort((a, b) => s.dok[a] - s.dok[b]); while (k.length > 12) delete s.dok[k.shift()]; }
+    return s;
+  }
+  // A drawing was found to be rude after all (reports): take it off the ship and out of the approved list.
+  function removeDrawing(saveIn, dw) {
+    const s = norm(saveIn);
+    if (s.dok) { delete s.dok[dw]; if (!Object.keys(s.dok).length) delete s.dok; }
+    if (s.paint && s.paint.dw === dw) s.paint = { lk: s.paint.lk.slice(0, 6) + '1' };
+    return s;
+  }
   // A captain sank: they lose half the gold in their hold.
   function applyDeath(saveIn) { const s = norm(saveIn); s.gold -= Math.floor(s.gold / 2); return s; }
   // A captain sank another captain (already confirmed by the hit referee).
   function applyPvpKill(saveIn) { const s = norm(saveIn); s.gold += PVP.g; s.earned += PVP.g; s.xp += PVP.xp; s.sunk += 1; return s; }
 
-  const api = { processRequest, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { processRequest, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

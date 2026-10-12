@@ -71,6 +71,15 @@
           const ref = db.ref('saves/' + u.uid), fn = s => cb(s.val());
           ref.on('value', fn); return () => ref.off('value', fn);
         },
+        // Drawing checks need a signed-in user; anyone not signed in yet gets a quiet anonymous sign-in.
+        async ensureUser() { await ready; if (!auth.currentUser) await auth.signInAnonymously(); return auth.currentUser.uid; },
+        // The drawing checker's last health report (for showing why it's offline).
+        async checkerStatus() { try { return (await db.ref('status/checker').get()).val(); } catch (e) { return null; } },
+        // Report another captain's drawing to the referee.
+        report(tg, dw) {
+          const u = auth.currentUser; if (!u) return;
+          db.ref('reports/' + u.uid).push({ tg: String(tg), dw, t: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
+        },
         openRoom() { return openRoom(db, auth.currentUser.uid, () => api.user().name); },
       };
       return api;

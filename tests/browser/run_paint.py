@@ -6,7 +6,7 @@ with sync_playwright() as pw:
   b=pw.chromium.launch(args=['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']);ctx=b.new_context(viewport={'width':400,'height':800})
   pg=ctx.new_page();errs=[];pg.on('pageerror',lambda e:errs.append(str(e)))
   E=lambda c:pg.evaluate(f"__t.ev({json.dumps(c)})")
-  pg.goto(U+'?who=gary');pg.wait_for_timeout(2500);pg.evaluate("localStorage.clear()");pg.reload();pg.wait_for_timeout(2500)
+  pg.goto(U+'?who=gary&referee=1');pg.wait_for_timeout(2500);pg.evaluate("localStorage.clear()");pg.reload();pg.wait_for_timeout(2500)
   pg.screenshot(path=D+'c_start.png')
   # ---- main menu shipwright, Open sea, brand-new captain
   pg.click('#goDress');pg.wait_for_timeout(1200)

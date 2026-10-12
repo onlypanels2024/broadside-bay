@@ -188,7 +188,7 @@ rep("function econServer(){return MODE==='open'&&saveMode==='server'&&!!NET.room
 // What we tell other captains: online, only the referee's copy (the database refuses anything else).
 function netPaint(){if(!(NET.fb&&saveMode==='server'))return paint;const sp=NET.srv&&NET.srv.paint;return sp&&typeof sp.lk==='string'?sp:{};}""")
 rep("  xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';if(want!==shipId)setShip(want);",
-    "  xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';\n  const np=cleanPaint(sv.paint,xp),pc=!showcase&&(np.lk!==paint.lk||np.dw!==paint.dw);if(pc)paint=np;if(want!==shipId||pc)setShip(want);")
+    "  xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';\n  const np=cleanPaint(sv.paint,xp),pc=!showcase&&(np.lk!==paint.lk||np.dw!==paint.dw);\n  if(pc&&paint.dw&&!np.dw&&!(sv.dok&&sv.dok[paint.dw])){okDrawings=okDrawings.filter(d=>d!==paint.dw);try{localStorage.setItem('bb-dok',JSON.stringify(okDrawings))}catch(e){}showBanner('Your drawing was removed after a report');}\n  if(pc)paint=np;if(want!==shipId||pc)setShip(want);")
 # main-menu shipwright for online Open sea: show the last copy of the online save; remember the choice and
 # hand it to the referee when the captain sets sail
 rep("function dressLoad(m){return m==='waves'?loadWaves():loadOpen();}",
@@ -210,6 +210,19 @@ rep("NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;econSync();});",
     "NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();});")
 rep("      FB.loadSave().then(sv=>{if(!sv)return;",
     "      FB.loadSave().then(sv=>{if(!sv)return;cacheSave(sv);")
+# ---- drawings: the online referee checks every new drawing (built-in rules + AI) before it can be used
+rep("function drawCheck(dw){return Promise.resolve({ok:true});}",
+"""function drawCheck(dw){if(!FB)return Promise.resolve({ok:true});
+  return new Promise(async res=>{let off=null,timer=null;const fin=v=>{if(off)off();clearTimeout(timer);res(v);};
+    try{await FB.ensureUser();}catch(e){fin({ok:false,why:'checker offline'});return;}
+    const key=FB.request({k:'check',dw});if(!key){fin({ok:false,why:'checker offline'});return;}
+    timer=setTimeout(()=>fin({ok:false,why:'checker offline'}),45000);
+    off=FB.watchSave(sv=>{if(!sv||typeof sv.last!=='string'||sv.last<key)return;
+      if(sv.dok&&sv.dok[dw])fin({ok:true});else if(sv.dchk&&sv.dchk.dw===dw)fin({ok:false,why:sv.dchk.why});else fin({ok:false,why:'checker offline'});});});}
+// when the checker is down, show its last error in small print (helps fix it)
+const _dc=drawCheck;drawCheck=async dw=>{const v=await _dc(dw);if(!v.ok&&v.why==='checker offline'&&FB){const st=await FB.checkerStatus();
+  if(st&&!st.ok&&st.err)setTimeout(()=>{$('padmsg').textContent+=' (Details: '+String(st.err).slice(0,120)+')';},0);}return v;};""")
+rep("function reportDrawing(tg,dw){}","function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

@@ -98,7 +98,7 @@ test('paint: starter colours for everyone, the rest by rank, drawings from Bosun
   assert.strictEqual(E.processRequest({ ...E.fresh(), xp: 9000 }, { k: 'look', lk: 'b000001' }, null, NOW).ok, true);
   // own drawing needs rank 2 and a valid drawing
   assert.strictEqual(E.processRequest(null, { k: 'look', lk: '000100z', dw: DW }, null, NOW).ok, false);
-  r = E.processRequest({ ...E.fresh(), xp: 300 }, { k: 'look', lk: '000100z', dw: DW }, atSea, NOW);
+  r = E.processRequest(E.applyCheck({ ...E.fresh(), xp: 300 }, DW, true, '', NOW), { k: 'look', lk: '000100z', dw: DW }, atSea, NOW);
   assert.strictEqual(r.ok, true); assert.strictEqual(r.save.paint.dw, DW);
   assert.strictEqual(E.processRequest({ ...E.fresh(), xp: 300 }, { k: 'look', lk: '000100z', dw: 'xyz' }, null, NOW).ok, false);
   // a drawing is dropped when the emblem isn't the drawing
@@ -134,4 +134,57 @@ test("the game's paint ranks match the referee's", () => {
   }
   const em = src.match(/const EMBLEMS=\[(.*?)\];/)[1].split(',').length;
   assert.strictEqual(em, E.PAINT_RANK.e.length);
+});
+
+const enc = f => { const b = []; for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) b.push(f(x, y) ? 1 : 0); let h = ''; for (let k = 0; k < 64; k++) { let n = 0; for (let j = 0; j < 4; j++) n = n << 1 | b[k * 4 + j]; h += n.toString(16); } return h; };
+const swas = (ox, oy, a, mir, th = 1) => (x, y) => { x = Math.floor((x - ox) / th); y = Math.floor((y - oy) / th); if (x < 0 || y < 0 || x > 2 * a || y > 2 * a) return false; if (mir) x = 2 * a - x; const c = a; return x === c || y === c || (y === 0 && x >= c) || (x === 2 * a && y >= c) || (y === 2 * a && x <= c) || (x === 0 && y <= c); };
+
+test('built-in drawing rules catch swastikas of any size or direction, not ordinary shapes', () => {
+  for (const a of [[3, 3, 4, 0], [1, 2, 6, 1], [5, 5, 2, 0], [0, 0, 3, 1, 2], [0, 0, 7, 0], [8, 1, 3, 1]]) assert.strictEqual(E.drawRules(enc(swas(...a))).ok, false, JSON.stringify(a));
+  const ok = [
+    (x, y) => (x === 2 || x === 8 || x === 14 || y === 2 || y === 8 || y === 14) && x >= 2 && x <= 14 && y >= 2 && y <= 14, // window
+    (x, y) => (x === 8 && y > 3 && y < 13) || (y === 8 && x > 3 && x < 13), // plus
+    (x, y) => Math.hypot(x - 7.5, y - 7.5) < 6 && Math.hypot(x - 7.5, y - 7.5) > 4, // ring
+    (x, y) => x === y || x === 15 - y, // X
+  ];
+  for (const f of ok) assert.strictEqual(E.drawRules(enc(f)).ok, true);
+  assert.strictEqual(E.drawRules('0'.repeat(64)).ok, false, 'empty');
+});
+
+test("the game's built-in drawing rules are the referee's, word for word", () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'src-artifact.html'), 'utf8');
+  const eco = require('fs').readFileSync(require('path').join(__dirname, '..', 'functions', 'economy.js'), 'utf8');
+  const grab = t => t.slice(t.indexOf('/*DRAWRULES*/'), t.indexOf('/*ENDDRAWRULES*/'));
+  assert.ok(grab(eco).length > 200);
+  assert.strictEqual(grab(src), grab(eco));
+});
+
+test('a drawing can only go on a ship once the checker approved it', () => {
+  const DW = enc((x, y) => x === y);
+  let s = { ...E.fresh(), xp: 300 };
+  assert.strictEqual(E.processRequest(s, { k: 'look', lk: '000100z', dw: DW }, null, NOW).reason, 'drawing not approved');
+  s = E.applyCheck(s, DW, false, 'rude shape', NOW);
+  assert.strictEqual(E.processRequest(s, { k: 'look', lk: '000100z', dw: DW }, null, NOW).ok, false);
+  assert.deepStrictEqual([s.dchk.ok, s.dchk.why], [false, 'rude shape']);
+  s = E.applyCheck(s, DW, true, 'a line', NOW);
+  assert.strictEqual(E.processRequest(s, { k: 'look', lk: '000100z', dw: DW }, null, NOW).ok, true);
+});
+
+test('only the newest 12 approved drawings are kept, and a removed drawing comes off the ship', () => {
+  let s = { ...E.fresh(), xp: 300 };
+  for (let i = 0; i < 15; i++) s = E.applyCheck(s, i.toString(16).padStart(64, 'a'), true, '', NOW + i);
+  assert.strictEqual(Object.keys(s.dok).length, 12);
+  const DW = 'e'.padStart(64, 'a');
+  s = E.processRequest(s, { k: 'look', lk: '000100z', dw: DW }, null, NOW).save;
+  assert.strictEqual(s.paint.dw, DW);
+  s = E.removeDrawing(s, DW);
+  assert.deepStrictEqual(s.paint, { lk: '0001001' });
+  assert.strictEqual(s.dok[DW], undefined);
+});
+
+test('drawing checks are limited per hour (the AI costs money)', () => {
+  let s = null, ok = 0;
+  for (let i = 0; i < 20; i++) { const q = E.checkQuota(s, NOW + i); s = q.save; if (q.ok) ok++; }
+  assert.strictEqual(ok, E.CHECKS.perHour);
+  assert.strictEqual(E.checkQuota(s, NOW + 3600001).ok, true);
 });

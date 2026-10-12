@@ -159,7 +159,7 @@
           ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && !root.child('banned').child($uid).exists()",
           ".validate": "newData.hasChildren(['k','t']) && newData.child('t').val() === now",
           "k": {
-            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|reset)$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|check|reset)$/)"
           },
           "e": {
             ".validate": "newData.isString() && newData.val().matches(/^(sloop|galleon|boss)$/)"
@@ -181,6 +181,29 @@
           }
         }
       }
+    },
+    "reports": {
+      "$uid": {
+        "$rid": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && !root.child('banned').child($uid).exists()",
+          ".validate": "newData.hasChildren(['tg','dw','t']) && newData.child('t').val() === now",
+          "tg": {
+            ".validate": "newData.isString() && newData.val().length <= 64 && newData.val() !== $uid"
+          },
+          "dw": {
+            ".validate": "newData.isString() && newData.val().matches(/^[0-9a-f]{64}$/)"
+          },
+          "t": {
+            ".validate": "newData.val() === now"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "status": {
+      ".read": "auth != null"
     }
   }
 }

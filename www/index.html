@@ -51,9 +51,9 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .dresshead{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:-14px;margin:-14px -16px 0;padding:12px 16px 8px;background:linear-gradient(rgba(12,32,44,.98),rgba(12,32,44,.92));z-index:1}
 .dresshead h2{font-size:22px;margin:2px 0 0}
 .btn.small{margin:0;padding:9px 18px;font-size:14px}
-.seg{display:flex;gap:6px;margin-top:10px}
-.seg button{flex:1;font:700 14px var(--body);letter-spacing:.04em;padding:9px 6px;border-radius:8px;cursor:pointer;border:1px solid rgba(214,178,98,.35);background:transparent;color:var(--muted)}
-.seg button.on{background:rgba(214,178,98,.16);color:var(--brass-hi);border-color:var(--brass)}
+.modeseg{display:flex;gap:6px;margin-top:10px}
+.modeseg button{flex:1;font:700 14px var(--body);letter-spacing:.04em;padding:9px 6px;border-radius:8px;cursor:pointer;border:1px solid rgba(214,178,98,.35);background:transparent;color:var(--muted)}
+.modeseg button.on{background:rgba(214,178,98,.16);color:var(--brass-hi);border-color:var(--brass)}
 .dressrank{margin-top:10px;font-size:13px;color:var(--muted)}
 .dressrank b{color:var(--parch);font-family:var(--display);letter-spacing:.05em}
 .dsec{margin-top:14px}
@@ -85,6 +85,10 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .padtools{display:flex;gap:6px;justify-content:center;margin-top:10px}
 .tool{font:700 14px var(--body);padding:8px 14px;border-radius:8px;cursor:pointer;border:1px solid rgba(214,178,98,.35);background:transparent;color:var(--muted)}
 .tool.on{background:rgba(214,178,98,.16);color:var(--brass-hi);border-color:var(--brass)}
+.replist{display:flex;flex-direction:column;gap:8px;margin-top:12px;text-align:left}
+.reprow{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:8px;border-radius:9px;border:1px solid rgba(214,178,98,.3);background:rgba(255,255,255,.04)}
+.reprow canvas{position:static;inset:auto;width:52px;height:52px;border-radius:6px}
+.reprow b{font-family:var(--display);color:var(--parch);font-size:15px}
 .btn.dressbtn{display:inline-flex;align-items:center;gap:8px;justify-content:center}
 .rankrow{display:flex;align-items:center;gap:8px;max-width:min(230px,calc(100vw - 170px))}
 .rankrow .rk{font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.08em;color:var(--parch);text-shadow:0 1px 4px rgba(0,0,0,.8);white-space:nowrap}
@@ -268,6 +272,7 @@ details.how summary::-webkit-details-marker{display:none}
     <div class="menulist">
       <button class="btn" id="menuresume">Resume</button>
       <button class="btn ghost" id="snd" aria-label="Music on or off">Music: <span id="sndv">On</span></button>
+      <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
       <button class="btn ghost" id="drawtog">Captains' drawings: <span id="drawtogv">Shown</span></button>
       <button class="btn ghost" id="menuleave">Main menu</button>
     </div>
@@ -313,7 +318,7 @@ details.how summary::-webkit-details-marker{display:none}
 <div class="overlay sheet" id="dressov" hidden>
   <div class="card dress" role="dialog" aria-labelledby="dressh">
     <div class="dresshead"><div><div class="eyebrow" id="dresseye">The shipwright</div><h2 id="dressh">Ship &amp; colours</h2></div><button class="btn small" id="dressdone">Done</button></div>
-    <div class="seg" id="dressmode"><button data-m="open" id="dmOpen">Open sea</button><button data-m="waves" id="dmWaves">Wave battle</button></div>
+    <div class="modeseg" id="dressmode"><button data-m="open" id="dmOpen">Open sea</button><button data-m="waves" id="dmWaves">Wave battle</button></div>
     <div class="dressrank" id="dressrank"></div>
     <div class="dsec" id="dressships"><div class="lbl">Ship</div><div class="chiprow" id="shiprow"></div></div>
     <div class="dsec"><div class="lbl">Emblem <span id="emname"></span></div><div class="emgrid" id="emgrid"></div></div>
@@ -332,6 +337,15 @@ details.how summary::-webkit-details-marker{display:none}
     <p class="menunote" id="padmsg"></p>
     <button class="btn" id="paduse">Use this emblem</button>
     <div><button class="linkbtn" id="padcancel">Cancel</button></div>
+  </div>
+</div>
+<div class="overlay" id="reportov" hidden>
+  <div class="card">
+    <div class="eyebrow">Keep the sea friendly</div>
+    <h2>Report a drawing</h2>
+    <p class="menunote">Captains near you flying their own drawing. Reporting hides it for you straight away, and the referee checks it again. Rude drawings are removed for everyone.</p>
+    <div class="replist" id="replist"></div>
+    <button class="btn" id="repdone">Back</button>
   </div>
 </div>
 <div class="overlay" id="over" hidden>
@@ -527,6 +541,28 @@ function paintLook(pt,hideDraw){const d=decodeLk(pt&&pt.lk)||decodeLk(DEFAULT_LK
   if(PAINT.t[d.t]){o.trim=PAINT.t[d.t];o.tband=PAINT.t[d.t];}
   if(d.e===DRAW_E){if(!hideDraw&&DW_RE.test(pt.dw||'')){o.emblem='draw';o.dw=pt.dw;}else o.emblem='star';}else o.emblem=EMBLEMS[d.e];
   return o;}
+/*DRAWRULES*/function drawRules(dw){
+  // Built-in check for well-known hate symbols in a 16x16 drawing (64 hex digits, row by row).
+  // Backs up the AI check; the same code is in the game (a test keeps the two identical).
+  if(typeof dw!=='string'||!/^[0-9a-f]{64}$/.test(dw))return{ok:false,why:'not a drawing'};
+  const on=(x,y)=>x>=0&&y>=0&&x<16&&y<16&&((parseInt(dw[(y*16+x)>>2],16)>>(3-((y*16+x)&3)))&1)===1;
+  let n=0;for(let i=0;i<256;i++)if(on(i&15,i>>4))n++;
+  if(n<3)return{ok:false,why:'too empty'};
+  for(let a=2;a<=7;a++)for(const th of [1,2])for(const mir of [1,-1]){
+    if(a*th*2+th>16)continue;
+    const cells=new Set(),c=a;
+    const put=(x,y)=>{for(let i=0;i<th;i++)for(let j=0;j<th;j++)cells.add(((mir>0?x:2*a-x)*th+i)+','+(y*th+j));};
+    for(let k=-a;k<=a;k++){put(c,c+k);put(c+k,c);}
+    for(let k=0;k<=a;k++){put(c+k,c-a);put(c+a,c+k);put(c-k,c+a);put(c-a,c-k);}
+    const size=(2*a+1)*th;
+    for(let oy=0;oy+size<=16;oy++)for(let ox=0;ox+size<=16;ox++){
+      let miss=0,extra=0;
+      for(let y=0;y<size;y++)for(let x=0;x<size;x++){const want=cells.has(x+','+y),got=on(ox+x,oy+y);if(want&&!got)miss++;if(!want&&got)extra++;}
+      if(miss<=(a>=4?1:0)&&extra<=Math.max(1,Math.floor((size*size-cells.size)*.06)))return{ok:false,why:'hate symbol'};
+    }
+  }
+  return{ok:true};
+}/*ENDDRAWRULES*/
 const dwBit=(dw,i)=>(parseInt(dw[i>>2],16)>>(3-(i&3)))&1;
 // Draws an emblem in a 128x128 box centred on 64,64. bg is the colour behind it (for cut-outs).
 function drawEmblem(g,id,col,bg,dw){
@@ -980,6 +1016,11 @@ const lookFor=(id,extra)=>Object.assign({},LOOKS.player,SHIP_LOOK[shipById(id).i
 const rankOf=x=>{let r=0;for(let i=0;i<RANKS.length;i++)if(x>=RANKS[i].xp)r=i;return r;};
 let xp=0,owned={brig:true},shipId='brig',paint={...DEFAULT_PAINT};
 let hideDraw=false;try{hideDraw=localStorage.getItem('bb-hidedraw')==='1'}catch(e){}
+const hiddenDw=new Set();try{(JSON.parse(localStorage.getItem('bb-hidden-dw')||'[]')||[]).forEach(d=>hiddenDw.add(d))}catch(e){}
+const hideThis=dw=>hideDraw||hiddenDw.has(dw);
+// drawings the checker has already passed, so re-using one needs no new check
+let okDrawings=[];try{okDrawings=(JSON.parse(localStorage.getItem('bb-dok')||'[]')||[]).filter(d=>DW_RE.test(d))}catch(e){}
+function rememberOk(dw){okDrawings=okDrawings.filter(d=>d!==dw).concat([dw]).slice(-20);try{localStorage.setItem('bb-dok',JSON.stringify(okDrawings))}catch(e){}}
 const SHIP=()=>shipById(shipId);
 let sunk=0,popT=0,bossT=150,bossCount=0,edgeT=0,uniT=0,saveT=0,lastPortName='',openBuilt=false;
 let state='title',P,pship,enemies=[],sinking=[],balls=[],pickups=[],gold=0,earned=0,wave=0,waveTimer=0,shake=0,clock=0,bannerT=0,puTimer=18,turnHeel=0;
@@ -1027,7 +1068,9 @@ function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typ
   if(NET.pending.size)return;
   gold=sv.gold|0;earned=sv.earned|0;sunk=sv.sunk|0;up=Object.assign({hull:0,sails:0,reload:0,triple:0,broadside:0},sv.up||{});
   xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';
-  const np=cleanPaint(sv.paint,xp),pc=!showcase&&(np.lk!==paint.lk||np.dw!==paint.dw);if(pc)paint=np;if(want!==shipId||pc)setShip(want);
+  const np=cleanPaint(sv.paint,xp),pc=!showcase&&(np.lk!==paint.lk||np.dw!==paint.dw);
+  if(pc&&paint.dw&&!np.dw&&!(sv.dok&&sv.dok[paint.dw])){okDrawings=okDrawings.filter(d=>d!==paint.dw);try{localStorage.setItem('bb-dok',JSON.stringify(okDrawings))}catch(e){}showBanner('Your drawing was removed after a report');}
+  if(pc)paint=np;if(want!==shipId||pc)setShip(want);
   if(P.hp>maxHp())P.hp=maxHp();updHud();updXP();updAim();if(state==='shop')renderShop();}
 function econKill(kind){if(econServer()){const K=ONLINE_KILL[kind]||ONLINE_KILL.sloop;addGold(K.g);addXP(K.xp);sunk++;econRequest({k:'kill',e:kind});return;}
   addGold(kind==='boss'?300:kind==='galleon'?150:50);addXP(XP_FOR[kind]||20);if(MODE==='open'){sunk++;saveOpen();}}
@@ -1300,8 +1343,28 @@ $('padflip').onclick=()=>{for(let y=0;y<16;y++)for(let x=0;x<8;x++){const a=y*16
 function openPad(){const d=decodeLk(paint.lk);padFrom(d.e===DRAW_E?paint.dw:myDrawing);padTool(1);$('padmsg').textContent='';
   $('dressov').hidden=true;$('drawov').hidden=false;padDraw();}
 $('padcancel').onclick=()=>{audio();$('drawov').hidden=true;$('dressov').hidden=false;};
-$('paduse').onclick=()=>{audio();const n=pad.bits.reduce((a,b)=>a+b,0);if(n<3){$('padmsg').textContent='Fill in a few more squares first.';return;}
+// Asks whether a drawing is allowed. Here only the built-in rules run; the app asks the online referee (AI check).
+function drawCheck(dw){if(!FB)return Promise.resolve({ok:true});
+  return new Promise(async res=>{let off=null,timer=null;const fin=v=>{if(off)off();clearTimeout(timer);res(v);};
+    try{await FB.ensureUser();}catch(e){fin({ok:false,why:'checker offline'});return;}
+    const key=FB.request({k:'check',dw});if(!key){fin({ok:false,why:'checker offline'});return;}
+    timer=setTimeout(()=>fin({ok:false,why:'checker offline'}),45000);
+    off=FB.watchSave(sv=>{if(!sv||typeof sv.last!=='string'||sv.last<key)return;
+      if(sv.dok&&sv.dok[dw])fin({ok:true});else if(sv.dchk&&sv.dchk.dw===dw)fin({ok:false,why:sv.dchk.why});else fin({ok:false,why:'checker offline'});});});}
+// when the checker is down, show its last error in small print (helps fix it)
+const _dc=drawCheck;drawCheck=async dw=>{const v=await _dc(dw);if(!v.ok&&v.why==='checker offline'&&FB){const st=await FB.checkerStatus();
+  if(st&&!st.ok&&st.err)setTimeout(()=>{$('padmsg').textContent+=' (Details: '+String(st.err).slice(0,120)+')';},0);}return v;};
+const CHECK_SAY={'checker offline':"The drawing checker isn't working right now. Try again in a few minutes.",'too many drawings checked this hour':"You've checked a lot of drawings this hour. Try again later.",
+  'hate symbol':"That looks like a hate symbol, so it can't go on a ship.",'this drawing has been removed before':'That drawing was removed after reports, so it can\'t be used.'};
+let padBusy=false;
+$('paduse').onclick=async()=>{audio();if(padBusy)return;const n=pad.bits.reduce((a,b)=>a+b,0);if(n<3){$('padmsg').textContent='Fill in a few more squares first.';return;}
   const hx=padHex();myDrawing=hx;try{localStorage.setItem('bb-drawing',hx)}catch(e){}
+  const rules=drawRules(hx);if(!rules.ok){$('padmsg').textContent=CHECK_SAY[rules.why]||'That drawing is not allowed.';noise(.2,200,.3);return;}
+  if(!okDrawings.includes(hx)){padBusy=true;const b=$('paduse');b.disabled=true;b.textContent='Checking…';$('padmsg').textContent='The referee is checking your drawing…';
+    let v;try{v=await drawCheck(hx);}catch(e){v={ok:false,why:'checker offline'};}
+    padBusy=false;b.disabled=false;b.textContent='Use this emblem';
+    if(!v.ok){$('padmsg').textContent=CHECK_SAY[v.why]||("That drawing isn't allowed"+(v.why&&v.why!=='not allowed'?' (it looks like '+v.why+')':'')+'. Try something else.');noise(.2,200,.3);return;}
+    rememberOk(hx);}
   $('drawov').hidden=true;$('dressov').hidden=false;chime(true);setPaintSlot('e',DRAW_E,hx);dressSay('Your emblem is on the sails.');};
 
 /* ================= input ================= */
@@ -1319,6 +1382,19 @@ fb.addEventListener('pointerdown',e=>{audio();if(state==='play')firing=true;fb.c
 fb.addEventListener('contextmenu',e=>e.preventDefault());
 $('snd').onclick=()=>{audio();setMusic(!MUS.on);};
 function updDrawTog(){$('drawtogv').textContent=hideDraw?'Hidden':'Shown';}updDrawTog();
+function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}
+function openReport(){const box=$('replist');box.innerHTML='';let n=0;
+  if(typeof NET!=='undefined')for(const r of NET.peers.values()){const pr=r.pr||{};if(pr.m!=='open'||!DW_RE.test(pr.dw||'')||!decodeLk(pr.lk)||decodeLk(pr.lk).e!==DRAW_E)continue;n++;
+    const row=document.createElement('div');row.className='reprow';row.appendChild(emblemTile('draw',pr.dw,'#efe4c8','#161616'));
+    const nm=document.createElement('b');nm.textContent=remoteName(r);row.appendChild(nm);
+    const b=document.createElement('button');b.className='shipbtn';const done=hiddenDw.has(pr.dw);b.textContent=done?'Reported ✓':'Report';b.disabled=done;
+    b.onclick=()=>{audio();hiddenDw.add(pr.dw);try{localStorage.setItem('bb-hidden-dw',JSON.stringify([...hiddenDw].slice(-100)))}catch(e){}
+      reportDrawing(r.by||r.peer,pr.dw);NET.last=null;b.textContent='Reported ✓';b.disabled=true;};
+    row.appendChild(b);box.appendChild(row);}
+  if(!n){const p=document.createElement('p');p.className='menunote';p.textContent='No captains near you are flying their own drawing right now.';box.appendChild(p);}
+  $('menuov').hidden=true;$('reportov').hidden=false;}
+$('menureport').onclick=()=>{audio();openReport();};
+$('repdone').onclick=()=>{audio();$('reportov').hidden=true;$('menuov').hidden=false;};
 $('drawtog').onclick=()=>{audio();hideDraw=!hideDraw;try{localStorage.setItem('bb-hidedraw',hideDraw?'1':'0')}catch(e){}updDrawTog();if(typeof NET!=='undefined')NET.last=null;};
 let menuPaused=false,leaveArm=false;
 const onlineAtSea=()=>MODE==='open'&&typeof NET!=='undefined'&&!!NET.room&&NET.ok;
@@ -1326,6 +1402,7 @@ function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.cl
   menuPaused=!onlineAtSea();if(menuPaused)state='paused';
   $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
   $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
+  $('menureport').hidden=!onlineAtSea();
   $('menuleave').textContent=MODE==='open'?'Main menu':'Leave battle';
   $('menuleavenote').textContent=MODE==='open'?'Your voyage is saved when you leave.':'';
   $('menuov').hidden=false;}
@@ -1333,6 +1410,9 @@ function closeMenu(){$('menuov').hidden=true;if(menuPaused&&state==='paused')sta
 $('menubtn').addEventListener('click',e=>{e.stopPropagation();openMenu();});
 $('menuresume').onclick=()=>{audio();closeMenu();};
 function handleBack(){
+  if(!$('drawov').hidden){$('padcancel').click();return true;}
+  if(!$('dressov').hidden){closeDress();return true;}
+  if(!$('reportov').hidden){$('repdone').click();return true;}
   if(!$('menuov').hidden){closeMenu();return true;}
   const jo=$('joinov');if(jo&&!jo.hidden){$('joinback').click();return true;}
   if(state==='play'){openMenu();return true;}
@@ -1473,11 +1553,11 @@ function ensureRemoteShip(r){
   if(r.ship)return;const ci=((r.pr.c|0)%NET_COLORS.length+NET_COLORS.length)%NET_COLORS.length;
   const RS=SHIPS[r.pr.sh|0]||SHIPS[0];r.shi=r.pr.sh|0;r.sc=RS.scale;
   const pt={lk:r.pr.lk,dw:typeof r.pr.dw==='string'?r.pr.dw:''};r.lkKey=remoteLookKey(r.pr);
-  r.ship=makeShip(lookFor(RS.id,Object.assign(decodeLk(pt.lk)?paintLook(pt,hideDraw):{sail:NET_SAILS[ci],stripe:NET_COLORS[ci],flag:NET_COLORS[ci]},{guns:true})));
+  r.ship=makeShip(lookFor(RS.id,Object.assign(decodeLk(pt.lk)?paintLook(pt,hideThis(pt.dw)):{sail:NET_SAILS[ci],stripe:NET_COLORS[ci],flag:NET_COLORS[ci]},{guns:true})));
   r.tag=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false,depthWrite:false}));r.tag.renderOrder=12;r.tag.scale.set(7,2,1);scene.add(r.tag);r.tagKey='';
   r.x=r.pr.x;r.z=r.pr.z;r.a=r.pr.a;r.vis=true;r.col=NET_COLORS[ci];
 }
-const remoteLookKey=pr=>(pr.lk||'')+(pr.dw||'')+(hideDraw?'h':'');
+const remoteLookKey=pr=>(pr.lk||'')+(pr.dw||'')+(hideThis(pr.dw)?'h':'');
 function dropRemoteShip(r){if(r.ship){disposeGroup(r.ship);r.ship=null;}if(r.tag){scene.remove(r.tag);if(r.tag.material.map)r.tag.material.map.dispose();r.tag.material.dispose();r.tag=null;}}
 function netProcess(list){
   let online=0,sailing=0;const seen=new Set();

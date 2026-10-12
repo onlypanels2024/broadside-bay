@@ -164,3 +164,15 @@ test('paint requests must be well formed', () => {
   assert.strictEqual(ok({ k: 'look', lk: 'NOPE', t: TS }), false);
   assert.strictEqual(ok({ k: 'look', lk: '000100z', dw: '<script>', t: TS }), false);
 });
+
+test('drawing checks and reports: well formed, only as yourself, never about yourself', () => {
+  const ok = (uid, path, v) => writeAs(empty(), uid, path, v, T0).allowed;
+  const DW = 'ab'.repeat(32);
+  assert.strictEqual(ok('A', '/requests/A/r1', { k: 'check', dw: DW, t: TS }), true);
+  assert.strictEqual(ok('A', '/reports/A/r1', { tg: 'B', dw: DW, t: TS }), true);
+  assert.strictEqual(ok('A', '/reports/B/r1', { tg: 'C', dw: DW, t: TS }), false, 'as someone else');
+  assert.strictEqual(ok('A', '/reports/A/r1', { tg: 'A', dw: DW, t: TS }), false, 'yourself');
+  assert.strictEqual(ok('A', '/reports/A/r1', { tg: 'B', dw: 'nope', t: TS }), false);
+  assert.strictEqual(ok('A', '/reports/A/r1', { tg: 'B', dw: DW, t: TS, why: 'x' }), false);
+  assert.strictEqual(empty().as({ uid: 'A' }).read('/reports/A').allowed, false);
+});
