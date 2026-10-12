@@ -36,7 +36,7 @@ jobs:
               except Exception:
                   continue
               if isinstance(d, dict) and d.get('type') == 'service_account' and d.get('private_key') and d.get('client_email'):
-                  json.dump(d, open(sys.argv[2], 'w')); print('Service account OK for project', d.get('project_id')); sys.exit(0)
+                  json.dump(d, open(sys.argv[2], 'w')); print('::notice::Deploy key OK for project %s' % d.get('project_id')); sys.exit(0)
               keys = sorted(d.keys()) if isinstance(d, dict) else type(d).__name__
               print('::error::The secret is JSON but not a service-account key. Fields found: %s' % keys); sys.exit(1)
           print('::error::The secret is not JSON. Length %d characters, starts with %r, ends with %r' % (len(raw), raw[:2], raw[-2:])); sys.exit(1)
