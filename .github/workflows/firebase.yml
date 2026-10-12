@@ -2,6 +2,9 @@
 name: Deploy referee and rules
 permissions:
   contents: write
+concurrency:
+  group: firebase-deploy
+  cancel-in-progress: false
 on:
   workflow_dispatch:
   push:
@@ -50,10 +53,9 @@ jobs:
             # Save a readable copy of the failure (no secrets: the key is never printed) for diagnosis
             sed 's/\x1b\[[0-9;]*m//g' deploy.log | grep -vE "ensuring required API|required API .* is enabled|Enabling now" | tail -60 > "$RUNNER_TEMP/deploy-error.txt"
             git config user.name "deploy-bot"; git config user.email "deploy-bot@users.noreply.github.com"
-            git fetch -q origin deploy-log 2>/dev/null && git checkout -q -B deploy-log FETCH_HEAD || git checkout -q --orphan deploy-log
-            git rm -rqf . >/dev/null 2>&1 || true
-            cp "$RUNNER_TEMP/deploy-error.txt" deploy-error.txt; git add deploy-error.txt
-            git commit -qm "Deploy failure log $GITHUB_RUN_ID" && git push -q origin deploy-log || true
+            git checkout -q --orphan "deploy-log-$GITHUB_RUN_ID" && git rm -rqf --cached . >/dev/null 2>&1 || true
+            cp "$RUNNER_TEMP/deploy-error.txt" deploy-error.txt && git add -f deploy-error.txt
+            git commit -qm "Deploy failure log $GITHUB_RUN_ID" && git push -q origin "deploy-log-$GITHUB_RUN_ID" || echo "::warning::could not save the failure log"
             exit 1
           fi
           grep -iE "Deploy complete|Successful|released rules" deploy.log | while read -r l; do echo "::notice::$l"; done || true
