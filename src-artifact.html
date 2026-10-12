@@ -822,6 +822,11 @@ let xpKey='';
 function updXP(){const r=rankOf(xp),cur=RANKS[r].xp,nxt=RANKS[r+1]?RANKS[r+1].xp:null,f=nxt?(xp-cur)/(nxt-cur):1,k=r+'|'+Math.round(f*100);
   if(k===xpKey)return;xpKey=k;$('rkname').textContent=RANKS[r].n;$('xpfill').style.width=Math.round(f*100)+'%';}
 const XP_FOR={sloop:20,galleon:50,boss:250,player:120};
+// Economy hooks. In this page everything is local. The Android app swaps these for versions that
+// ask the online referee, which alone decides gold, XP, upgrades and ships in online Open sea.
+function econServer(){return false;}
+function econRequest(r){}
+function econKill(kind){addGold(kind==='boss'?300:kind==='galleon'?150:50);addXP(XP_FOR[kind]||20);if(MODE==='open'){sunk++;saveOpen();}}
 
 function clearActors(){
   enemies.forEach(e=>{disposeGroup(e.g);scene.remove(e.bar)});enemies=[];
@@ -953,9 +958,9 @@ function renderYard(){
     const nm=document.createElement('div');nm.className='nm';nm.textContent=S.name;row.appendChild(nm);
     const btn=document.createElement('button');btn.className='shipbtn';btn.id='ship-'+S.id;
     if(cur){btn.textContent='Sailing ✓';btn.disabled=true;}
-    else if(have){btn.textContent='Sail this ship';btn.classList.add('ghost');btn.onclick=()=>{chime(true);setShip(S.id);updHud();saveCareer();renderShop();};}
+    else if(have){btn.textContent='Sail this ship';btn.classList.add('ghost');btn.onclick=()=>{chime(true);setShip(S.id);econRequest({k:'ship',id:S.id});updHud();saveCareer();renderShop();};}
     else if(!ok){btn.textContent='Rank: '+RANKS[S.rank-1].n;btn.disabled=true;}
-    else{btn.textContent=S.price+' gold';btn.disabled=gold<S.price;btn.onclick=()=>{if(gold<S.price)return;gold-=S.price;chime(true);setShip(S.id);
+    else{btn.textContent=S.price+' gold';btn.disabled=gold<S.price;btn.onclick=()=>{if(gold<S.price)return;gold-=S.price;chime(true);setShip(S.id);econRequest({k:'ship',id:S.id});
       P.hp=maxHp();updHud();saveCareer();showBanner(S.name+' bought');renderShop();};}
     row.appendChild(btn);
     const ds=document.createElement('div');ds.className='ds';ds.textContent=S.desc;row.appendChild(ds);
@@ -977,7 +982,7 @@ function renderShop(){
     b.innerHTML=`<b>${it.name}</b><span>${it.desc}</span><div class="price"><span>${maxed?'Fitted ✓':full?'Hull is sound':price+' gold'}</span>${dots}</div>`;
     b.onclick=()=>{if(b.disabled)return;gold-=price;chime(true);
       if(it.id==='repair')P.hp=maxHp();else{up[it.id]++;if(it.id==='hull')P.hp++;if(it.id==='broadside')updAim();}
-      updHud();renderShop();saveCareer();};
+      econRequest(it.id==='repair'?{k:'repair'}:{k:'up',id:it.id});updHud();renderShop();saveCareer();};
     box.appendChild(b);
   }
 }
@@ -1278,12 +1283,11 @@ function update(dt){
   for(const e of enemies)if(e.hp<=0){
     const boss=e.kind==='boss';
     boom(e.x,e.z,true,boss?3:1);noise(.8,260,.5);shake=Math.max(shake,boss?1.4:.6);
-    addGold(boss?300:e.big?150:50);addXP(XP_FOR[e.kind]||20);
+    econKill(e.kind);
     const coins=boss?10:e.big?4:2,val=boss?25:e.big?15:10,spread=boss?5:2;
     for(let i=0;i<coins;i++)addPickup('coin',e.x+rnd(-spread,spread),e.z+rnd(-spread,spread),val);
     if(Math.random()<(boss?1:e.big?.6:.22))addPickup('barrel',e.x+rnd(-1,1),e.z+rnd(-1,1));
     if(boss){addPickup('speed',e.x+3,e.z);addPickup('rapid',e.x-3,e.z);addPickup('side',e.x,e.z+3);$('boss').hidden=true;showBanner('Boss sunk');bossT=240;}
-    if(MODE==='open'){sunk++;saveOpen();}
     else if(Math.random()<(e.big?.35:.15))addPickup(randPU(),e.x,e.z);
     sinking.push({g:e.g,t:0});hideGround(e.g);scene.remove(e.bar);updHud();
   }
@@ -1296,8 +1300,8 @@ function update(dt){
     p.m.rotation.y+=dt*(orb?1.2:2.5);if(p.ring){p.ring.rotation.x=clock*1.7;p.ring.rotation.z=clock*1.1;}
     p.m.visible=!(p.life<3&&Math.floor(clock*8)%2);
     if(state==='play'&&d<P.r+1.2){p.life=0;
-      if(p.k==='coin'){addGold(p.v);chime();}
-      else if(p.k==='barrel'){chime();if(P.hp<maxHp())P.hp++;else addGold(40);}
+      if(p.k==='coin'){if(!econServer())addGold(p.v);chime();}
+      else if(p.k==='barrel'){chime();if(P.hp<maxHp())P.hp++;else if(!econServer())addGold(40);}
       else if(p.k==='side'){chime(true);if(up.broadside)addGold(40);else{pw.side=15;updAim();showBanner('Side cannons ready');}}
       else{chime(true);pw[p.k]=10;showBanner(p.k==='speed'?'Full sail':'Rapid fire');}
       updHud();spark(p.x,1.2,p.z,{color:p.k==='speed'?'#8fd8ff':p.k==='rapid'?'#ffa060':p.k==='side'?'#c9a6ff':'#ffd65a',add:true,s:3,life:.4,grow:1.2});}}

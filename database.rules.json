@@ -33,7 +33,7 @@
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= newData.parent().child('mx').val()"
         },
         "mx": {
-          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 18 && (!newData.parent().child('sh').exists() ? newData.val() <= 8 : ((newData.parent().child('sh').val() === 0 && newData.val() <= 8) || (newData.parent().child('sh').val() === 1 && newData.val() <= 10) || (newData.parent().child('sh').val() === 2 && newData.val() <= 12) || (newData.parent().child('sh').val() === 3 && newData.val() <= 15) || (newData.parent().child('sh').val() === 4 && newData.val() <= 18)))"
+          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 18 && (!newData.parent().child('sh').exists() ? ((!root.child('saves').child($uid).child('up').child('hull').exists() && newData.val() <= 5) || (root.child('saves').child($uid).child('up').child('hull').val() >= newData.val() - 5)) : ((newData.parent().child('sh').val() === 0 && ((!root.child('saves').child($uid).child('up').child('hull').exists() && newData.val() <= 5) || (root.child('saves').child($uid).child('up').child('hull').val() >= newData.val() - 5))) || (newData.parent().child('sh').val() === 1 && ((!root.child('saves').child($uid).child('up').child('hull').exists() && newData.val() <= 7) || (root.child('saves').child($uid).child('up').child('hull').val() >= newData.val() - 7))) || (newData.parent().child('sh').val() === 2 && ((!root.child('saves').child($uid).child('up').child('hull').exists() && newData.val() <= 9) || (root.child('saves').child($uid).child('up').child('hull').val() >= newData.val() - 9))) || (newData.parent().child('sh').val() === 3 && ((!root.child('saves').child($uid).child('up').child('hull').exists() && newData.val() <= 12) || (root.child('saves').child($uid).child('up').child('hull').val() >= newData.val() - 12))) || (newData.parent().child('sh').val() === 4 && ((!root.child('saves').child($uid).child('up').child('hull').exists() && newData.val() <= 15) || (root.child('saves').child($uid).child('up').child('hull').val() >= newData.val() - 15)))))"
         },
         "rs": {
           ".validate": "newData.isNumber() && newData.val() >= 0"
@@ -77,7 +77,7 @@
           ".validate": false
         },
         "sh": {
-          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4 && newData.val() % 1 === 0"
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && (newData.val() === 0 || (newData.val() === 1 && root.child('saves').child($uid).child('ships').child('corvette').val() === true) || (newData.val() === 2 && root.child('saves').child($uid).child('ships').child('frigate').val() === true) || (newData.val() === 3 && root.child('saves').child($uid).child('ships').child('galleon').val() === true) || (newData.val() === 4 && root.child('saves').child($uid).child('ships').child('manowar').val() === true))"
         }
       }
     },
@@ -144,50 +144,28 @@
     },
     "saves": {
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid && auth.token.firebase.sign_in_provider === 'google.com' && !root.child('banned').child($uid).exists()",
-        ".validate": "newData.hasChildren(['gold','earned','sunk','up'])",
-        "gold": {
-          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000"
-        },
-        "earned": {
-          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
-        },
-        "sunk": {
-          ".validate": "newData.isNumber() && newData.val() >= 0"
-        },
-        "up": {
-          "hull": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+        ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+    "requests": {
+      "$uid": {
+        "$rid": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && !root.child('banned').child($uid).exists()",
+          ".validate": "newData.hasChildren(['k','t']) && newData.child('t').val() === now",
+          "k": {
+            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|reset)$/)"
           },
-          "sails": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+          "e": {
+            ".validate": "newData.isString() && newData.val().matches(/^(sloop|galleon|boss)$/)"
           },
-          "reload": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+          "id": {
+            ".validate": "newData.isString() && newData.val().matches(/^(broadside|reload|sails|hull|triple|brig|corvette|frigate|galleon|manowar)$/)"
           },
-          "triple": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
-          },
-          "broadside": {
-            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+          "t": {
+            ".validate": "newData.val() === now"
           },
           "$other": {
             ".validate": false
-          }
-        },
-        "$other": {
-          ".validate": false
-        },
-        "xp": {
-          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
-        },
-        "ship": {
-          ".validate": "newData.isString() && newData.val().matches(/^(brig|corvette|frigate|galleon|manowar)$/)"
-        },
-        "ships": {
-          "$sid": {
-            ".validate": "newData.val() === true && $sid.matches(/^(brig|corvette|frigate|galleon|manowar)$/)"
           }
         }
       }

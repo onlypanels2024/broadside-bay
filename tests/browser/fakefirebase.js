@@ -26,7 +26,7 @@
       else{const cur=(v&&typeof v==='object')?v:{};const np={};for(const k in cur){np[k]=JSON.stringify(cur[k]);if(ev==='child_added')setTimeout(()=>fn(snap(k,cur[k],path+'/'+k)));}L.prev=np;}return fn;},
     off(ev,fn){const i=listeners.findIndex(L=>L.path===path&&L.ev===ev&&L.fn===fn);if(i>=0)listeners.splice(i,1);},
     async set(v){setAt(path,v);},async remove(){setAt(path,null);},async update(o){for(const k in o)setAt(path+'/'+k,o[k]);},
-    push(v){const k='p'+Date.now().toString(36)+(pushN++)+Math.random().toString(36).slice(2,6);const r=ref(path+'/'+k);const pr=r.set(v);pr.key=k;return pr;},
+    push(v){const k='p'+Date.now().toString(36).padStart(9,'0')+String(pushN++).padStart(6,'0')+Math.random().toString(36).slice(2,6);const r=ref(path+'/'+k);if(v===undefined)return r;const pr=r.set(v);pr.key=k;return pr;},
     async get(){return snap(parts(path).pop(),getAt(path),path);},
     onDisconnect(){return{remove(){},set(){}}},
     child(c){return ref(path+'/'+c);}}}

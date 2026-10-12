@@ -71,7 +71,7 @@ rep("      <li>Tap <b>Menu</b> at the top",
 rep("function saveOpen(){if(MODE!=='open')return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(careerData()))}catch(e){}}",
 """let saveMode='local';
 function saveOpen(){if(MODE!=='open')return;const d=careerData();
-  if(saveMode==='cloud'){if(FB)FB.save(d);}else if(saveMode==='local'){try{localStorage.setItem(SAVE_KEY,JSON.stringify(d))}catch(e){}}}""")
+  if(saveMode==='local'){try{localStorage.setItem(SAVE_KEY,JSON.stringify(d))}catch(e){}}}""")
 rep("function startOpen(fresh){","function startOpen(fresh,sv){")
 rep("  const sv=fresh?null:loadOpen();","  if(sv===undefined)sv=fresh?null:loadOpen();NET.rs=0;")
 rep("  pw={speed:0,rapid:0,side:0};placeAtPort(p);updAim();updChips();","  pw={speed:0,rapid:0,side:0};NET.rs=(NET.rs|0)+1;placeAtPort(p);updAim();updChips();")
@@ -86,7 +86,7 @@ rep("function refreshStart(){waveNote();const sv=loadOpen();",
     return;}
   const sv=loadOpen();""")
 rep("  try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshStart();};",
-    "  if(FB){FB.save({gold:0,earned:0,sunk:0,up:{hull:0,sails:0,reload:0,triple:0,broadside:0},xp:0,ships:{brig:true},ship:'brig'});setTimeout(refreshStart,300);return;}\n  try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshStart();};")
+    "  if(FB){FB.request({k:'reset'});$('newVoyage').textContent='Starting a new voyage…';setTimeout(refreshStart,2500);return;}\n  try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshStart();};")
 rep("""$('goOpen').onclick=()=>{audio();const b=$('goOpen');if(b.disabled)return;b.disabled=true;b.textContent='Charting the sea…';
   setTimeout(()=>{startOpen(false);b.disabled=false;musPlay();$('start').hidden=true;$('hint').hidden=false;state='play';showBanner(PORTS[0].name);},40);};""",
 """function launchOpen(sv){const b=$('goOpen');b.disabled=true;b.textContent='Charting the sea…';
@@ -96,7 +96,7 @@ function showJoin(){const u=FB.user();$('joinerr').hidden=true;
   try{$('guestname').value=localStorage.getItem('bb-guestname')||'';}catch(e){}
   $('start').hidden=true;$('joinov').hidden=false;}
 function joinErr(m){$('joinerr').textContent=m;$('joinerr').hidden=false;}
-async function sailOnline(){const u=FB.user();saveMode=u.google?'cloud':'none';goOnline();const sv=u.google?await FB.loadSave():null;launchOpen(sv||null);}
+async function sailOnline(){saveMode='server';goOnline();const sv=await FB.loadSave();launchOpen(sv||null);}
 $('goOpen').onclick=()=>{audio();if($('goOpen').disabled)return;
   if(!FB){saveMode='local';launchOpen(undefined);return;}
   if(NET.banned){saveMode='local';launchOpen(undefined);showBanner('Offline: playing solo');return;}
@@ -129,9 +129,10 @@ rep("""(async()=>{
 function goOnline(){if(!FB||NET.room||NET.banned)return;const u=FB.user();if(!u)return;
   const R=FB.openRoom();NET.room=R;NET.ok=true;NET.myId=R.uid;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;
   R.onConnection(c=>{NET.ok=c;netUiKey='';});
-  R.onReward(r=>{NET.kills++;addGold(r.g|0);addXP(XP_FOR.player);updHud();saveOpen();showBanner('You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
+  R.onReward(r=>{NET.kills++;showBanner('You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
+  NET.pending=new Map();NET.srv=null;NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;econSync();});
   R.onBanned(()=>{NET.banned=true;closeOnline();saveMode='none';showBanner('Removed from online play by the referee');});}
-function closeOnline(){if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
+function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
 if(FB)FB.ready.then(()=>{const u=FB.user();if(u&&!u.google){FB.signOut();}else if(u)goOnline();refreshStart();});""")
 rep("const NET={room:null,","const FB=window.BBFirebase?window.BBFirebase.init(window.BB_FIREBASE_CONFIG):null;\nconst NET={room:null,")
 # refreshStart runs before FB/NET are declared further down; move the first call after the network setup
@@ -162,6 +163,23 @@ rep("if(!inSafe(P)){NET.lastHitBy=b.from;NET.lastHitT=clock;hurtPlayer();}",
 rep("  if(MODE==='open'){NET.deaths++;","  if(MODE==='open'){NET.deaths++;if(NET.fb&&NET.room&&NET.room.reportDeath)NET.room.reportDeath();")
 rep("$('onlinetxt').textContent=NET.ok?`${NET.online} online · ${NET.sailing} at sea`:'Offline: playing solo';",
     "$('onlinetxt').textContent=NET.ok?`${NET.online} online · ${NET.sailing} at sea`:(NET.banned?'Offline: removed by the referee':'Offline: playing solo');")
+# ---- economy: the online referee alone decides gold, XP, upgrades and ships in online Open sea
+rep("function econServer(){return false;}\nfunction econRequest(r){}\nfunction econKill(kind){",
+"""function econServer(){return MODE==='open'&&saveMode==='server'&&!!NET.room;}
+function econRequest(r){if(!econServer())return;const k=FB.request(r);if(k)NET.pending.set(k,Date.now());}
+// Online kill rewards include the coins the wreck drops (coins online are just for show).
+const ONLINE_KILL={sloop:{g:70,xp:20},galleon:{g:210,xp:50},boss:{g:550,xp:250}};
+// Show the reward straight away, then follow the referee's answer: while requests are waiting we keep
+// the local numbers; once all are answered we take the referee's numbers (correcting anything refused).
+function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typeof sv.last==='string'?sv.last:'';
+  for(const [k,t] of NET.pending)if(k<=last||Date.now()-t>20000)NET.pending.delete(k);
+  if(NET.pending.size)return;
+  gold=sv.gold|0;earned=sv.earned|0;sunk=sv.sunk|0;up=Object.assign({hull:0,sails:0,reload:0,triple:0,broadside:0},sv.up||{});
+  xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';if(want!==shipId)setShip(want);
+  if(P.hp>maxHp())P.hp=maxHp();updHud();updXP();updAim();if(state==='shop')renderShop();}
+function econKill(kind){if(econServer()){const K=ONLINE_KILL[kind]||ONLINE_KILL.sloop;addGold(K.g);addXP(K.xp);sunk++;econRequest({k:'kill',e:kind});return;}
+  """)
+rep("  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();}","  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();if(NET.pending&&NET.pending.size)econSync();}")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

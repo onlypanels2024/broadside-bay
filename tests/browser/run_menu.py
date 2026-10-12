@@ -19,6 +19,6 @@ with sync_playwright() as pw:
   pg.click('#menubtn');pg.wait_for_timeout(300);print('online open sea: state',pg.evaluate('__t.state'),'| note:',pg.inner_text('#menunote'))
   pg.screenshot(path='tests/browser/m_menu_open.png')
   pg.click('#menuleave');pg.wait_for_timeout(400);print('left to main menu:',pg.is_visible('#start'),pg.evaluate('__t.state'))
-  pg.click('#goWaves');pg.wait_for_function("__t.state==='play'");print('switched to waves mode:',pg.evaluate('__t.MODE'))
-  print('android back opens menu:',pg.evaluate('__t.handleBack()'),pg.is_visible('#menuov'),'| back again closes:',pg.evaluate('__t.handleBack()'),pg.is_visible('#menuov'))
+  pg.click('#goWaves');pg.wait_for_function("__t.state==='play'");print('switched to waves mode:',pg.evaluate("__t.ev('MODE')"))
+  print('android back opens menu:',pg.evaluate("__t.ev('handleBack()')"),pg.is_visible('#menuov'),'| back again closes:',pg.evaluate("__t.ev('handleBack()')"),pg.is_visible('#menuov'))
   print('errors',errs);b.close()

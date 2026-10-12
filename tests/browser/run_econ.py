@@ -1,0 +1,45 @@
+import json
+from playwright.sync_api import sync_playwright
+U='http://127.0.0.1:8766/tests/browser/app-test.html'
+with sync_playwright() as pw:
+  b=pw.chromium.launch(args=['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']);ctx=b.new_context(viewport={'width':400,'height':800})
+  A=ctx.new_page();B=ctx.new_page();errs=[]
+  for pg,n in((A,'A'),(B,'B')):pg.on('pageerror',lambda e,n=n:errs.append(n+':'+str(e)))
+  EA=lambda c:A.evaluate(f"__t.ev({json.dumps(c)})");EB=lambda c:B.evaluate(f"__t.ev({json.dumps(c)})")
+  srv=lambda uid:A.evaluate(f"(window.__fakeTree().saves||{{}})[{json.dumps(uid)}]||null")
+  wait_sync=lambda pg:pg.wait_for_function("__t.ev('NET.pending&&NET.pending.size===0&&!!NET.srv')",timeout=30000)
+  A.goto(U+'?who=gary&referee=1');A.wait_for_timeout(1500);B.goto(U+'?who=maria');B.wait_for_timeout(2500)
+  A.click('#goOpen');A.wait_for_timeout(400);A.click('#joingoogle');A.wait_for_timeout(600);A.click('#joingo')
+  B.click('#goOpen');B.wait_for_timeout(400);B.fill('#guestname','Maria');B.click('#joinguest')
+  for pg in(A,B):pg.wait_for_function("__t.state==='play'",timeout=90000);pg.evaluate('__t.noAI()')
+  EA("P.x=80;P.z=60;P.v=0");A.wait_for_timeout(1500)
+  print('1. honest kills: server-mode =',EA("econServer()"))
+  EA("econKill('sloop');econKill('sloop');econKill('galleon')");print('   shown straight away: gold',EA("gold"),'xp',EA("xp"))
+  wait_sync(A);s=srv('google_gary');print('   referee confirmed: gold',s['gold'],'xp',s['xp'],'sunk',s['sunk'],'| game shows',EA("[gold,xp,sunk]"))
+  print('2. kill spam (30 fake sloops at once):')
+  EA("for(let i=0;i<30;i++)econKill('sloop')");print('   shown before referee answers: gold',EA("gold"))
+  wait_sync(A);A.wait_for_timeout(500);s=srv('google_gary');print('   after referee: game gold',EA("gold"),'= server gold',s['gold'],'| kills accepted:',sum(1 for l in A.evaluate('window.__refLog') if l[0]=='req' and l[1]=='kill' and l[3]),'refused:',sum(1 for l in A.evaluate('window.__refLog') if l[0]=='req' and l[1]=='kill' and not l[3]))
+  print('3. buying at sea is refused, buying in harbour works:')
+  EA("econRequest({k:'up',id:'reload'})");wait_sync(A);print('   at sea -> reload level',srv('google_gary')['up']['reload'])
+  EA("P.x=21;P.z=0;P.v=0");A.wait_for_timeout(800);EA("openShop()");A.wait_for_timeout(600)
+  A.click('#buy-reload');print('   bought in harbour, shown:',EA("[gold,up.reload]"));wait_sync(A);s=srv('google_gary');print('   referee:',s['gold'],s['up']['reload'],'| game:',EA("[gold,up.reload]"))
+  print('4. trying to take a ship without the rank:')
+  EA("gold+=99999;owned.manowar=true;setShip('manowar');econRequest({k:'ship',id:'manowar'})");print('   cheat shown locally:',EA("[shipId,gold]"))
+  wait_sync(A);print('   after referee: ship',EA("shipId"),'gold',EA("gold"),'| server ship',srv('google_gary')['ship'])
+  A.screenshot(path='tests/browser/e_shop.png');EA("$('next').click()")
+  print('5. sinking another captain:')
+  gb=srv('google_gary')['gold'];EB("gold=300");
+  EA("P.x=60;P.z=40;P.a=-Math.PI/2;P.v=0");EB("P.x=60;P.z=24;P.a=Math.PI;P.v=0");A.wait_for_timeout(2500)
+  for i in range(12):
+    EA("P.x=60;P.z=40;P.a=-Math.PI/2;P.v=0;P.cool=0;setAim('front')");EB("P.x=60;P.z=24;P.v=0;P.inv=0")
+    A.keyboard.down('Space');A.wait_for_timeout(100);A.keyboard.up('Space');A.wait_for_timeout(1200)
+    if EB("state")=='over':break
+  A.wait_for_timeout(3000);wait_sync(A)
+  s=srv('google_gary');print('   Gary gold',gb,'->',s['gold'],'(+150), xp',s['xp'],'| Maria state',EB("state"))
+  mid=EB("FB.user().uid");print('   Maria referee save gold:',(srv(mid) or {}).get('gold'))
+  print('6. restart: progress comes from the referee')
+  print('   referee log (refused):',[l for l in A.evaluate('window.__refLog') if l[0]=='req' and not l[3]][:4])
+  sv=srv('google_gary');EA("toMenu()");A.wait_for_timeout(500);A.click('#goOpen');A.wait_for_timeout(400);A.click('#joingo')
+  A.wait_for_function("__t.state==='play'",timeout=90000);A.wait_for_timeout(1500)
+  print('   back at sea, progress loaded from the referee:',EA("[gold,xp,up.reload,shipId]"),'| referee has',[sv['gold'],sv['xp'],sv['up']['reload'],sv['ship']])
+  print('errors',errs);b.close()

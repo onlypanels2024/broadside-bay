@@ -94,17 +94,7 @@ test('everyone signed in can see who is online', () => {
   assert.strictEqual(writeAs(empty(), 'A', '/online/B', true, T0).allowed, false);
 });
 
-test('only Google-signed-in captains can save progress, and only their own', () => {
-  const save = { gold: 500, earned: 900, sunk: 3, up: { hull: 1, sails: 0, reload: 2, triple: 0, broadside: 1 } };
-  const google = { uid: 'A', token: { firebase: { sign_in_provider: 'google.com' } } };
-  const guest = { uid: 'A', token: { firebase: { sign_in_provider: 'anonymous' } } };
-  const db = targaryen.database(rules, {}, T0);
-  assert.strictEqual(db.as(google).write('/saves/A', save, { now: T0 }).allowed, true);
-  assert.strictEqual(db.as(guest).write('/saves/A', save, { now: T0 }).allowed, false);
-  assert.strictEqual(db.as({ ...google, uid: 'B' }).write('/saves/A', save, { now: T0 }).allowed, false);
-  assert.strictEqual(db.as(google).write('/saves/A', { ...save, up: { hull: 9 } }, { now: T0 }).allowed, false);
-  assert.strictEqual(db.as({ ...google, uid: 'B' }).read('/saves/A').allowed, false);
-});
+
 
 test('a hit report may carry the impact time, but not a silly one', () => {
   const ok = { v: 'B', s: 'A', sid: 3, x: 50, z: 50, t: TS, ti: T0 - 800 };
@@ -112,23 +102,46 @@ test('a hit report may carry the impact time, but not a silly one', () => {
   assert.strictEqual(writeAs(empty(), 'B', '/hits/h1', { ...ok, ti: T0 - 60000 }, T0).allowed, false);
 });
 
-test('bigger ships may report a bigger hull, but only what their class allows', () => {
-  // Man-o'-War (sh 4): hull 15 + 3 upgrades = 18
-  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh: 4, mx: 18, hp: 18 }), T0).allowed, true);
-  // a Brig (sh 0) claiming 18 hull is refused
-  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh: 0, mx: 18, hp: 18 }), T0).allowed, false);
-  // old app versions without a ship class stay capped at 8
-  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { mx: 8, hp: 8 }), T0).allowed, true);
-  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { mx: 12, hp: 12 }), T0).allowed, false);
-  // unknown ship classes are refused
-  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh: 9 }), T0).allowed, false);
+
+
+
+
+const save = (ships, hull) => ({ saves: { A: { gold: 100, xp: 0, sunk: 0, earned: 0, up: { hull, sails: 0, reload: 0, triple: 0, broadside: 0 }, ships, ship: 'brig' } } });
+
+test('nobody can write their own save any more: only the referee can', () => {
+  const google = { uid: 'A', token: { firebase: { sign_in_provider: 'google.com' } } };
+  const db = targaryen.database(rules, {}, T0);
+  assert.strictEqual(db.as(google).write('/saves/A', { gold: 999999, earned: 0, sunk: 0, up: {} }, { now: T0 }).allowed, false);
+  assert.strictEqual(db.as(google).write('/saves/A/gold', 999999, { now: T0 }).allowed, false);
+  assert.strictEqual(db.as(google).read('/saves/A').allowed, true);
+  assert.strictEqual(db.as({ uid: 'B' }).read('/saves/A').allowed, false);
 });
 
-test('a Google save can hold rank, owned ships and the chosen ship', () => {
-  const google = { uid: 'A', token: { firebase: { sign_in_provider: 'google.com' } } };
-  const base = { gold: 500, earned: 900, sunk: 3, up: { hull: 1, sails: 0, reload: 2, triple: 0, broadside: 1 } };
-  const db = targaryen.database(rules, {}, T0);
-  assert.strictEqual(db.as(google).write('/saves/A', { ...base, xp: 3100, ships: { brig: true, frigate: true }, ship: 'frigate' }, { now: T0 }).allowed, true);
-  assert.strictEqual(db.as(google).write('/saves/A', { ...base, ship: 'spaceship' }, { now: T0 }).allowed, false);
-  assert.strictEqual(db.as(google).write('/saves/A', { ...base, ships: { yacht: true } }, { now: T0 }).allowed, false);
+test('captains can post requests to the referee, but only well-formed ones and only for themselves', () => {
+  const ok = (uid, path, v) => writeAs(empty(), uid, path, v, T0).allowed;
+  assert.strictEqual(ok('A', '/requests/A/r1', { k: 'kill', e: 'sloop', t: TS }), true);
+  assert.strictEqual(ok('A', '/requests/A/r2', { k: 'up', id: 'reload', t: TS }), true);
+  assert.strictEqual(ok('A', '/requests/A/r3', { k: 'ship', id: 'manowar', t: TS }), true);
+  assert.strictEqual(ok('A', '/requests/B/r1', { k: 'kill', e: 'sloop', t: TS }), false);
+  assert.strictEqual(ok('A', '/requests/A/r4', { k: 'gimme', t: TS }), false);
+  assert.strictEqual(ok('A', '/requests/A/r5', { k: 'kill', e: 'sloop', t: TS, gold: 5000 }), false);
+  assert.strictEqual(ok('A', '/requests/A/r6', { k: 'kill', e: 'kraken', t: TS }), false);
+});
+
+test('you can only sail a ship the referee has recorded you owning', () => {
+  const owns = targaryen.database(rules, save({ brig: true, frigate: true }, 0), T0);
+  assert.strictEqual(writeAs(owns, 'A', '/players/A', ship(21, 0, { sh: 2, mx: 9, hp: 9 }), T0).allowed, true);
+  assert.strictEqual(writeAs(owns, 'A', '/players/A', ship(21, 0, { sh: 4, mx: 15, hp: 15 }), T0).allowed, false);
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh: 1, mx: 7, hp: 7 }), T0).allowed, false);
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh: 0, mx: 5, hp: 5 }), T0).allowed, true);
+});
+
+test('your hull can only include armour the referee has recorded you buying', () => {
+  const armoured = targaryen.database(rules, save({ brig: true, frigate: true }, 2), T0);
+  assert.strictEqual(writeAs(armoured, 'A', '/players/A', ship(21, 0, { sh: 2, mx: 11, hp: 11 }), T0).allowed, true);
+  assert.strictEqual(writeAs(armoured, 'A', '/players/A', ship(21, 0, { sh: 2, mx: 12, hp: 12 }), T0).allowed, false);
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh: 0, mx: 6, hp: 6 }), T0).allowed, false);
+  // old app versions (no ship class) are held to a plain Brig
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { mx: 8, hp: 8 }), T0).allowed, false);
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { mx: 5, hp: 5 }), T0).allowed, true);
 });

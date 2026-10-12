@@ -11,7 +11,9 @@ with sync_playwright() as pw:
   B.click('#goOpen');B.wait_for_timeout(400);B.fill('#guestname','Maria');B.click('#joinguest')
   for pg in(A,B):pg.wait_for_function("__t.state==='play'",timeout=90000);pg.evaluate('__t.noAI()')
   # A becomes a Captain sailing a Frigate with side cannons
-  EA("xp=3200;owned.frigate=true;setShip('frigate');up.broadside=1;updAim();updHud();updXP()")
+  # the referee records Gary as a Captain owning a Frigate with side cannons (in the real game he'd have earned it)
+  A.evaluate("window.__fakeDb.ref('saves/google_gary').set({gold:0,earned:0,sunk:0,xp:3200,up:{hull:0,sails:0,reload:0,triple:0,broadside:1},ships:{brig:true,frigate:true},ship:'frigate'})")
+  A.wait_for_function("__t.ev('shipId')==='frigate'",timeout=20000)
   EA("P.x=60;P.z=40;P.a=0;P.v=0");EB("P.x=60;P.z=22;P.a=0;P.v=0")
   A.wait_for_timeout(3000)
   print('B sees A as ship class:',EB("[...NET.peers.values()].filter(r=>r.ship).map(r=>[r.pr.n,SHIPS[r.pr.sh|0].name,r.pr.mx])"))

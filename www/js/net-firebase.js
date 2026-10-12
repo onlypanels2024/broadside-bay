@@ -52,13 +52,24 @@
           const plug = nativeAuth(); if (plug) { try { await plug.signOut(); } catch (e) {} }
           await auth.signOut();
         },
+        // Online progress lives in saves/<uid> and is written only by the referee.
+        // Google captains keep the same uid on every phone; guests get a new one each launch.
         async loadSave() {
-          const u = api.user(); if (!u || !u.google) return null;
+          const u = api.user(); if (!u) return null;
           try { return (await db.ref('saves/' + u.uid).get()).val(); } catch (e) { return null; }
         },
-        save(data) {
-          const u = api.user(); if (!u || !u.google) return;
-          db.ref('saves/' + u.uid).set(data).catch(() => {});
+        // Ask the referee to do something. Returns the request's key (used to know when it's been dealt with).
+        request(obj) {
+          const u = auth.currentUser; if (!u) return null;
+          const ref = db.ref('requests/' + u.uid).push();
+          ref.set({ ...obj, t: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
+          return ref.key;
+        },
+        // Follow the referee's copy of this captain's progress. Returns a function that stops following.
+        watchSave(cb) {
+          const u = auth.currentUser; if (!u) return () => {};
+          const ref = db.ref('saves/' + u.uid), fn = s => cb(s.val());
+          ref.on('value', fn); return () => ref.off('value', fn);
         },
         openRoom() { return openRoom(db, auth.currentUser.uid, () => api.user().name); },
       };
