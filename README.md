@@ -1,4 +1,4 @@
-# OverBoard
+# Broadside Bay
 
 Online pirate-ship battles on a Caribbean sea, for Android. Inspired by the 90s PlayStation game Overboard!.
 
@@ -12,7 +12,7 @@ Online pirate-ship battles on a Caribbean sea, for Android. Inspired by the 90s 
 | `functions/` | The **referee**: checks every hit and sinking between players on Firebase's servers |
 | `database.rules.json` | Database security rules: stop speed hacks, teleporting, fake health and writing to other players |
 | `tests/` | Automated tests for the referee and rules (`npm test`) and a two-player browser test |
-| `.github/workflows/android.yml` | Builds `OverBoard.apk` (install on a phone) and `OverBoard.aab` (Google Play) on every change |
+| `.github/workflows/android.yml` | Builds `BroadsideBay.apk` (install on a phone) and `BroadsideBay.aab` (Google Play) on every change |
 | `.github/workflows/firebase.yml` | Tests, then deploys the referee and the rules to Firebase |
 
 ## Online play

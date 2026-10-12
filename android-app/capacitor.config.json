@@ -1,6 +1,6 @@
 {
-  "appId": "com.overboardgame.app",
-  "appName": "OverBoard",
+  "appId": "com.broadsidebay.game",
+  "appName": "Broadside Bay",
   "webDir": "www",
   "backgroundColor": "#071a24",
   "android": { "allowMixedContent": false },

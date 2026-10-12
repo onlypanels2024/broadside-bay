@@ -165,8 +165,3 @@ rep("$('onlinetxt').textContent=NET.ok?`${NET.online} online · ${NET.sailing} a
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 
-# ---- app name
-s=open('www/index.html').read()
-s=s.replace('<title>Broadside Bay</title>','<title>OverBoard</title>').replace('<h1>Broadside Bay</h1>','<h1>OverBoard</h1>').replace('Broadside Bay','OverBoard')
-open('www/index.html','w').write(s)
-print('renamed to OverBoard')

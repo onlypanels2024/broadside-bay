@@ -1,7 +1,7 @@
 {
-  "name": "overboard",
+  "name": "broadside-bay",
   "private": true,
-  "description": "OverBoard - online pirate ship game (Android app, Firebase referee)",
+  "description": "Broadside Bay - online pirate ship game (Android app, Firebase referee)",
   "scripts": {
     "test": "node --test tests/*.test.js",
     "build:app": "python3 build_app.py"

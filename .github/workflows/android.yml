@@ -1,6 +1,6 @@
-# Builds the OverBoard Android app. Every push to main makes a new release with:
-#  - OverBoard.apk  : install on a phone directly
-#  - OverBoard.aab  : upload to Google Play
+# Builds the Broadside Bay Android app. Every push to main makes a new release with:
+#  - BroadsideBay.apk  : install on a phone directly
+#  - BroadsideBay.aab  : upload to Google Play
 name: Build Android app
 on:
   workflow_dispatch:
@@ -58,26 +58,26 @@ jobs:
           sed -i "s/versionCode [0-9]*/versionCode $VC/; s/versionName \"[^\"]*\"/versionName \"1.0.$GITHUB_RUN_NUMBER\"/" app/build.gradle
           if [ "$HAS_KEY" = "true" ]; then
             ./gradlew assembleRelease bundleRelease --no-daemon
-            cp app/build/outputs/apk/release/app-release.apk ../OverBoard.apk
-            cp app/build/outputs/bundle/release/app-release.aab ../OverBoard.aab
+            cp app/build/outputs/apk/release/app-release.apk ../BroadsideBay.apk
+            cp app/build/outputs/bundle/release/app-release.aab ../BroadsideBay.aab
           else
             ./gradlew assembleDebug --no-daemon
-            cp app/build/outputs/apk/debug/app-debug.apk ../OverBoard.apk
+            cp app/build/outputs/apk/debug/app-debug.apk ../BroadsideBay.apk
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: OverBoard
+          name: BroadsideBay
           path: |
-            android-app/OverBoard.apk
-            android-app/OverBoard.aab
+            android-app/BroadsideBay.apk
+            android-app/BroadsideBay.aab
           if-no-files-found: warn
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: OverBoard 1.0.${{ github.run_number }}
+          name: Broadside Bay 1.0.${{ github.run_number }}
           make_latest: true
-          body: Download OverBoard.apk on your phone and open it to install or update. OverBoard.aab is for Google Play.
+          body: Download BroadsideBay.apk on your phone and open it to install or update. BroadsideBay.aab is for Google Play.
           files: |
-            android-app/OverBoard.apk
-            android-app/OverBoard.aab
+            android-app/BroadsideBay.apk
+            android-app/BroadsideBay.aab

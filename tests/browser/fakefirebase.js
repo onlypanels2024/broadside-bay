@@ -1,5 +1,5 @@
 // Minimal stand-in for the Firebase compat SDK (auth + realtime database), shared between tabs
-// through BroadcastChannel. Only for local testing of OverBoard's online play.
+// through BroadcastChannel. Only for local testing of Broadside Bay's online play.
 (function(){
   const bc=new BroadcastChannel('fakefb');let tree={};const listeners=[];
   const parts=p=>String(p||'').split('/').filter(Boolean);
