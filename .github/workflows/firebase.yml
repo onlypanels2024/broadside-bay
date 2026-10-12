@@ -1,5 +1,6 @@
 # Deploys the referee (Cloud Functions, Node 22) and the database security rules to Firebase (overboard-2104).
 # It runs when functions/, database.rules.json, firebase.json or this file change (or by hand from the Actions tab).
+# First deploy of 2nd-gen functions may need a retry a few minutes later while Google sets up Eventarc.
 name: Deploy referee and rules
 permissions:
   contents: write
