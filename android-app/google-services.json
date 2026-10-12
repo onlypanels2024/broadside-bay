@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "426445486230-upk2uejlktsat9db4qigbabiqlbu53fm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.broadsidebay.game",
+            "certificate_hash": "79dd3036a2b7fcf2813521e12ae3090375cd7da9"
+          }
+        },
+        {
           "client_id": "426445486230-8s987gk8cip1msivjha42or6rjh55710.apps.googleusercontent.com",
           "client_type": 3
         }
