@@ -27,4 +27,10 @@ jobs:
           echo "Deploying to Firebase project: $PROJECT" 
           echo "$SA" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          npx --yes firebase-tools@13 deploy --only database,functions --project "$PROJECT" --non-interactive --force
+          set -o pipefail
+          if ! npx --yes firebase-tools@13 deploy --only database,functions --project "$PROJECT" --non-interactive --force 2>&1 | tee deploy.log; then
+            # surface the important lines where they can be read without opening the full log
+            grep -iE "error|denied|permission|missing|required|enable|billing" deploy.log | tail -15 | while read -r l; do echo "::error::$l"; done
+            exit 1
+          fi
+          grep -iE "Deploy complete|Successful|released rules" deploy.log | while read -r l; do echo "::notice::$l"; done
