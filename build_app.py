@@ -64,8 +64,8 @@ rep(".linkbtn.warn{color:#ffb4a6}",
 .joinerr{color:#ffb4a6;font-size:14px}""")
 rep("<li><b>Open sea (online):</b> other captains who have this game open sail the same sea.",
     "<li><b>Open sea (online):</b> sign in with Google to save your progress, or sail as a guest. Other captains sail the same sea.")
-rep("<li>Turn the music on or off with the Music button at the top.</li>",
-    "<li>A referee checks every hit between captains, so cheating gets you removed from online play.</li>\n      <li>Turn the music on or off with the Music button at the top.</li>")
+rep("      <li>Tap <b>Menu</b> at the top",
+    "      <li>A referee checks every hit between captains, so cheating gets you removed from online play.</li>\n      <li>Tap <b>Menu</b> at the top")
 
 # ---- saving: Google = cloud, guest = nothing, no Firebase at all = this phone
 rep("function saveOpen(){if(MODE!=='open')return;try{localStorage.setItem(SAVE_KEY,JSON.stringify({gold,earned,up,sunk}))}catch(e){}}",

@@ -37,6 +37,13 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 .hullbar{display:flex;gap:3px}
 .snd{pointer-events:auto;cursor:pointer;font:inherit;color:inherit;text-align:center;align-items:center}
 .snd .val{font-size:15px}
+.menubtn{pointer-events:auto;cursor:pointer;font:inherit;color:inherit;align-items:center;justify-content:center;gap:4px;padding:6px 14px}
+.menubtn .bars{display:flex;flex-direction:column;gap:3px}
+.menubtn .bars i{display:block;width:18px;height:2px;border-radius:1px;background:var(--brass-hi)}
+.menubtn:focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
+.menulist{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:6px}
+.menulist .btn{min-width:230px}
+.menunote{font-size:14px;color:var(--muted);margin-top:4px}
 .snd:focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
 .seg{width:12px;height:9px;border-radius:2px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18)}
 .seg.on{background:linear-gradient(#e2574a,#9c231a);border-color:#e9786d}
@@ -142,7 +149,7 @@ details.how summary::-webkit-details-marker{display:none}
     <div class="panel"><span class="lbl">Hull</span><div class="hullbar" id="hp"></div></div>
     <div class="panel"><span class="lbl" id="wavelbl">Wave</span><span class="val" id="wave">1</span></div>
     <div class="panel" style="text-align:right"><span class="lbl">Gold</span><span class="val gold" id="gold">0</span></div>
-    <button class="panel snd" id="snd" aria-label="Music on or off"><span class="lbl">Music</span><span class="val" id="sndv">On</span></button>
+    <button class="panel menubtn" id="menubtn" aria-label="Open menu"><span class="bars"><i></i><i></i><i></i></span><span class="lbl">Menu</span></button>
   </div>
   <div class="netrow"><span class="chip online off" id="online" hidden><i></i><span id="onlinetxt">Offline</span></span></div>
   <div class="chips" id="chips"></div>
@@ -176,10 +183,22 @@ details.how summary::-webkit-details-marker{display:none}
       <li>The button above Fire switches between your front cannon and 3 cannons on each side. Side cannons are unlocked in the shop or with a purple power-up.</li>
       <li>Blue lights give speed. Orange lights give rapid fire. Purple lights give side cannons for a while.</li>
       <li>A referee checks every hit between captains, so cheating gets you removed from online play.</li>
-      <li>Turn the music on or off with the Music button at the top.</li>
+      <li>Tap <b>Menu</b> at the top to pause, turn the music on or off, or go back to the main menu to switch between Open sea and Wave battle.</li>
     </ul></details>
-    <div class="sub">On a computer: arrow keys or WASD, space to fire, E to switch front or sides.</div>
     <div class="sub" style="font-size:11px;opacity:.7">Music instrument recordings: FluidR3 GM soundfont by Frank Wen, CC BY 3.0.</div>
+  </div>
+</div>
+<div class="overlay" id="menuov" hidden>
+  <div class="card">
+    <div class="eyebrow" id="menueyebrow">Paused</div>
+    <h2>Menu</h2>
+    <p class="menunote" id="menunote">The game is paused.</p>
+    <div class="menulist">
+      <button class="btn" id="menuresume">Resume</button>
+      <button class="btn ghost" id="snd" aria-label="Music on or off">Music: <span id="sndv">On</span></button>
+      <button class="btn ghost" id="menuleave">Main menu</button>
+    </div>
+    <p class="menunote" id="menuleavenote"></p>
   </div>
 </div>
 <div class="overlay" id="joinov" hidden>
@@ -919,6 +938,29 @@ fb.addEventListener('pointerdown',e=>{audio();if(state==='play')firing=true;fb.c
 ['pointerup','pointercancel','pointerleave'].forEach(ev=>fb.addEventListener(ev,()=>{firing=false;fb.classList.remove('on')}));
 fb.addEventListener('contextmenu',e=>e.preventDefault());
 $('snd').onclick=()=>{audio();setMusic(!MUS.on);};
+let menuPaused=false,leaveArm=false;
+const onlineAtSea=()=>MODE==='open'&&typeof NET!=='undefined'&&!!NET.room&&NET.ok;
+function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.classList.remove('on');leaveArm=false;
+  menuPaused=!onlineAtSea();if(menuPaused)state='paused';
+  $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
+  $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
+  $('menuleave').textContent=MODE==='open'?'Main menu':'Leave battle';
+  $('menuleavenote').textContent=MODE==='open'?'Your voyage is saved when you leave.':'';
+  $('menuov').hidden=false;}
+function closeMenu(){$('menuov').hidden=true;if(menuPaused&&state==='paused')state='play';menuPaused=false;}
+$('menubtn').addEventListener('click',e=>{e.stopPropagation();openMenu();});
+$('menuresume').onclick=()=>{audio();closeMenu();};
+function handleBack(){
+  if(!$('menuov').hidden){closeMenu();return true;}
+  const jo=$('joinov');if(jo&&!jo.hidden){$('joinback').click();return true;}
+  if(state==='play'){openMenu();return true;}
+  if(state==='shop'||state==='over'){toMenu();return true;}
+  return false;}
+try{const App=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;
+  if(App)App.addListener('backButton',()=>{if(!handleBack())App.minimizeApp();});}catch(e){}
+$('menuleave').onclick=()=>{audio();
+  if(MODE!=='open'&&!leaveArm){leaveArm=true;$('menuleave').textContent='Tap again to leave';$('menuleavenote').textContent='This wave battle will end and its gold is not kept.';return;}
+  $('menuov').hidden=true;menuPaused=false;if(state==='paused')state='play';toMenu();};
 let aim='front';
 const canSide=()=>up.broadside>0||pw.side>0;
 function updAim(){const ok=canSide();if(!ok&&aim==='side')aim='front';const b=$('aim');b.classList.toggle('side',aim==='side');b.classList.toggle('locked',!ok);
@@ -942,7 +984,7 @@ $('newVoyage').onclick=()=>{if(!newArm){newArm=true;$('newVoyage').textContent='
   if(FB){FB.save({gold:0,earned:0,sunk:0,up:{hull:0,sails:0,reload:0,triple:0,broadside:0}});setTimeout(refreshStart,300);return;}
   try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshStart();};
 function toMenu(){if(MODE==='open'&&state!=='over')saveOpen();state='title';firing=false;joy=null;
-  ['over','shopov','dock','boss','hint','map'].forEach(id=>$(id).hidden=true);refreshStart();$('start').hidden=false;}
+  ['over','shopov','dock','boss','hint','map','menuov'].forEach(id=>$(id).hidden=true);refreshStart();$('start').hidden=false;}
 function launchOpen(sv){const b=$('goOpen');b.disabled=true;b.textContent='Charting the sea…';
   setTimeout(()=>{startOpen(false,sv);b.disabled=false;b.textContent='Open sea';musPlay();['start','joinov'].forEach(id=>$(id).hidden=true);$('hint').hidden=false;state='play';showBanner(PORTS[0].name);},40);}
 function showJoin(){const u=FB.user();$('joinerr').hidden=true;
@@ -1293,9 +1335,9 @@ setIslandUniforms();updHud();updAim();
 let last=performance.now();
 function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;
   if(state==='title'){P.a+=dt*.15;P.v=4;P.x+=Math.cos(P.a)*P.v*dt*.2;P.z+=Math.sin(P.a)*P.v*dt*.2;wakeT-=dt;if(wakeT<=0){wakeT=.12;wake(P,1);}}
-  update(dt);render(dt);requestAnimationFrame(loop);}
+  if(state!=='paused')update(dt);render(dt);requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
-window.__t={get state(){return state},get enemies(){return enemies},P,NET,get gold(){return gold},get balls(){return balls},shoot:()=>{firing=true;setTimeout(()=>firing=false,150)},noAI:()=>{enemies.forEach(e=>{disposeGroup(e.g);scene.remove(e.bar)});enemies.length=0;popT=1e9;}};
+window.__t={handleBack,get MODE(){return MODE},get state(){return state},get enemies(){return enemies},P,NET,get gold(){return gold},get balls(){return balls},shoot:()=>{firing=true;setTimeout(()=>firing=false,150)},noAI:()=>{enemies.forEach(e=>{disposeGroup(e.g);scene.remove(e.bar)});enemies.length=0;popT=1e9;}};
 })();
 </script>
 <script>var module={exports:{}};</script><script src="../../functions/referee.js"></script><script>window.REF=module.exports;if(new URLSearchParams(location.search).get("referee"))document.write('<script src="./referee-shim.js"><\/script>');</script>
