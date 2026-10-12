@@ -144,7 +144,7 @@ rep("function netShot(x,z,vx,vz){if(!NET.room)return;NET.shots.push({d:[++NET.sh
 rep("  const p={m:atSea?'open':'menu',c:NET.color,id:NET.myId||null};","  const p={m:atSea?'open':'menu',c:NET.color};")
 rep("x:+P.x.toFixed(1),z:+P.z.toFixed(1),a:+P.a.toFixed(2),","x:+P.x.toFixed(1),z:+P.z.toFixed(1),a:+(((P.a%TAU)+TAU)%TAU).toFixed(2),rs:NET.rs|0,")
 rep("v:+P.v.toFixed(1),hp:P.hp,","v:+Math.max(-9,Math.min(33,P.v)).toFixed(1),hp:Math.max(0,Math.min(maxHp(),P.hp)),")
-rep("else Object.assign(p,{sh:null,al:null,","else Object.assign(p,{sh:null,rs:null,al:null,")
+rep("else Object.assign(p,{sh:null,lk:null,dw:null,al:null,","else Object.assign(p,{sh:null,lk:null,dw:null,rs:null,al:null,")
 rep("function remoteName(r){const key=r.by||(r.pr&&r.pr.id);",
     "function remoteName(r){if(r.pr&&typeof r.pr.n==='string'){const n=FB?FB.cleanName(r.pr.n):r.pr.n;if(n.length>=2)return n;}const key=r.by||(r.pr&&r.pr.id);")
 rep("      if(pr.kb&&pr.kb===NET.myPeer){NET.kills++;","      if(!NET.fb&&pr.kb&&pr.kb===NET.myPeer){NET.kills++;")
@@ -180,6 +180,36 @@ function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typ
 function econKill(kind){if(econServer()){const K=ONLINE_KILL[kind]||ONLINE_KILL.sloop;addGold(K.g);addXP(K.xp);sunk++;econRequest({k:'kill',e:kind});return;}
   """)
 rep("  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();}","  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();if(NET.pending&&NET.pending.size)econSync();}")
+# ---- ship paint online: other captains only ever see colours the referee has approved
+rep("sh:SHIPS.indexOf(SHIP()),lk:paint.lk,dw:paint.dw||null,",
+    "sh:SHIPS.indexOf(SHIP()),lk:netPaint().lk||null,dw:netPaint().dw||null,")
+rep("function econServer(){return MODE==='open'&&saveMode==='server'&&!!NET.room;}",
+"""function econServer(){return MODE==='open'&&saveMode==='server'&&!!NET.room;}
+// What we tell other captains: online, only the referee's copy (the database refuses anything else).
+function netPaint(){if(!(NET.fb&&saveMode==='server'))return paint;const sp=NET.srv&&NET.srv.paint;return sp&&typeof sp.lk==='string'?sp:{};}""")
+rep("  xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';if(want!==shipId)setShip(want);",
+    "  xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';\n  const np=cleanPaint(sv.paint,xp),pc=!showcase&&(np.lk!==paint.lk||np.dw!==paint.dw);if(pc)paint=np;if(want!==shipId||pc)setShip(want);")
+# main-menu shipwright for online Open sea: show the last copy of the online save; remember the choice and
+# hand it to the referee when the captain sets sail
+rep("function dressLoad(m){return m==='waves'?loadWaves():loadOpen();}",
+"""const WISH_KEY='bb-open-wish',CACHE_KEY='bb-srv-cache';
+function srvCache(){if(!FB)return null;const u=FB.user();try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');return u&&u.google&&c&&c.uid===u.uid?c.sv:null;}catch(e){return null;}}
+function cacheSave(sv){const u=FB&&FB.user();if(!u||!u.google||!sv)return;try{localStorage.setItem(CACHE_KEY,JSON.stringify({uid:u.uid,sv:{xp:sv.xp|0,ships:sv.ships||{brig:true},ship:sv.ship,paint:sv.paint||null}}))}catch(e){}}
+function openWish(){try{return JSON.parse(localStorage.getItem(WISH_KEY)||'null')}catch(e){return null}}
+function dressLoad(m){if(m==='waves')return loadWaves();if(!FB)return loadOpen();
+  const base=srvCache()||{xp:0,ships:{brig:true},ship:'brig'},w=openWish();if(!w)return base;return Object.assign({},base,w.ship?{ship:w.ship}:{},w.paint?{paint:w.paint}:{});}
+function applyWish(){const w=openWish();try{localStorage.removeItem(WISH_KEY)}catch(e){}if(!w)return;
+  if(w.ship&&owned[w.ship]&&w.ship!==shipId){setShip(w.ship);econRequest({k:'ship',id:w.ship});}
+  if(w.paint&&paintOk(w.paint,xp)){const np=cleanPaint(w.paint,xp);if(np.lk!==paint.lk||np.dw!==paint.dw){paint=np;setShip(shipId);econRequest({k:'look',lk:np.lk,dw:np.dw||''});}}
+  updHud();}""")
+rep("  else{const v=loadOpen()||{gold:0,earned:0,sunk:0,",
+    "  else if(FB){try{localStorage.setItem(WISH_KEY,JSON.stringify({ship:shipId,paint:{...paint}}))}catch(e){}}\n  else{const v=loadOpen()||{gold:0,earned:0,sunk:0,")
+rep("  setTimeout(()=>{startOpen(false,sv);b.disabled=false;",
+    "  setTimeout(()=>{startOpen(false,sv);if(FB&&saveMode==='server')applyWish();b.disabled=false;")
+rep("NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;econSync();});",
+    "NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();});")
+rep("      FB.loadSave().then(sv=>{if(!sv)return;",
+    "      FB.loadSave().then(sv=>{if(!sv)return;cacheSave(sv);")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

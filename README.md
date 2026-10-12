@@ -17,7 +17,10 @@ Online pirate-ship battles on a Caribbean sea, for Android. Inspired by the 90s 
 
 ## Online play
 
-* **Sign in with Google**: progress (gold, upgrades, ships sunk) is saved online under `saves/<uid>`.
+* **Sign in with Google**: progress (gold, XP, upgrades, ships, ship colours) is saved online under `saves/<uid>`.
+  Only the referee (`refereeRequest`, `functions/economy.js`) writes there; phones send requests to `requests/<uid>`.
+* **Ship colours**: a 7-letter paint code plus an optional 16x16 drawing. The referee checks each choice is
+  unlocked at the captain's rank, and the database only lets a ship show the colours the referee recorded.
 * **Guest**: plays under a chosen captain name; nothing is saved.
 * Hits land instantly on screen. The victim's phone reports each hit; the referee checks it
   (shot really fired, in range, from where the ship really was, not too fast, not in a harbour)

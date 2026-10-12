@@ -145,3 +145,22 @@ test('your hull can only include armour the referee has recorded you buying', ()
   assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { mx: 8, hp: 8 }), T0).allowed, false);
   assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { mx: 5, hp: 5 }), T0).allowed, true);
 });
+
+test('your colours at sea must be the ones the referee recorded for you', () => {
+  const DW = 'f'.repeat(64);
+  const painted = targaryen.database(rules, { saves: { A: { xp: 800, ships: { brig: true }, paint: { lk: '0451300', dw: '' } }, B: { xp: 800, ships: { brig: true }, paint: { lk: '000100z', dw: DW } } } }, T0);
+  assert.strictEqual(writeAs(painted, 'A', '/players/A', ship(21, 0, { lk: '0451300' }), T0).allowed, true);
+  assert.strictEqual(writeAs(painted, 'A', '/players/A', ship(21, 0, { lk: 'bbbbbbb' }), T0).allowed, false, 'colours never unlocked');
+  assert.strictEqual(writeAs(painted, 'B', '/players/B', ship(21, 0, { lk: '000100z', dw: DW }), T0).allowed, true);
+  assert.strictEqual(writeAs(painted, 'B', '/players/B', ship(21, 0, { lk: '000100z', dw: '0'.repeat(64) }), T0).allowed, false, 'a drawing the referee never saw');
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { lk: '0001001' }), T0).allowed, false, 'no colours on record yet');
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0), T0).allowed, true, 'older app versions send no colours');
+});
+
+test('paint requests must be well formed', () => {
+  const ok = (v) => writeAs(empty(), 'A', '/requests/A/r1', v, T0).allowed;
+  assert.strictEqual(ok({ k: 'look', lk: '0001001', dw: '', t: TS }), true);
+  assert.strictEqual(ok({ k: 'look', lk: '000100z', dw: 'a'.repeat(64), t: TS }), true);
+  assert.strictEqual(ok({ k: 'look', lk: 'NOPE', t: TS }), false);
+  assert.strictEqual(ok({ k: 'look', lk: '000100z', dw: '<script>', t: TS }), false);
+});

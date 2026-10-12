@@ -78,6 +78,12 @@
         },
         "sh": {
           ".validate": "newData.isNumber() && newData.val() % 1 === 0 && (newData.val() === 0 || (newData.val() === 1 && root.child('saves').child($uid).child('ships').child('corvette').val() === true) || (newData.val() === 2 && root.child('saves').child($uid).child('ships').child('frigate').val() === true) || (newData.val() === 3 && root.child('saves').child($uid).child('ships').child('galleon').val() === true) || (newData.val() === 4 && root.child('saves').child($uid).child('ships').child('manowar').val() === true))"
+        },
+        "lk": {
+          ".validate": "newData.isString() && newData.val() === root.child('saves').child($uid).child('paint').child('lk').val()"
+        },
+        "dw": {
+          ".validate": "newData.isString() && newData.val() === root.child('saves').child($uid).child('paint').child('dw').val()"
         }
       }
     },
@@ -153,7 +159,7 @@
           ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && !root.child('banned').child($uid).exists()",
           ".validate": "newData.hasChildren(['k','t']) && newData.child('t').val() === now",
           "k": {
-            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|reset)$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|reset)$/)"
           },
           "e": {
             ".validate": "newData.isString() && newData.val().matches(/^(sloop|galleon|boss)$/)"
@@ -166,6 +172,12 @@
           },
           "$other": {
             ".validate": false
+          },
+          "lk": {
+            ".validate": "newData.isString() && newData.val().matches(/^[0-9a-z]{7}$/)"
+          },
+          "dw": {
+            ".validate": "newData.isString() && newData.val().matches(/^([0-9a-f]{64})?$/)"
           }
         }
       }

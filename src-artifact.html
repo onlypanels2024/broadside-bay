@@ -32,6 +32,48 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 .menulist{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:6px}
 .menulist .btn{min-width:230px}
 .menunote{font-size:14px;color:var(--muted);margin-top:4px}
+/* shipwright: a bottom sheet so the ship stays visible above it */
+body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,body.dressing #dock,body.dressing .hint,body.dressing .vignette{visibility:hidden}
+.overlay.sheet{place-items:end center;padding:0;background:linear-gradient(rgba(3,16,24,0) 30%,rgba(3,16,24,.6))}
+.card.dress{box-sizing:border-box;max-width:520px;max-height:min(60vh,560px);overflow-y:auto;overscroll-behavior:contain;border-radius:16px 16px 0 0;padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 16px);text-align:left;touch-action:pan-y}
+.dresshead{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:-14px;margin:-14px -16px 0;padding:12px 16px 8px;background:linear-gradient(rgba(12,32,44,.98),rgba(12,32,44,.92));z-index:1}
+.dresshead h2{font-size:22px;margin:2px 0 0}
+.btn.small{margin:0;padding:9px 18px;font-size:14px}
+.seg{display:flex;gap:6px;margin-top:10px}
+.seg button{flex:1;font:700 14px var(--body);letter-spacing:.04em;padding:9px 6px;border-radius:8px;cursor:pointer;border:1px solid rgba(214,178,98,.35);background:transparent;color:var(--muted)}
+.seg button.on{background:rgba(214,178,98,.16);color:var(--brass-hi);border-color:var(--brass)}
+.dressrank{margin-top:10px;font-size:13px;color:var(--muted)}
+.dressrank b{color:var(--parch);font-family:var(--display);letter-spacing:.05em}
+.dsec{margin-top:14px}
+.dsec>.lbl{display:flex;justify-content:space-between;gap:8px;margin-bottom:7px}
+.dsec>.lbl span{letter-spacing:.02em;text-transform:none;font-size:12px;color:#c9d8de;font-weight:600}
+.chiprow{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;touch-action:pan-x}
+.chiprow::-webkit-scrollbar{display:none}
+.shipchip{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:8px 11px;border-radius:9px;cursor:pointer;font:inherit;text-align:left;
+  border:1px solid rgba(214,178,98,.3);background:rgba(255,255,255,.04);color:var(--text)}
+.shipchip b{font-family:var(--display);font-size:13px;letter-spacing:.03em;color:var(--parch)}
+.shipchip small{font-size:11px;color:var(--muted)}
+.shipchip.on{border-color:var(--brass-hi);background:rgba(214,178,98,.18)}
+.shipchip:disabled{opacity:.5;cursor:default}
+.swrow{display:flex;flex-wrap:wrap;gap:8px}
+.sw{position:relative;width:34px;height:34px;border-radius:50%;cursor:pointer;padding:0;border:2px solid rgba(255,255,255,.25);box-shadow:inset 0 0 0 2px rgba(0,0,0,.25)}
+.sw.on{border-color:var(--brass-hi);box-shadow:0 0 0 2px var(--brass-hi),inset 0 0 0 2px rgba(0,0,0,.35)}
+.sw.none{background:repeating-linear-gradient(45deg,rgba(255,255,255,.08) 0 5px,transparent 5px 10px)!important}
+.sw.auto::after{content:"A";position:absolute;inset:0;display:grid;place-items:center;font:800 13px var(--body);color:rgba(255,255,255,.85);text-shadow:0 1px 2px #000}
+.sw.locked,.emt.locked{opacity:.38}
+.sw.locked::before,.emt.locked::before{content:"";position:absolute;right:-3px;bottom:-3px;width:14px;height:14px;border-radius:50%;background:#0b2230 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='3.5' y='7' width='9' height='7' rx='1.5' fill='%23d6b262'/%3E%3Cpath d='M5.5 7V5a2.5 2.5 0 0 1 5 0v2' stroke='%23d6b262' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") center/11px no-repeat;border:1px solid rgba(214,178,98,.6)}
+.emgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:7px}
+.emt{position:relative;aspect-ratio:1;border-radius:9px;cursor:pointer;padding:3px;border:2px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04)}
+.emt canvas{position:static;inset:auto;width:100%;height:100%;display:block;border-radius:6px}
+.emt.on{border-color:var(--brass-hi)}
+.emt .pen{position:absolute;left:0;right:0;bottom:2px;font:700 10px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--parch);text-shadow:0 1px 3px #000;text-align:center}
+.dressmsg{min-height:1.4em;margin:12px 0 0!important;font-size:14px!important;color:var(--brass-hi)!important}
+.dressnote{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.4}
+#pad{position:static;inset:auto;height:auto;display:block;width:min(288px,100%);aspect-ratio:1;margin:12px auto 0;border-radius:8px;touch-action:none;border:1px solid var(--line);cursor:crosshair}
+.padtools{display:flex;gap:6px;justify-content:center;margin-top:10px}
+.tool{font:700 14px var(--body);padding:8px 14px;border-radius:8px;cursor:pointer;border:1px solid rgba(214,178,98,.35);background:transparent;color:var(--muted)}
+.tool.on{background:rgba(214,178,98,.16);color:var(--brass-hi);border-color:var(--brass)}
+.btn.dressbtn{display:inline-flex;align-items:center;gap:8px;justify-content:center}
 .rankrow{display:flex;align-items:center;gap:8px;max-width:min(230px,calc(100vw - 170px))}
 .rankrow .rk{font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.08em;color:var(--parch);text-shadow:0 1px 4px rgba(0,0,0,.8);white-space:nowrap}
 .xpbar{flex:1;min-width:60px;height:6px;border-radius:3px;background:rgba(0,0,0,.45);border:1px solid rgba(214,178,98,.45);overflow:hidden}
@@ -185,6 +227,7 @@ details.how summary::-webkit-details-marker{display:none}
       <button class="btn ghost" id="goWaves">Wave battle</button>
       <div class="savenote" id="wavenote" hidden></div>
       <button class="linkbtn" id="newVoyage" hidden>Start a new voyage</button>
+      <button class="btn ghost dressbtn" id="goDress">Ship &amp; colours</button>
     </div>
     <details class="how"><summary>How to play</summary>
     <ul>
@@ -194,6 +237,7 @@ details.how summary::-webkit-details-marker{display:none}
       <li>The button above Fire switches between your front cannon and 3 cannons on each side. Side cannons are unlocked in the shop or with a purple power-up.</li>
       <li>Blue lights give speed. Orange lights give rapid fire. Purple lights give side cannons for a while.</li>
       <li><b>Ranks and ships:</b> sinking ships earns experience. Rank up from Deckhand to Admiral to unlock bigger ships in the harbour's Shipyard, then buy them with gold. Bigger ships carry more hull and cannons but are slower and turn less sharply. Open sea and Wave battle each keep their own rank and ships.</li>
+      <li><b>Ship &amp; colours:</b> choose which of your ships to sail, paint the hull, trim, sails and flag, and pick an emblem or draw your own. Do it from the main menu or in any harbour (the Paint tab). More colours and emblems unlock as you rank up.</li>
       <li>Tap <b>Menu</b> at the top to pause, turn the music on or off, or go back to the main menu to switch between Open sea and Wave battle.</li>
     </ul></details>
     <div class="sub" style="font-size:11px;opacity:.7">Music instrument recordings: FluidR3 GM soundfont by Frank Wen, CC BY 3.0.</div>
@@ -207,6 +251,7 @@ details.how summary::-webkit-details-marker{display:none}
     <div class="menulist">
       <button class="btn" id="menuresume">Resume</button>
       <button class="btn ghost" id="snd" aria-label="Music on or off">Music: <span id="sndv">On</span></button>
+      <button class="btn ghost" id="drawtog">Captains' drawings: <span id="drawtogv">Shown</span></button>
       <button class="btn ghost" id="menuleave">Main menu</button>
     </div>
     <p class="menunote" id="menuleavenote"></p>
@@ -219,11 +264,35 @@ details.how summary::-webkit-details-marker{display:none}
     <p id="shopnote">Spend your gold before you sail again.</p>
     <div class="purse"><span class="lbl">Gold</span><span id="purse">0</span></div>
     <div class="rankline"><b id="shoprank">Deckhand</b><div class="xpbar"><div id="shopxp"></div></div><span id="shopxptxt"></span></div>
-    <div class="tabs" role="tablist"><button class="tab on" id="tabUp" role="tab">Upgrades</button><button class="tab" id="tabYard" role="tab">Shipyard</button></div>
+    <div class="tabs" role="tablist"><button class="tab on" id="tabUp" role="tab">Upgrades</button><button class="tab" id="tabYard" role="tab">Shipyard</button><button class="tab" id="tabPaint" role="tab">Paint</button></div>
     <div class="shop" id="shop"></div>
     <div class="yard" id="yard" hidden></div>
     <button class="btn" id="next">Next wave</button>
     <div><button class="linkbtn" id="shopmenu" hidden>Main menu</button></div>
+  </div>
+</div>
+<div class="overlay sheet" id="dressov" hidden>
+  <div class="card dress" role="dialog" aria-labelledby="dressh">
+    <div class="dresshead"><div><div class="eyebrow" id="dresseye">The shipwright</div><h2 id="dressh">Ship &amp; colours</h2></div><button class="btn small" id="dressdone">Done</button></div>
+    <div class="seg" id="dressmode"><button data-m="open" id="dmOpen">Open sea</button><button data-m="waves" id="dmWaves">Wave battle</button></div>
+    <div class="dressrank" id="dressrank"></div>
+    <div class="dsec" id="dressships"><div class="lbl">Ship</div><div class="chiprow" id="shiprow"></div></div>
+    <div class="dsec"><div class="lbl">Emblem <span id="emname"></span></div><div class="emgrid" id="emgrid"></div></div>
+    <div id="swatches"></div>
+    <p class="dressmsg" id="dressmsg" aria-live="polite"></p>
+    <div class="dressnote" id="dressnote"></div>
+  </div>
+</div>
+<div class="overlay" id="drawov" hidden>
+  <div class="card">
+    <div class="eyebrow">Your own emblem</div>
+    <h2>Draw it</h2>
+    <p class="menunote">Tap or drag on the grid. It goes on your sails and your flag.</p>
+    <canvas id="pad" width="320" height="320" aria-label="Drawing grid, 16 by 16 squares"></canvas>
+    <div class="padtools"><button class="tool on" id="padpen">Paint</button><button class="tool" id="paderase">Erase</button><button class="tool" id="padflip">Mirror</button><button class="tool" id="padclear">Clear</button></div>
+    <p class="menunote" id="padmsg"></p>
+    <button class="btn" id="paduse">Use this emblem</button>
+    <div><button class="linkbtn" id="padcancel">Cancel</button></div>
   </div>
 </div>
 <div class="overlay" id="over" hidden>
@@ -376,22 +445,96 @@ const collarTex=canvasTex((g,s)=>{for(let i=0;i<260;i++){const a=Math.random()*T
 const foamTex=canvasTex((g,s)=>{for(let i=0;i<40;i++){const x=s/2+rnd(-s*.3,s*.3),y=s/2+rnd(-s*.3,s*.3),r=rnd(4,14);g.fillStyle=`rgba(255,255,255,${rnd(.2,.6)})`;g.beginPath();g.arc(x,y,r,0,TAU);g.fill();}
   g.globalCompositeOperation='destination-in';const r=g.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);r.addColorStop(0,'rgba(0,0,0,1)');r.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=r;g.fillRect(0,0,s,s);},128);
 const sailCache={};
-function sailTex(base,stripe,emblem){const key=base+stripe+emblem;if(sailCache[key])return sailCache[key];
-  return sailCache[key]=canvasTex((g,s)=>{g.fillStyle=base;g.fillRect(0,0,s,s);
+/* ---- ship paint: colours, emblems, a captain's own drawing ---- */
+// Order of the 7-letter paint code: hull, trim, sails, stripe, emblem colour, flag, emblem. Each letter is a base-36 index.
+const PAINT={
+  h:[null,'#6e4527','#3a2a1e','#5a2c18','#1a1715','#8a7a62','#1f3346','#24453a','#6e1c18','#cfc4ae','#3b2448','#9c7a2e'],
+  t:[null,'#b8923f','#d9b23c','#d8c79a','#2f6f8f','#a3271c','#141414','#e8e4da','#2f7a45','#6a3b8c','#a9b0b6'],
+  s:['#ece2cb','#f4f2ec','#d9c39a','#9a968e','#26252a','#a9483a','#2c3d5a','#3f6e5c','#5b3b78','#c8692e','#d8b14a'],
+  p:[null,'#1f5c74','#8f1d16','#1a1a1a','#c99a3e','#2f7a45','#f2efe6','#6a3b8c','#d0702a'],
+  c:['#8a6b2a','#161616','#e9e1d0','#b8281c','#1f3a5a','#e0b84a','#2f7a45','#6a3b8c'],
+  f:['#1f5c74','#141414','#a3271c','#ece8dc','#22345a','#2f7a45','#d9b23c','#5b3b78','#d0702a'],
+};
+const PAINT_NAMES={h:['Ship\'s own','Oak','Walnut','Mahogany','Tar black','Driftwood','Navy','Sea green','Crimson','Ivory','Royal purple','Gilded'],
+  t:['Ship\'s own','Brass','Gold','Bone','Teal','Red','Black','White','Green','Purple','Silver'],
+  s:['Canvas','White','Tan','Storm grey','Black','Pirate red','Navy','Sea green','Royal purple','Sunset','Gold'],
+  p:['No stripe','Teal','Red','Black','Gold','Green','White','Purple','Orange'],
+  c:['Brass','Black','Bone','Red','Navy','Gold','Green','Purple'],
+  f:['Teal','Black','Red','White','Navy','Green','Gold','Purple','Orange']};
+// Rank (1 = Deckhand .. 7 = Admiral) needed for each choice. The online referee keeps an identical copy.
+const PAINT_RANK={"h":[1,1,1,1,1,2,2,3,4,5,6,7],"t":[1,1,1,1,1,2,2,3,4,5,6],"s":[1,1,1,1,2,3,4,4,5,6,7],"p":[1,1,1,1,2,2,3,4,5],"c":[1,1,1,1,2,3,3,4],"f":[1,1,1,1,2,2,3,4,5],"e":[1,1,1,1,2,2,3,3,4,4,5,7],"draw":2};
+const EMBLEMS=[null,'star','skull','anchor','swords','heart','wheel','waves','moon','sun','trident','crown'];
+const EMBLEM_NAMES=['None','Compass star','Skull & bones','Anchor','Crossed swords','Heart','Ship\'s wheel','Waves','Moon','Sun','Trident','Crown'];
+const PAINT_SLOTS='htspcfe',DRAW_E=35,DEFAULT_LK='0001001';
+const DEFAULT_PAINT={lk:DEFAULT_LK,dw:''};
+const DW_RE=/^[0-9a-f]{64}$/;
+function decodeLk(lk){if(typeof lk!=='string'||!/^[0-9a-z]{7}$/.test(lk))return null;const o={};
+  for(let i=0;i<7;i++){const k=PAINT_SLOTS[i],v=parseInt(lk[i],36);if(k==='e'){if(v!==DRAW_E&&!(v<EMBLEMS.length))return null;}else if(!(v<PAINT[k].length))return null;o[k]=v;}return o;}
+const encodeLk=o=>PAINT_SLOTS.split('').map(k=>(o[k]|0).toString(36)).join('');
+// rank needed for one choice (slot k, index v)
+const paintRank=(k,v)=>k==='e'&&v===DRAW_E?PAINT_RANK.draw:(PAINT_RANK[k][v]||99);
+function paintOk(pt,xpv){const d=pt&&decodeLk(pt.lk);if(!d)return false;const r=rankOf(xpv)+1;
+  for(const k of PAINT_SLOTS)if(paintRank(k,d[k])>r)return false;
+  return d.e!==DRAW_E||DW_RE.test(pt.dw||'');}
+const cleanPaint=(pt,xpv)=>paintOk(pt,xpv)?{lk:pt.lk,dw:decodeLk(pt.lk).e===DRAW_E?pt.dw:''}:{...DEFAULT_PAINT};
+// turn a paint code into the look overrides makeShip understands
+function paintLook(pt,hideDraw){const d=decodeLk(pt&&pt.lk)||decodeLk(DEFAULT_LK),o={own:true,sail:PAINT.s[d.s],stripe:PAINT.p[d.p],ecol:PAINT.c[d.c],flag:PAINT.f[d.f]};
+  if(PAINT.h[d.h])o.side=PAINT.h[d.h];
+  if(PAINT.t[d.t]){o.trim=PAINT.t[d.t];o.tband=PAINT.t[d.t];}
+  if(d.e===DRAW_E){if(!hideDraw&&DW_RE.test(pt.dw||'')){o.emblem='draw';o.dw=pt.dw;}else o.emblem='star';}else o.emblem=EMBLEMS[d.e];
+  return o;}
+const dwBit=(dw,i)=>(parseInt(dw[i>>2],16)>>(3-(i&3)))&1;
+// Draws an emblem in a 128x128 box centred on 64,64. bg is the colour behind it (for cut-outs).
+function drawEmblem(g,id,col,bg,dw){
+  if(!id)return;g.save();g.lineCap='round';g.lineJoin='round';
+  const C=col||(id==='skull'?'#e9e1d0':id==='boss'?'#c8321f':'#8a6b2a');g.fillStyle=C;g.strokeStyle=C;
+  const tri=(a,b,c)=>{g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.lineTo(c[0],c[1]);g.closePath();g.fill();};
+  const starPts=(x,y,r1,r2,n)=>{g.beginPath();for(let i=0;i<n*2;i++){const r=i%2?r2:r1,a=-Math.PI/2+i*Math.PI/n;g.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);}g.closePath();g.fill();};
+  if(id==='star'){g.lineWidth=2.5;g.beginPath();g.arc(64,64,22,0,TAU);g.stroke();starPts(64,64,18,6,4);}
+  else if(id==='skull'||id==='boss'){g.globalAlpha=.9;g.beginPath();g.arc(64,56,19,0,TAU);g.fill();g.fillRect(52,62,24,15);
+    g.fillStyle=bg;g.beginPath();g.arc(57,55,5.5,0,TAU);g.arc(71,55,5.5,0,TAU);g.fill();
+    g.lineWidth=6;g.beginPath();g.moveTo(40,88);g.lineTo(88,104);g.moveTo(88,88);g.lineTo(40,104);g.stroke();}
+  else if(id==='anchor'){g.lineWidth=6;g.beginPath();g.arc(64,30,7,0,TAU);g.stroke();
+    g.beginPath();g.moveTo(64,37);g.lineTo(64,98);g.moveTo(48,47);g.lineTo(80,47);g.stroke();
+    g.beginPath();g.arc(64,70,28,Math.PI*.15,Math.PI*.85);g.stroke();tri([88,71],[98,88],[82,89]);tri([40,71],[30,88],[46,89]);}
+  else if(id==='swords'){for(const sd of [1,-1]){g.save();g.translate(64,66);g.rotate(sd*Math.PI/4);
+    g.fillRect(-3.5,-40,7,56);tri([-3.5,-40],[0,-49],[3.5,-40]);g.fillRect(-13,16,26,6);g.fillRect(-3,22,6,12);g.beginPath();g.arc(0,38,5,0,TAU);g.fill();g.restore();}}
+  else if(id==='heart'){g.beginPath();g.moveTo(64,94);g.bezierCurveTo(28,68,32,34,54,38);g.bezierCurveTo(60,39,64,46,64,50);
+    g.bezierCurveTo(64,46,68,39,74,38);g.bezierCurveTo(96,34,100,68,64,94);g.closePath();g.fill();}
+  else if(id==='wheel'){g.lineWidth=5;g.beginPath();g.arc(64,64,21,0,TAU);g.stroke();g.lineWidth=4;
+    for(let i=0;i<8;i++){const a=i*Math.PI/4,c=Math.cos(a),s2=Math.sin(a);g.beginPath();g.moveTo(64+c*6,64+s2*6);g.lineTo(64+c*33,64+s2*33);g.stroke();g.beginPath();g.arc(64+c*35,64+s2*35,4.5,0,TAU);g.fill();}
+    g.beginPath();g.arc(64,64,7,0,TAU);g.fill();}
+  else if(id==='waves'){g.lineWidth=6;for(const y of [44,64,84]){g.beginPath();for(let x=30;x<=98;x+=2)g.lineTo(x,y+Math.sin((x-30)/68*TAU*1.5)*6);g.stroke();}}
+  else if(id==='moon'){g.beginPath();g.arc(62,66,27,0,TAU);g.fill();g.fillStyle=bg;g.beginPath();g.arc(75,57,23,0,TAU);g.fill();g.fillStyle=C;starPts(84,50,9,3.5,4);}
+  else if(id==='sun'){g.beginPath();g.arc(64,64,15,0,TAU);g.fill();
+    for(let i=0;i<12;i++){const a=i*TAU/12,w=.13;tri([64+Math.cos(a-w)*20,64+Math.sin(a-w)*20],[64+Math.cos(a)*34,64+Math.sin(a)*34],[64+Math.cos(a+w)*20,64+Math.sin(a+w)*20]);}}
+  else if(id==='trident'){g.lineWidth=5;g.beginPath();g.moveTo(64,30);g.lineTo(64,104);g.stroke();
+    g.beginPath();g.moveTo(44,34);g.lineTo(44,46);g.quadraticCurveTo(44,58,64,58);g.quadraticCurveTo(84,58,84,46);g.lineTo(84,34);g.stroke();
+    tri([38,36],[44,22],[50,36]);tri([58,32],[64,16],[70,32]);tri([78,36],[84,22],[90,36]);}
+  else if(id==='crown'){g.beginPath();g.moveTo(38,88);g.lineTo(38,48);g.lineTo(52,64);g.lineTo(64,40);g.lineTo(76,64);g.lineTo(90,48);g.lineTo(90,88);g.closePath();g.fill();
+    for(const [x,y] of [[38,44],[64,36],[90,44]]){g.beginPath();g.arc(x,y,5,0,TAU);g.fill();}
+    g.fillStyle=bg;for(const x of [50,64,78]){g.beginPath();g.arc(x,79,3.6,0,TAU);g.fill();}}
+  else if(id==='draw'&&DW_RE.test(dw||'')){for(let i=0;i<256;i++)if(dwBit(dw,i))g.fillRect(36+(i&15)*3.5,36+(i>>4)*3.5,3.6,3.6);}
+  g.restore();
+}
+function sailTex(base,stripe,emblem,ecol,dw,fresh){const key=base+stripe+emblem+(ecol||'');if(!fresh&&sailCache[key])return sailCache[key];
+  const t=canvasTex((g,s)=>{g.fillStyle=base;g.fillRect(0,0,s,s);
     for(let i=0;i<9000;i++){g.fillStyle=Math.random()<.5?'rgba(0,0,0,.05)':'rgba(255,255,255,.05)';g.fillRect(Math.random()*s,Math.random()*s,1,1);}
     g.fillStyle='rgba(0,0,0,.09)';for(let x=28;x<s;x+=32)g.fillRect(x,0,2,s);
     g.fillStyle='rgba(0,0,0,.08)';g.fillRect(0,s*.32,s,3);g.fillRect(0,s*.66,s,3);
     if(stripe){g.fillStyle=stripe;g.globalAlpha=.9;g.fillRect(0,s*.44,s,s*.12);g.globalAlpha=1;}
-    g.save();g.scale(2,2);
-    if(emblem==='skull'||emblem==='boss'){const ec=emblem==='boss'?'#c8321f':'#e9e1d0';g.fillStyle=ec;g.globalAlpha=.88;g.beginPath();g.arc(64,56,19,0,TAU);g.fill();g.fillRect(52,62,24,15);
-      g.fillStyle=base;g.beginPath();g.arc(57,55,5.5,0,TAU);g.arc(71,55,5.5,0,TAU);g.fill();
-      g.strokeStyle=ec;g.lineWidth=6;g.lineCap='round';g.beginPath();g.moveTo(40,88);g.lineTo(88,104);g.moveTo(88,88);g.lineTo(40,104);g.stroke();g.globalAlpha=1;}
-    if(emblem==='star'){g.strokeStyle='#8a6b2a';g.lineWidth=2.5;g.beginPath();g.arc(64,64,22,0,TAU);g.stroke();
-      g.fillStyle='#8a6b2a';g.beginPath();for(let i=0;i<8;i++){const r=i%2?6:18,a=-Math.PI/2+i*Math.PI/4;g.lineTo(64+Math.cos(a)*r,64+Math.sin(a)*r);}g.closePath();g.fill();}
-    g.restore();
+    g.save();g.scale(s/128,s/128);g.globalAlpha=.92;drawEmblem(g,emblem,ecol,base,dw);g.restore();
     const dg=g.createLinearGradient(0,0,0,s);dg.addColorStop(0,'rgba(0,0,0,.12)');dg.addColorStop(.2,'rgba(0,0,0,0)');dg.addColorStop(.85,'rgba(60,40,20,0)');dg.addColorStop(1,'rgba(60,40,20,.28)');g.fillStyle=dg;g.fillRect(0,0,s,s);
     g.strokeStyle='rgba(0,0,0,.25)';g.lineWidth=4;g.strokeRect(2,2,s-4,s-4);
-  });}
+  });
+  return fresh?t:(sailCache[key]=t);}
+const lum=c=>{const v=new THREE.Color(c);return .3*v.r+.59*v.g+.11*v.b;};
+const flagCache={};
+function flagTex(col,emblem,ecol,dw,fresh){const key=col+emblem+(ecol||'');if(!fresh&&flagCache[key])return flagCache[key];
+  let ec=ecol||(emblem==='skull'?'#e9e1d0':'#8a6b2a');if(Math.abs(lum(ec)-lum(col))<.22)ec=lum(col)>.45?'#161616':'#ece8dc';
+  const t=canvasTex((g,w,h)=>{g.fillStyle=col;g.fillRect(0,0,w,h);g.save();g.translate(w/2,h/2);g.scale(.5,.5);g.translate(-64,-64);drawEmblem(g,emblem==='boss'?'skull':emblem,ec,col,dw);g.restore();
+    g.fillStyle='rgba(0,0,0,.18)';g.fillRect(w-6,0,6,h);},128,72);
+  return fresh?t:(flagCache[key]=t);}
 const iconTex=k=>canvasTex((g,s)=>{g.fillStyle='#fff';
   if(k==='speed'){g.beginPath();g.moveTo(72,8);g.lineTo(30,72);g.lineTo(60,72);g.lineTo(48,120);g.lineTo(98,50);g.lineTo(66,50);g.closePath();g.fill();}
   else if(k==='side'){g.fillRect(56,20,16,88);[[34,1],[64,1],[94,1]].forEach(([y])=>{g.beginPath();g.arc(28,y,11,0,TAU);g.arc(100,y,11,0,TAU);g.fill();});}
@@ -478,10 +621,11 @@ function makeShip(o){
   const hullM=std({map:woodTex,vertexColors:true,roughness:.72,side:THREE.DoubleSide});
   const deckM=std({map:woodTex,color:L(o.deck),roughness:.85,side:THREE.DoubleSide});
   const castleM=std({map:woodTex,color:L(o.side),roughness:.75});
-  const sailM=std({map:sailTex(o.sail,o.stripe,o.emblem),side:THREE.DoubleSide,roughness:.95});
-  const flagM=flagMats[o.flag]||(flagMats[o.flag]=std({color:L(o.flag),side:THREE.DoubleSide,roughness:.9}));
+  const sTex=sailTex(o.sail,o.stripe,o.emblem,o.ecol,o.dw,o.own),fTex=flagTex(o.flag,o.emblem,o.ecol,o.dw,o.own);
+  const sailM=std({map:sTex,side:THREE.DoubleSide,roughness:.95});
+  const flagM=o.own?std({map:fTex,side:THREE.DoubleSide,roughness:.9}):(flagMats[o.flag+o.emblem]||(flagMats[o.flag+o.emblem]=std({map:fTex,side:THREE.DoubleSide,roughness:.9})));
   const add=(geo,m,x,y,z,parent=inner)=>{const me=new THREE.Mesh(geo,m);me.position.set(x,y,z);me.castShadow=true;me.receiveShadow=true;parent.add(me);return me;};
-  add(hullGeo(o.side,o.bottom,o.trim,o.band),hullM,0,0,0);
+  add(hullGeo(o.side,o.bottom,o.trim,o.band?(o.tband||o.band):null),hullM,0,0,0);
   add(DECK,deckM,0,0,0);
   const sc=edge(-1.9),cH=o.castleH||1;const castle=add(G.castle,castleM,-1.95,sc.yt+.12+.25*(cH-1),0);castle.scale.z=sc.w*1.8;castle.scale.y=cH;
   if(o.forecastle){const fe=edge(2.2);const fc=add(G.castle,castleM,2.15,fe.yt+.1,0);fc.scale.set(.85,.8,fe.w*1.7);}
@@ -516,7 +660,7 @@ function makeShip(o){
   const shadowM=new THREE.MeshBasicMaterial({map:softTex,color:L('#02303f'),transparent:true,opacity:.55,depthWrite:false});
   const collarM=new THREE.MeshBasicMaterial({map:collarTex,color:0xffffff,transparent:true,opacity:.75,depthWrite:false});
   const sh=new THREE.Mesh(GROUND,shadowM),co=new THREE.Mesh(GROUND,collarM);sh.renderOrder=1;co.renderOrder=2;scene.add(sh,co);
-  g.userData={inner,hullM,guns,flag,ground:[sh,co],own:[hullM,deckM,castleM,sailM,shadowM,collarM],ownGeo:[rg]};
+  g.userData={inner,hullM,guns,flag,ground:[sh,co],own:[hullM,deckM,castleM,sailM,shadowM,collarM].concat(o.own?[flagM,sTex,fTex]:[]),ownGeo:[rg]};
   scene.add(g);return g;
 }
 function poseShip(g,x,z,a,t,phase,turn){
@@ -790,27 +934,29 @@ const SHIP_LOOK={brig:{masts:[1.0,-.75],ports:[-1.1,0,1.1]},
 const shipById=id=>SHIPS.find(x=>x.id===id)||SHIPS[0];
 const lookFor=(id,extra)=>Object.assign({},LOOKS.player,SHIP_LOOK[shipById(id).id],{scale:shipById(id).scale},extra||{});
 const rankOf=x=>{let r=0;for(let i=0;i<RANKS.length;i++)if(x>=RANKS[i].xp)r=i;return r;};
-let xp=0,owned={brig:true},shipId='brig';
+let xp=0,owned={brig:true},shipId='brig',paint={...DEFAULT_PAINT};
+let hideDraw=false;try{hideDraw=localStorage.getItem('bb-hidedraw')==='1'}catch(e){}
 const SHIP=()=>shipById(shipId);
 let sunk=0,popT=0,bossT=150,bossCount=0,edgeT=0,uniT=0,saveT=0,lastPortName='',openBuilt=false;
 let state='title',P,pship,enemies=[],sinking=[],balls=[],pickups=[],gold=0,earned=0,wave=0,waveTimer=0,shake=0,clock=0,bannerT=0,puTimer=18,turnHeel=0;
 let up={hull:0,sails:0,reload:0,triple:0,broadside:0},pw={speed:0,rapid:0,side:0};
 P={x:0,z:0,a:-Math.PI/2,v:0,hp:5,cool:0,side:0,inv:0,r:1.7};
-pship=makeShip(lookFor('brig'));
+pship=makeShip(lookFor('brig',paintLook(paint)));
 const maxHp=()=>SHIP().hull+up.hull;
 function setShip(id){
   const old=pship,frac=Math.max(0,Math.min(1,P.hp/Math.max(1,maxHp())));
   shipId=shipById(id).id;owned[shipId]=true;
   sinking=sinking.filter(s=>s.g!==old);disposeGroup(old);
-  pship=makeShip(lookFor(shipId));P.r=1.7*SHIP().scale;
+  pship=makeShip(lookFor(shipId,paintLook(paint)));P.r=1.7*SHIP().scale;
   P.hp=Math.max(1,Math.round(maxHp()*frac));if(typeof updAim==='function')updAim();
 }
 function careerFrom(sv){xp=sv?(sv.xp|0):0;owned=Object.assign({brig:true},(sv&&sv.ships&&typeof sv.ships==='object')?sv.ships:{});
   for(const k in owned)if(!SHIPS.some(x=>x.id===k))delete owned[k];
+  paint=cleanPaint(sv&&sv.paint,xp);
   setShip(sv&&owned[sv.ship]?sv.ship:'brig');}
-const careerData=()=>({gold:gold|0,earned:earned|0,sunk:sunk|0,up:{...up},xp:xp|0,ships:{...owned},ship:shipId});
+const careerData=()=>({gold:gold|0,earned:earned|0,sunk:sunk|0,up:{...up},xp:xp|0,ships:{...owned},ship:shipId,paint:{...paint}});
 const WAVE_KEY='bb-waves-v1';
-function saveWaves(){if(MODE!=='waves')return;try{localStorage.setItem(WAVE_KEY,JSON.stringify({gold:gold|0,xp:xp|0,ships:{...owned},ship:shipId}))}catch(e){}}
+function saveWaves(){if(MODE!=='waves')return;try{localStorage.setItem(WAVE_KEY,JSON.stringify({gold:gold|0,xp:xp|0,ships:{...owned},ship:shipId,paint:{...paint}}))}catch(e){}}
 function loadWaves(){try{const v=JSON.parse(localStorage.getItem(WAVE_KEY)||'null');return v&&typeof v==='object'?v:null}catch(e){return null}}
 function saveCareer(){if(MODE==='open')saveOpen();else saveWaves();}
 function addXP(n){const before=rankOf(xp);xp+=n;const after=rankOf(xp);updXP();
@@ -949,7 +1095,7 @@ let shopTab='up';
 function setTab(t){shopTab=t;$('tabUp').classList.toggle('on',t==='up');$('tabYard').classList.toggle('on',t==='yard');
   $('tabUp').setAttribute('aria-selected',t==='up');$('tabYard').setAttribute('aria-selected',t==='yard');
   $('shop').hidden=t!=='up';$('yard').hidden=t!=='yard';renderShop();}
-$('tabUp').onclick=()=>setTab('up');$('tabYard').onclick=()=>setTab('yard');
+$('tabUp').onclick=()=>setTab('up');$('tabYard').onclick=()=>setTab('yard');$('tabPaint').onclick=()=>{audio();openDress('harbour');};
 function renderYard(){
   const box=$('yard');box.innerHTML='';const rk=rankOf(xp);
   for(const S of SHIPS){
@@ -989,6 +1135,105 @@ function renderShop(){
 $('next').onclick=()=>{audio();MUS.mode='play';$('shopov').hidden=true;state='play';if(MODE==='open'){saveOpen();lastPortName='';}else nextWave();};
 $('dock').onclick=()=>{audio();if(state==='play'&&MODE==='open')openShop();};
 
+/* ================= shipwright: choose a ship, paint it, pick or draw an emblem ================= */
+let showcase=false;
+const dress={ctx:'start',mode:'open',before:''};
+const SLOT_LABEL={h:'Hull',t:'Trim',s:'Sails',p:'Sail stripe',c:'Emblem colour',f:'Flag'};
+// Where the main menu reads and writes each mode's ship and colours. The app swaps the Open sea part
+// for the online save when the captain plays online.
+function dressLoad(m){return m==='waves'?loadWaves():loadOpen();}
+function dressStore(m){
+  if(m==='waves'){const v=loadWaves()||{gold:0,xp:0,ships:{brig:true}};v.ship=shipId;v.paint={...paint};try{localStorage.setItem(WAVE_KEY,JSON.stringify(v))}catch(e){}}
+  else{const v=loadOpen()||{gold:0,earned:0,sunk:0,up:{hull:0,sails:0,reload:0,triple:0,broadside:0},xp:0,ships:{brig:true}};v.ship=shipId;v.paint={...paint};try{localStorage.setItem(SAVE_KEY,JSON.stringify(v))}catch(e){}}}
+function dressLoadMode(m){dress.mode=m;const sv=dressLoad(m);careerFrom(sv);}
+function openDress(ctx){
+  dress.ctx=ctx;firing=false;joy=null;
+  if(ctx==='start'){dressLoadMode(dress.mode);$('start').hidden=true;}else $('shopov').hidden=true;
+  dress.before=paint.lk+'|'+paint.dw;showcase=true;document.body.classList.add('dressing');
+  $('dressmsg').textContent='';$('dressov').hidden=false;$('dressov').querySelector('.card').scrollTop=0;renderDress();}
+function paintChanged(){return paint.lk+'|'+paint.dw!==dress.before;}
+function closeDress(){
+  $('dressov').hidden=true;showcase=false;document.body.classList.remove('dressing');
+  if(dress.ctx==='harbour'){if(paintChanged())econRequest({k:'look',lk:paint.lk,dw:paint.dw||''});saveCareer();$('shopov').hidden=false;setTab('up');}
+  else{dressStore(dress.mode);$('start').hidden=false;refreshStart();}}
+$('dressdone').onclick=()=>{audio();chime(true);closeDress();};
+$('dmOpen').onclick=()=>{if(dress.mode!=='open'){dressLoadMode('open');renderDress();}};
+$('dmWaves').onclick=()=>{if(dress.mode!=='waves'){dressLoadMode('waves');renderDress();}};
+$('goDress').onclick=()=>{audio();openDress('start');};
+function dressSay(t){$('dressmsg').textContent=t;}
+function lockedSay(rk){dressSay('Unlocks at '+RANKS[rk-1].n+'. Sink ships to rank up.');}
+function afterPaint(){setShip(shipId);if(dress.ctx==='start')dressStore(dress.mode);else saveCareer();renderDress();}
+function setPaintSlot(k,v,dw){const d=decodeLk(paint.lk);d[k]=v;const lk=encodeLk(d);
+  paint={lk,dw:d.e===DRAW_E?(dw!==undefined?dw:paint.dw):''};afterPaint();}
+function emblemTile(id,dw,bg,col){const c=document.createElement('canvas');c.width=c.height=96;const g=c.getContext('2d');g.fillStyle=bg;g.fillRect(0,0,96,96);
+  g.save();g.scale(.75,.75);drawEmblem(g,id,col,bg,dw);g.restore();return c;}
+let myDrawing='';try{const v=localStorage.getItem('bb-drawing')||'';if(DW_RE.test(v))myDrawing=v;}catch(e){}
+function renderDress(){
+  const d=decodeLk(paint.lk),rk=rankOf(xp)+1,start=dress.ctx==='start';
+  $('dressmode').hidden=!start;$('dmOpen').classList.toggle('on',dress.mode==='open');$('dmWaves').classList.toggle('on',dress.mode==='waves');
+  $('dresseye').textContent=start?'The shipwright':'The harbour';
+  $('dressrank').innerHTML=`<b>${RANKS[rk-1].n}</b> · ${rk<7?'more colours and emblems unlock as you rank up':'every colour and emblem is yours'}`;
+  // ships (from the main menu; in harbour the Shipyard tab does this)
+  $('dressships').hidden=!start;
+  if(start){const row=$('shiprow');row.innerHTML='';
+    for(const S of SHIPS){const b=document.createElement('button');b.className='shipchip'+(S.id===shipId?' on':'');b.id='dship-'+S.id;
+      const have=!!owned[S.id];b.innerHTML=`<b>${S.name}</b><small>${S.id===shipId?'Sailing':have?'In your fleet':rk>=S.rank?S.price+' gold in harbour':'Rank: '+RANKS[S.rank-1].n}</small>`;
+      if(!have){b.disabled=true;}
+      else b.onclick=()=>{if(S.id===shipId)return;audio();chime(true);setShip(S.id);dressStore(dress.mode);renderDress();dressSay(S.name+': hull '+S.hull+', '+S.side+' guns a side.');};
+      row.appendChild(b);}}
+  // emblems
+  const grid=$('emgrid');grid.innerHTML='';const bg=PAINT.s[d.s],col=PAINT.c[d.c];
+  const ids=EMBLEMS.map((_,i)=>i).concat([DRAW_E]);
+  for(const i of ids){const need=paintRank('e',i),lock=need>rk,isDraw=i===DRAW_E;
+    const b=document.createElement('button');b.className='emt'+(d.e===i?' on':'')+(lock?' locked':'');b.id='em-'+i;
+    b.setAttribute('aria-label',isDraw?'Draw your own emblem':EMBLEM_NAMES[i]);
+    const dwv=isDraw?(d.e===DRAW_E?paint.dw:myDrawing):'';b.appendChild(emblemTile(isDraw?(dwv?'draw':null):EMBLEMS[i],dwv,bg,col));
+    if(isDraw||i===0){const t=document.createElement('span');t.className='pen';t.textContent=i===0?'None':dwv?'Edit':'Draw';b.appendChild(t);}
+    b.onclick=()=>{audio();if(lock){lockedSay(need);return;}
+      if(isDraw){openPad();return;}
+      setPaintSlot('e',i);dressSay(EMBLEM_NAMES[i]);};
+    grid.appendChild(b);}
+  $('emname').textContent=d.e===DRAW_E?'Your drawing':EMBLEM_NAMES[d.e];
+  // colour rows
+  const box=$('swatches');box.innerHTML='';const base=Object.assign({},LOOKS.player,SHIP_LOOK[shipId]);
+  for(const k of ['h','t','s','p','c','f']){const sec=document.createElement('div');sec.className='dsec';
+    sec.innerHTML=`<div class="lbl">${SLOT_LABEL[k]} <span>${PAINT_NAMES[k][d[k]]}</span></div>`;const row=document.createElement('div');row.className='swrow';
+    PAINT[k].forEach((c,i)=>{const need=paintRank(k,i),lock=need>rk;const b=document.createElement('button');b.id='sw-'+k+i;
+      b.className='sw'+(d[k]===i?' on':'')+(lock?' locked':'')+(c===null&&k==='p'?' none':'')+(c===null&&k!=='p'?' auto':'');
+      b.style.background=c||(k==='h'?base.side:k==='t'?base.trim:'transparent');b.setAttribute('aria-label',SLOT_LABEL[k]+': '+PAINT_NAMES[k][i]+(lock?' (locked)':''));
+      b.onclick=()=>{audio();if(lock){lockedSay(need);return;}setPaintSlot(k,i);dressSay(SLOT_LABEL[k]+': '+PAINT_NAMES[k][i]);};
+      row.appendChild(b);});
+    sec.appendChild(row);box.appendChild(sec);}
+  $('dressnote').textContent=(dress.ctx==='harbour'?MODE:dress.mode)==='open'?'Other captains at sea see your colours and emblem.':'Wave battle keeps its own ships and colours.';
+}
+/* ---- draw-your-own emblem: a 16x16 grid ---- */
+const pad={bits:new Uint8Array(256),mode:1,down:false};
+const padC=$('pad'),padG=padC.getContext('2d');
+function padFrom(dw){pad.bits.fill(0);if(DW_RE.test(dw||''))for(let i=0;i<256;i++)pad.bits[i]=dwBit(dw,i);}
+function padHex(){let h='';for(let k=0;k<64;k++){let n=0;for(let j=0;j<4;j++)n=n<<1|pad.bits[k*4+j];h+=n.toString(16);}return h;}
+function padDraw(){const d=decodeLk(paint.lk),S=padC.width,cs=S/16;padG.fillStyle=PAINT.s[d.s];padG.fillRect(0,0,S,S);
+  padG.fillStyle=PAINT.c[d.c];for(let i=0;i<256;i++)if(pad.bits[i])padG.fillRect((i&15)*cs,(i>>4)*cs,cs+.5,cs+.5);
+  padG.strokeStyle='rgba(0,0,0,.14)';padG.lineWidth=1;padG.beginPath();for(let i=1;i<16;i++){padG.moveTo(i*cs+.5,0);padG.lineTo(i*cs+.5,S);padG.moveTo(0,i*cs+.5);padG.lineTo(S,i*cs+.5);}padG.stroke();
+  padG.strokeStyle='rgba(0,0,0,.3)';padG.beginPath();padG.moveTo(S/2,0);padG.lineTo(S/2,S);padG.stroke();}
+function padAt(e){const r=padC.getBoundingClientRect(),x=Math.floor((e.clientX-r.left)/r.width*16),y=Math.floor((e.clientY-r.top)/r.height*16);
+  if(x<0||y<0||x>15||y>15)return;const i=y*16+x;if(pad.bits[i]!==pad.mode){pad.bits[i]=pad.mode;padDraw();}}
+padC.addEventListener('pointerdown',e=>{e.preventDefault();pad.down=true;try{padC.setPointerCapture(e.pointerId)}catch(_){}
+  // tapping a filled square in Paint mode clears it, so single taps toggle
+  const r=padC.getBoundingClientRect(),x=Math.floor((e.clientX-r.left)/r.width*16),y=Math.floor((e.clientY-r.top)/r.height*16);
+  if(x>=0&&y>=0&&x<16&&y<16){pad.cur=pad.mode;if(pad.mode===1&&pad.bits[y*16+x])pad.cur=0;const keep=pad.mode;pad.mode=pad.cur;padAt(e);pad.mode=keep;}});
+padC.addEventListener('pointermove',e=>{if(!pad.down)return;const keep=pad.mode;pad.mode=pad.cur;padAt(e);pad.mode=keep;});
+['pointerup','pointercancel'].forEach(ev=>padC.addEventListener(ev,()=>{pad.down=false;}));
+function padTool(m){pad.mode=m;$('padpen').classList.toggle('on',m===1);$('paderase').classList.toggle('on',m===0);}
+$('padpen').onclick=()=>padTool(1);$('paderase').onclick=()=>padTool(0);
+$('padclear').onclick=()=>{pad.bits.fill(0);padDraw();};
+$('padflip').onclick=()=>{for(let y=0;y<16;y++)for(let x=0;x<8;x++){const a=y*16+x,b=y*16+15-x;pad.bits[b]=pad.bits[a];}padDraw();$('padmsg').textContent='Copied the left half onto the right.';};
+function openPad(){const d=decodeLk(paint.lk);padFrom(d.e===DRAW_E?paint.dw:myDrawing);padTool(1);$('padmsg').textContent='';
+  $('dressov').hidden=true;$('drawov').hidden=false;padDraw();}
+$('padcancel').onclick=()=>{audio();$('drawov').hidden=true;$('dressov').hidden=false;};
+$('paduse').onclick=()=>{audio();const n=pad.bits.reduce((a,b)=>a+b,0);if(n<3){$('padmsg').textContent='Fill in a few more squares first.';return;}
+  const hx=padHex();myDrawing=hx;try{localStorage.setItem('bb-drawing',hx)}catch(e){}
+  $('drawov').hidden=true;$('dressov').hidden=false;chime(true);setPaintSlot('e',DRAW_E,hx);dressSay('Your emblem is on the sails.');};
+
 /* ================= input ================= */
 const keys={};let joy=null,firing=false;
 addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyE'&&!e.repeat)toggleAim();if(e.code==='Space'&&state==='play'){firing=true;e.preventDefault()}});
@@ -1003,6 +1248,8 @@ fb.addEventListener('pointerdown',e=>{audio();if(state==='play')firing=true;fb.c
 ['pointerup','pointercancel','pointerleave'].forEach(ev=>fb.addEventListener(ev,()=>{firing=false;fb.classList.remove('on')}));
 fb.addEventListener('contextmenu',e=>e.preventDefault());
 $('snd').onclick=()=>{audio();setMusic(!MUS.on);};
+function updDrawTog(){$('drawtogv').textContent=hideDraw?'Hidden':'Shown';}updDrawTog();
+$('drawtog').onclick=()=>{audio();hideDraw=!hideDraw;try{localStorage.setItem('bb-hidedraw',hideDraw?'1':'0')}catch(e){}updDrawTog();if(typeof NET!=='undefined')NET.last=null;};
 let menuPaused=false,leaveArm=false;
 const onlineAtSea=()=>MODE==='open'&&typeof NET!=='undefined'&&!!NET.room&&NET.ok;
 function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.classList.remove('on');leaveArm=false;
@@ -1110,9 +1357,9 @@ function netSend(){
   NET.shots=NET.shots.filter(s=>clock-s.t<1.6);
   const atSea=MODE==='open'&&(state==='play'||state==='over'||state==='shop');
   const p={m:atSea?'open':'menu',c:NET.color,id:NET.myId||null};
-  if(atSea){Object.assign(p,{al:state==='over'?0:1,x:+P.x.toFixed(1),z:+P.z.toFixed(1),a:+P.a.toFixed(2),v:+P.v.toFixed(1),hp:P.hp,mx:maxHp(),sh:SHIPS.indexOf(SHIP()),sg:canSide()?1:0,
+  if(atSea){Object.assign(p,{al:state==='over'?0:1,x:+P.x.toFixed(1),z:+P.z.toFixed(1),a:+P.a.toFixed(2),v:+P.v.toFixed(1),hp:P.hp,mx:maxHp(),sh:SHIPS.indexOf(SHIP()),lk:paint.lk,dw:paint.dw||null,sg:canSide()?1:0,
     s:NET.shots.map(s=>s.d),dn:NET.deaths,kb:NET.killer,k:NET.kills,dk:state==='shop'?1:0});}
-  else Object.assign(p,{sh:null,al:null,x:null,z:null,a:null,v:null,hp:null,mx:null,sg:null,s:null,dn:null,kb:null,k:null,dk:null});
+  else Object.assign(p,{sh:null,lk:null,dw:null,al:null,x:null,z:null,a:null,v:null,hp:null,mx:null,sg:null,s:null,dn:null,kb:null,k:null,dk:null});
   R.presence(p).catch(()=>{});
 }
 function remoteName(r){const key=r.by||(r.pr&&r.pr.id);if(key&&NET.names[key])return NET.names[key];
@@ -1126,10 +1373,12 @@ function tagTex(name,hp,mx,col){const c=document.createElement('canvas');c.width
 function ensureRemoteShip(r){
   if(r.ship)return;const ci=((r.pr.c|0)%NET_COLORS.length+NET_COLORS.length)%NET_COLORS.length;
   const RS=SHIPS[r.pr.sh|0]||SHIPS[0];r.shi=r.pr.sh|0;r.sc=RS.scale;
-  r.ship=makeShip(lookFor(RS.id,{sail:NET_SAILS[ci],stripe:NET_COLORS[ci],flag:NET_COLORS[ci],guns:true}));
+  const pt={lk:r.pr.lk,dw:typeof r.pr.dw==='string'?r.pr.dw:''};r.lkKey=remoteLookKey(r.pr);
+  r.ship=makeShip(lookFor(RS.id,Object.assign(decodeLk(pt.lk)?paintLook(pt,hideDraw):{sail:NET_SAILS[ci],stripe:NET_COLORS[ci],flag:NET_COLORS[ci]},{guns:true})));
   r.tag=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false,depthWrite:false}));r.tag.renderOrder=12;r.tag.scale.set(7,2,1);scene.add(r.tag);r.tagKey='';
   r.x=r.pr.x;r.z=r.pr.z;r.a=r.pr.a;r.vis=true;r.col=NET_COLORS[ci];
 }
+const remoteLookKey=pr=>(pr.lk||'')+(pr.dw||'')+(hideDraw?'h':'');
 function dropRemoteShip(r){if(r.ship){disposeGroup(r.ship);r.ship=null;}if(r.tag){scene.remove(r.tag);if(r.tag.material.map)r.tag.material.map.dispose();r.tag.material.dispose();r.tag=null;}}
 function netProcess(list){
   let online=0,sailing=0;const seen=new Set();
@@ -1143,7 +1392,7 @@ function netProcess(list){
     r.by=p.by;const prev=r.pr;r.pr=pr;
     const here=pr.m==='open'&&MODE==='open'&&state!=='title'&&typeof pr.x==='number'&&typeof pr.z==='number';
     if(!here){dropRemoteShip(r);r.maxShot=Math.max(r.maxShot,...((pr.s||[]).map(s=>s[0]||0)),0);continue;}
-    if(r.ship&&(pr.sh|0)!==r.shi)dropRemoteShip(r);
+    if(r.ship&&((pr.sh|0)!==r.shi||remoteLookKey(pr)!==r.lkKey))dropRemoteShip(r);
     if(pr.al){ensureRemoteShip(r);r.ship.visible=true;}
     // their death: did I sink them?
     if((pr.dn|0)>r.dn){r.dn=pr.dn|0;if(r.ship){boom(r.x,r.z,true);r.ship.visible=false;}
@@ -1328,7 +1577,8 @@ function render(dt){
     const w=e.r*1.3;e.bar.visible=e.kind!=='boss'&&e.hp<e.max;e.bar.position.set(e.x,e.big?9.5:7.8,e.z);e.bar.quaternion.copy(cam.quaternion);
     e.bar.children[0].scale.x=w;e.bar.children[0].position.x=-w/2;e.fg.scale.x=w*Math.max(0,e.hp)/e.max;e.fg.position.x=-w/2;}
   const k=camK;
-  if(state==='title'){const a=clock*.12;camPos.set(P.x+Math.cos(a)*22,9,P.z+Math.sin(a)*22);look.set(P.x,2.5,P.z);cam.position.copy(camPos);}
+  if(showcase){const a=clock*.16,sc=SHIP().scale,port=W<H,rr=(port?19:14)*sc;camPos.set(P.x+Math.cos(a)*rr,(port?6.5:5)*sc,P.z+Math.sin(a)*rr);look.set(P.x,(port?-5.5:-1.5)*sc,P.z);cam.position.copy(camPos);}
+  else if(state==='title'){const a=clock*.12;camPos.set(P.x+Math.cos(a)*22,9,P.z+Math.sin(a)*22);look.set(P.x,2.5,P.z);cam.position.copy(camPos);}
   else{const tx=P.x+Math.cos(P.a)*3,tz=P.z+Math.sin(P.a)*3;
     const ck=k*(1+(SHIP().scale-1)*.55);camPos.lerp(new THREE.Vector3(tx,27*ck,tz+25*ck),Math.min(1,dt*3));look.set(camPos.x,0,camPos.z-25*ck-3);
     cam.position.copy(camPos);if(shake>0){cam.position.x+=rnd(-shake,shake);cam.position.z+=rnd(-shake,shake);}}

@@ -32,6 +32,11 @@
   // and at most one boss every 2 minutes (bosses appear every 4).
   const RATE = { cap: 12, perMin: 8, bossGapMs: 120000, maxRejects: 12, freshMs: 15000 };
   const PVP = { g: 150, xp: 120 };
+  // Ship paint. A 7-letter code (hull, trim, sails, stripe, emblem colour, flag, emblem), each a base-36 index,
+  // plus an optional 16x16 drawing (64 hex digits) when the emblem is the captain's own (index 35).
+  // The rank needed for each choice; must match PAINT_RANK in the game (a test checks this).
+  const PAINT_RANK = {"h":[1,1,1,1,1,2,2,3,4,5,6,7],"t":[1,1,1,1,1,2,2,3,4,5,6],"s":[1,1,1,1,2,3,4,4,5,6,7],"p":[1,1,1,1,2,2,3,4,5],"c":[1,1,1,1,2,3,3,4],"f":[1,1,1,1,2,2,3,4,5],"e":[1,1,1,1,2,2,3,3,4,4,5,7],"draw":2};
+  const PAINT_SLOTS = 'htspcfe', DRAW_E = 35, LK_RE = /^[0-9a-z]{7}$/, DW_RE = /^[0-9a-f]{64}$/;
 
   const num = v => typeof v === 'number' && Number.isFinite(v);
   const inHarbour = (x, z) => num(x) && num(z) && PORTS.some(([px, pz]) => Math.hypot(x - px, z - pz) < SAFE_R);
@@ -51,12 +56,26 @@
     if (s.ships && typeof s.ships === 'object') for (const k in s.ships) if (SHIPS[k] && s.ships[k] === true) o.ships[k] = true;
     o.ship = o.ships[s.ship] ? s.ship : 'brig';
     if (s.rl && typeof s.rl === 'object') o.rl = { ...s.rl }; else delete o.rl;
+    const pt = s.paint && checkPaint(s.paint.lk, s.paint.dw, o.xp);
+    if (pt) o.paint = pt; else delete o.paint;
     return o;
+  }
+  // Is this paint allowed for a captain with this much XP? Returns the cleaned paint or null.
+  function checkPaint(lk, dw, xp) {
+    if (typeof lk !== 'string' || !LK_RE.test(lk)) return null;
+    const rank = rankIdx(xp) + 1;
+    for (let i = 0; i < 7; i++) {
+      const k = PAINT_SLOTS[i], v = parseInt(lk[i], 36);
+      const need = k === 'e' && v === DRAW_E ? PAINT_RANK.draw : PAINT_RANK[k][v];
+      if (!need || need > rank) return null;
+    }
+    if (parseInt(lk[6], 36) === DRAW_E) { if (typeof dw !== 'string' || !DW_RE.test(dw)) return null; return { lk, dw }; }
+    return { lk };
   }
   const docked = p => !!p && inHarbour(p.x, p.z);
   const atSea = (p, now) => !!p && p.al === 1 && num(p.t) && now - p.t <= RATE.freshMs && !inHarbour(p.x, p.z);
 
-  // req = {k:'kill'|'up'|'repair'|'ship'|'reset', e?, id?}; player = this captain's /players record (or null)
+  // req = {k:'kill'|'up'|'repair'|'ship'|'look'|'reset', e?, id?, lk?, dw?}; player = this captain's /players record (or null)
   // Returns {save, ok, reason, strike}
   function processRequest(saveIn, req, player, now) {
     const s = norm(saveIn);
@@ -99,15 +118,22 @@
       case 'ship': {
         const S = SHIPS[req.id];
         if (!S) return no('unknown ship');
+        // switching to a ship you already own: in harbour, or before setting sail (from the main menu)
+        if (s.ships[req.id]) { if (atSea(player, now)) return no('not in harbour'); s.ship = req.id; return { save: s, ok: true }; }
         if (!docked(player)) return no('not in harbour');
-        if (s.ships[req.id]) { s.ship = req.id; return { save: s, ok: true }; }
         if (rankIdx(s.xp) + 1 < S.rank) return no('rank too low');
         if (s.gold < S.price) return no('not enough gold');
         s.gold -= S.price; s.ships[req.id] = true; s.ship = req.id;
         return { save: s, ok: true };
       }
+      case 'look': {
+        const pt = checkPaint(req.lk, req.dw, s.xp);
+        if (!pt) return no('paint not unlocked');
+        s.paint = pt; return { save: s, ok: true };
+      }
       case 'reset': {
         const f = fresh(); if (s.rl) f.rl = s.rl;   // keep the rate limiter so a reset can't be used to farm
+        const pt = s.paint && checkPaint(s.paint.lk, s.paint.dw, 0); if (pt) f.paint = pt;   // keep colours a Deckhand may use
         return { save: f, ok: true };
       }
       default: return no('unknown request');
@@ -118,6 +144,6 @@
   // A captain sank another captain (already confirmed by the hit referee).
   function applyPvpKill(saveIn) { const s = norm(saveIn); s.gold += PVP.g; s.earned += PVP.g; s.xp += PVP.xp; s.sunk += 1; return s; }
 
-  const api = { processRequest, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { processRequest, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -88,3 +88,50 @@ test('a reset starts a fresh voyage but keeps the kill-rate limiter', () => {
   assert.strictEqual(r.save.gold, 0);
   assert.strictEqual(E.processRequest(r.save, { k: 'kill', e: 'sloop' }, atSea, NOW).ok, false);
 });
+
+test('paint: starter colours for everyone, the rest by rank, drawings from Bosun', () => {
+  const DW = '0f'.repeat(32);
+  let r = E.processRequest(null, { k: 'look', lk: '1213001' }, null, NOW);
+  assert.strictEqual(r.ok, true); assert.deepStrictEqual(r.save.paint, { lk: '1213001' });
+  // gilded hull (index b = 11) needs Admiral
+  assert.strictEqual(E.processRequest(null, { k: 'look', lk: 'b000001' }, null, NOW).ok, false);
+  assert.strictEqual(E.processRequest({ ...E.fresh(), xp: 9000 }, { k: 'look', lk: 'b000001' }, null, NOW).ok, true);
+  // own drawing needs rank 2 and a valid drawing
+  assert.strictEqual(E.processRequest(null, { k: 'look', lk: '000100z', dw: DW }, null, NOW).ok, false);
+  r = E.processRequest({ ...E.fresh(), xp: 300 }, { k: 'look', lk: '000100z', dw: DW }, atSea, NOW);
+  assert.strictEqual(r.ok, true); assert.strictEqual(r.save.paint.dw, DW);
+  assert.strictEqual(E.processRequest({ ...E.fresh(), xp: 300 }, { k: 'look', lk: '000100z', dw: 'xyz' }, null, NOW).ok, false);
+  // a drawing is dropped when the emblem isn't the drawing
+  assert.deepStrictEqual(E.processRequest(null, { k: 'look', lk: '0001003', dw: DW }, null, NOW).save.paint, { lk: '0001003' });
+  // nonsense codes
+  for (const lk of ['zzzzzzz', '000100', 42, '0001001x']) assert.strictEqual(E.processRequest(null, { k: 'look', lk }, null, NOW).ok, false);
+});
+
+test('a tampered save loses paint it could not have unlocked', () => {
+  assert.strictEqual(E.norm({ xp: 0, paint: { lk: 'b000001' } }).paint, undefined);
+  assert.deepStrictEqual(E.norm({ xp: 9999, paint: { lk: 'b000001' } }).paint, { lk: 'b000001' });
+});
+
+test('switching to a ship you own works from the main menu, but not out at sea', () => {
+  const s = { ...E.fresh(), ships: { brig: true, frigate: true } };
+  assert.strictEqual(E.processRequest(s, { k: 'ship', id: 'frigate' }, null, NOW).ok, true);
+  assert.strictEqual(E.processRequest(s, { k: 'ship', id: 'frigate' }, inPort, NOW).ok, true);
+  assert.strictEqual(E.processRequest(s, { k: 'ship', id: 'frigate' }, atSea, NOW).ok, false);
+  // buying still needs the harbour
+  assert.strictEqual(E.processRequest(rich(), { k: 'ship', id: 'frigate' }, null, NOW).ok, false);
+});
+
+test("the game's paint ranks match the referee's", () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'src-artifact.html'), 'utf8');
+  const m = src.match(/const PAINT_RANK=(\{.*?\});/);
+  assert.ok(m, 'PAINT_RANK found in the game');
+  assert.deepStrictEqual(JSON.parse(m[1]), E.PAINT_RANK);
+  // and each palette in the game has exactly one rank per colour
+  const pal = src.match(/const PAINT=\{([\s\S]*?)\n\};/)[1];
+  for (const k of ['h', 't', 's', 'p', 'c', 'f']) {
+    const row = pal.match(new RegExp('\\b' + k + ':\\[(.*?)\\]'))[1].split(',').length;
+    assert.strictEqual(row, E.PAINT_RANK[k].length, 'slot ' + k);
+  }
+  const em = src.match(/const EMBLEMS=\[(.*?)\];/)[1].split(',').length;
+  assert.strictEqual(em, E.PAINT_RANK.e.length);
+});
