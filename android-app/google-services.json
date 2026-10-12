@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "426445486230",
+    "firebase_url": "https://overboard-2104-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "overboard-2104",
+    "storage_bucket": "overboard-2104.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:426445486230:android:e4a2057f493aa9fd83aab7",
+        "android_client_info": {
+          "package_name": "com.broadsidebay.game"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "426445486230-8s987gk8cip1msivjha42or6rjh55710.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHRunVu2B3uusIVzOvD5vRedI-AxMudYA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "426445486230-8s987gk8cip1msivjha42or6rjh55710.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
