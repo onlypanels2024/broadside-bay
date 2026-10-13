@@ -28,6 +28,8 @@
     async set(v){setAt(path,v);},async remove(){setAt(path,null);},async update(o){for(const k in o)setAt(path+'/'+k,o[k]);},
     push(v){const k='p'+Date.now().toString(36).padStart(9,'0')+String(pushN++).padStart(6,'0')+Math.random().toString(36).slice(2,6);const r=ref(path+'/'+k);if(v===undefined)return r;const pr=r.set(v);pr.key=k;return pr;},
     async get(){return snap(parts(path).pop(),getAt(path),path);},
+    orderByChild(f){return{limitToLast(n){return{async get(){const v=getAt(path)||{};const arr=Object.entries(v).filter(([k,x])=>x&&typeof x[f]==='number').sort((a,b)=>a[1][f]-b[1][f]).slice(-n);
+      return{val:()=>Object.fromEntries(arr),forEach(fn){arr.forEach(([k,x])=>fn({key:k,val:()=>x}));}};}};}};},
     onDisconnect(){return{remove(){},set(){}}},
     child(c){return ref(path+'/'+c);}}}
   const db={ref};

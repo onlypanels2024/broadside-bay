@@ -134,6 +134,14 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .qrow .qr{font-size:12px;color:var(--brass-hi)}
 .qrow .qbar{grid-column:1/-1;height:6px;border-radius:3px;background:rgba(0,0,0,.4);overflow:hidden}
 .qrow .qbar i{display:block;height:100%;background:linear-gradient(90deg,#a77d2c,var(--brass-hi))}
+.blist{display:flex;flex-direction:column;gap:4px;margin-top:12px;text-align:left;min-height:120px}
+.brow{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.04);font-size:15px}
+.brow .bn{font-family:var(--display);font-weight:800;color:var(--muted);text-align:center}
+.brow:nth-child(1) .bn{color:#f1d897}.brow:nth-child(2) .bn{color:#d4dbe0}.brow:nth-child(3) .bn{color:#d9a36a}
+.brow .bv{font-variant-numeric:tabular-nums;font-weight:700;color:var(--brass-hi)}
+.brow .bnm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brow.me{background:rgba(120,200,140,.14);border:1px solid rgba(120,200,140,.5)}
+.bgap{text-align:center;color:var(--muted);font-size:12px;line-height:1}
 .qreset{font-size:12px;color:var(--muted);margin-top:10px}
 .chip.online{color:#9ff0c0;border-color:rgba(120,230,170,.55);display:inline-flex;align-items:center;gap:6px}
 .chip.online i{width:7px;height:7px;border-radius:50%;background:#5be38f;box-shadow:0 0 8px #5be38f}
@@ -264,6 +272,7 @@ details.how summary::-webkit-details-marker{display:none}
       <div class="savenote" id="wavenote" hidden></div>
       <button class="linkbtn" id="newVoyage" hidden>Start a new voyage</button>
       <button class="btn ghost dressbtn" id="goDress">Ship &amp; colours</button>
+      <button class="linkbtn" id="goBoard" hidden>Leaderboards</button>
     </div>
     <details class="how"><summary>How to play</summary>
     <ul>
@@ -288,6 +297,7 @@ details.how summary::-webkit-details-marker{display:none}
     <div class="menulist">
       <button class="btn" id="menuresume">Resume</button>
       <button class="btn ghost" id="snd" aria-label="Music on or off">Music: <span id="sndv">On</span></button>
+      <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
       <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
       <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
       <button class="btn ghost" id="drawtog">Captains' drawings: <span id="drawtogv">Shown</span></button>
@@ -363,6 +373,17 @@ details.how summary::-webkit-details-marker{display:none}
     <p class="menunote">Captains near you flying their own drawing. Reporting hides it for you straight away, and the referee checks it again. Rude drawings are removed for everyone.</p>
     <div class="replist" id="replist"></div>
     <button class="btn" id="repdone">Back</button>
+  </div>
+</div>
+<div class="overlay" id="boardov" hidden>
+  <div class="card">
+    <div class="eyebrow">The most feared captains</div>
+    <h2>Leaderboards</h2>
+    <div class="modeseg" id="bwhen"><button id="bWeek" class="on">This week</button><button id="bAll">All time</button></div>
+    <div class="modeseg" id="bwhat"><button id="bS" class="on">Ships sunk</button><button id="bG">Gold</button><button id="bC">Captains</button></div>
+    <div class="blist" id="blist"></div>
+    <div class="qreset" id="bnote"></div>
+    <button class="btn ghost" id="boardclose">Back</button>
   </div>
 </div>
 <div class="overlay" id="dailyov" hidden>
@@ -1475,6 +1496,34 @@ function dailyNotice(){if(!dailyOn())return;const st=dailyState(),k=st.day+':'+s
   if(lastQuestDone&&lastQuestDone.slice(0,lastQuestDone.indexOf(':'))===String(st.day)){st.quests.forEach((q,i)=>{if(q.done&&!q.claimed&&lastQuestDone.split(':')[1][i]==='0')setTimeout(()=>{showBanner('Quest done: '+questText(q.Q));chime(true);},400);});}
   lastQuestDone=k;daily.lastKey='';}
 function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}
+/* ---- leaderboards (the app reads the referee's boards) ---- */
+function boardOn(){return !!FB;}
+async function boardLoad(path,field){try{await FB.ensureUser();}catch(e){return null;}return FB.board(path,field,25);}
+function boardMine(path){return FB.boardMine(path);}
+function myUid(){const u=FB&&FB.user();return u?u.uid:null;}
+const weekOf=now=>Math.floor((now/86400000+3)/7);
+const board={when:'w',what:'s',from:'menu',seq:0};
+const BOARD_UNIT={s:'ships',g:'gold',c:'captains',xp:'XP'};
+async function renderBoard(){const seq=++board.seq,list=$('blist');list.innerHTML='<p class="menunote">Loading…</p>';
+  $('bWeek').classList.toggle('on',board.when==='w');$('bAll').classList.toggle('on',board.when==='all');$('bwhat').hidden=board.when!=='w';
+  ['s','g','c'].forEach(k=>$('b'+k.toUpperCase()).classList.toggle('on',board.what===k));
+  const path=board.when==='w'?'board/w'+weekOf(serverNowMs()):'board/all',field=board.when==='w'?board.what:'xp';
+  const [rows,mine]=await Promise.all([boardLoad(path,field),boardMine(path)]);if(seq!==board.seq)return;
+  list.innerHTML='';
+  if(!rows){list.innerHTML='<p class="menunote">Could not load the leaderboard. Check your connection.</p>';return;}
+  if(!rows.length){list.innerHTML='<p class="menunote">Nobody on this board yet. Sink some ships to be first!</p>';}
+  const me=myUid();let shownMe=false;
+  const row=(i,r)=>{const el=document.createElement('div');el.className='brow'+(r.uid===me?' me':'');
+    const v=field==='xp'?RANKS[rankOf(r.xp|0)].n:(r[field]|0).toLocaleString();
+    el.innerHTML=`<span class="bn">${i}</span><span class="bnm"></span><span class="bv">${v}</span>`;el.querySelector('.bnm').textContent=(r.n||'Captain')+(r.uid===me?' (you)':'');return el;};
+  rows.forEach((r,i)=>{if(r.uid===me)shownMe=true;list.appendChild(row(i+1,r));});
+  if(!shownMe&&mine&&(mine[field]|0)>0){const g=document.createElement('div');g.className='bgap';g.textContent='⋯';list.appendChild(g);list.appendChild(row('–',{...mine,uid:me}));}
+  $('bnote').textContent=board.when==='w'?'This week runs Monday to Sunday (UTC). Only sinkings the referee approved count.':'Ranked by experience. Sign in with Google to appear here.';}
+function openBoard(from){if(!boardOn())return;audio();board.from=from;$('menuov').hidden=true;$('start').hidden=true;$('boardov').hidden=false;renderBoard();}
+$('boardclose').onclick=()=>{audio();$('boardov').hidden=true;if(board.from==='menu')$('menuov').hidden=false;else{$('start').hidden=false;}};
+$('menuboard').onclick=()=>openBoard('menu');$('goBoard').onclick=()=>openBoard('start');
+$('bWeek').onclick=()=>{board.when='w';renderBoard();};$('bAll').onclick=()=>{board.when='all';renderBoard();};
+['s','g','c'].forEach(k=>$('b'+k.toUpperCase()).onclick=()=>{board.what=k;renderBoard();});
 function openReport(){const box=$('replist');box.innerHTML='';let n=0;
   if(typeof NET!=='undefined')for(const r of NET.peers.values()){const pr=r.pr||{};if(pr.m!=='open'||!DW_RE.test(pr.dw||'')||!decodeLk(pr.lk)||decodeLk(pr.lk).e!==DRAW_E)continue;n++;
     const row=document.createElement('div');row.className='reprow';row.appendChild(emblemTile('draw',pr.dw,'#efe4c8','#161616'));
@@ -1494,7 +1543,7 @@ function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.cl
   menuPaused=!onlineAtSea();if(menuPaused)state='paused';
   $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
   $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
-  $('menureport').hidden=!onlineAtSea();$('menudaily').hidden=!dailyOn();
+  $('menureport').hidden=!onlineAtSea();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
   $('menuleave').textContent=MODE==='open'?'Main menu':'Leave battle';
   $('menuleavenote').textContent=MODE==='open'?'Your voyage is saved when you leave.':'';
   $('menuov').hidden=false;}
@@ -1506,6 +1555,7 @@ function handleBack(){
   if(!$('dressov').hidden){closeDress();return true;}
   if(!$('reportov').hidden){$('repdone').click();return true;}
   if(!$('dailyov').hidden){$('dailyclose').click();return true;}
+  if(!$('boardov').hidden){$('boardclose').click();return true;}
   if(!$('menuov').hidden){closeMenu();return true;}
   const jo=$('joinov');if(jo&&!jo.hidden){$('joinback').click();return true;}
   if(state==='play'){openMenu();return true;}
@@ -1528,7 +1578,7 @@ $('aim').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preve
 $('sndv').textContent=MUS.on?'On':'Off';
 function waveNote(){const w=loadWaves();$('wavenote').hidden=!w;if(w)$('wavenote').textContent=`${RANKS[rankOf(w.xp|0)].n} · ${shipById(w.ship).name} · ${w.gold|0} gold`;}
 function refreshStart(){waveNote();
-  if(FB){$('savenote').hidden=true;$('newVoyage').hidden=true;$('goOpen').textContent='Open sea';
+  if(FB){$('goBoard').hidden=false;$('savenote').hidden=true;$('newVoyage').hidden=true;$('goOpen').textContent='Open sea';
     const u=FB.user();if(u&&u.google){$('savenote').hidden=false;$('savenote').textContent='Signed in as '+u.name;
       FB.loadSave().then(sv=>{if(!sv)return;cacheSave(sv);$('goOpen').textContent='Continue voyage';$('savenote').textContent=`Signed in as ${u.name} · ${RANKS[rankOf(sv.xp|0)].n} · ${shipById(sv.ship).name} · ${sv.gold|0} gold`;
         $('newVoyage').hidden=false;$('newVoyage').textContent='Start a new voyage';$('newVoyage').classList.remove('warn');newArm=false;});}

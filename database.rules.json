@@ -204,6 +204,22 @@
     },
     "status": {
       ".read": "auth != null"
+    },
+    "board": {
+      ".read": "auth != null",
+      "all": {
+        ".indexOn": [
+          "xp"
+        ]
+      },
+      "$week": {
+        ".indexOn": [
+          "s",
+          "g",
+          "c",
+          "xp"
+        ]
+      }
     }
   }
 }

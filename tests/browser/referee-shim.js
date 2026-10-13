@@ -31,7 +31,9 @@
         const player=(await db.ref('players/'+uid).get()).val();let verdict;
         await txn('saves/'+uid,sv=>{verdict=E.processRequest(sv,req,player,Date.now());const out=verdict.save;
           out.last=sv&&typeof sv.last==='string'&&sv.last>rid?sv.last:rid;return out;});
-        window.__refLog.push(['req',req.k,req.e||req.id||'',verdict.ok,verdict.reason||'']);}
+        window.__refLog.push(['req',req.k,req.e||req.id||'',verdict.ok,verdict.reason||'']);
+        if(verdict.ok&&req.k==='kill'){const wk=E.weekOf(Date.now());await txn('board/w'+wk+'/'+uid,r=>{const o=r||{s:0,g:0,c:0};o.n=(player&&player.n)||o.n||'Captain';o.s++;o.g+=E.KILL[req.e].g;return o;});
+          if(uid.startsWith('google_')){const sv=(await db.ref('saves/'+uid).get()).val();await db.ref('board/all/'+uid).set({n:(player&&player.n)||'Captain',xp:sv.xp|0,s:sv.sunk|0});}}}
     }while(again);}finally{busy=false;}}
   db.ref('requests').on('value',()=>{drain();});
   db.ref('reports').on('child_added',async s=>{const all=s.val()||{};const uid=s.key;await s.ref.remove();

@@ -231,6 +231,12 @@ rep("  setTimeout(()=>{startOpen(false,sv);if(FB&&saveMode==='server')applyWish(
 rep("function serverNowMs(){return Date.now();}","function serverNowMs(){return NET.room&&NET.room.serverNow?NET.room.serverNow():Date.now();}")
 rep("NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();});",
     "NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();});")
+# ---- leaderboards
+rep("function boardOn(){return false;}","function boardOn(){return !!FB;}")
+rep("function boardLoad(path,field){return Promise.resolve(null);}","async function boardLoad(path,field){try{await FB.ensureUser();}catch(e){return null;}return FB.board(path,field,25);}")
+rep("function boardMine(path){return Promise.resolve(null);}","function boardMine(path){return FB.boardMine(path);}")
+rep("function myUid(){return null;}","function myUid(){const u=FB&&FB.user();return u?u.uid:null;}")
+rep("  if(FB){$('savenote').hidden=true;","  if(FB){$('goBoard').hidden=false;$('savenote').hidden=true;")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

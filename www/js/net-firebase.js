@@ -75,6 +75,13 @@
         async ensureUser() { await ready; if (!auth.currentUser) await auth.signInAnonymously(); return auth.currentUser.uid; },
         // The drawing checker's last health report (for showing why it's offline).
         async checkerStatus() { try { return (await db.ref('status/checker').get()).val(); } catch (e) { return null; } },
+        // Top captains on a leaderboard: path 'board/w<week>' or 'board/all', sorted by field, best first.
+        async board(path, field, n) {
+          const out = [];
+          try { const snap = await db.ref(path).orderByChild(field).limitToLast(n || 25).get(); snap.forEach(c => { out.push({ uid: c.key, ...c.val() }); }); } catch (e) { return null; }
+          return out.reverse();
+        },
+        async boardMine(path) { const u = auth.currentUser; if (!u) return null; try { return (await db.ref(path + '/' + u.uid).get()).val(); } catch (e) { return null; } },
         // Report another captain's drawing to the referee.
         report(tg, dw) {
           const u = auth.currentUser; if (!u) return;

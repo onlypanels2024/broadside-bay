@@ -176,3 +176,11 @@ test('drawing checks and reports: well formed, only as yourself, never about you
   assert.strictEqual(ok('A', '/reports/A/r1', { tg: 'B', dw: DW, t: TS, why: 'x' }), false);
   assert.strictEqual(empty().as({ uid: 'A' }).read('/reports/A').allowed, false);
 });
+
+test('leaderboards: everyone signed in can read them, nobody can write them', () => {
+  const db = targaryen.database(rules, { board: { all: { A: { n: 'Gary', xp: 10 } } } }, T0);
+  assert.strictEqual(db.as({ uid: 'B' }).read('/board/all').allowed, true);
+  assert.strictEqual(db.as(null).read('/board/all').allowed, false);
+  assert.strictEqual(db.as({ uid: 'A' }).write('/board/all/A', { n: 'Gary', xp: 999999 }, { now: T0 }).allowed, false);
+  assert.strictEqual(db.as({ uid: 'A' }).write('/board/w1000/A/s', 500, { now: T0 }).allowed, false);
+});

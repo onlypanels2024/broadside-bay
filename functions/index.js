@@ -14,6 +14,26 @@ const D = require('./drawcheck');
 admin.initializeApp();
 setGlobalOptions({ region: 'europe-west1', maxInstances: 10, memory: '256MiB' });
 
+// ---- leaderboards (written only here, read by every signed-in captain)
+// board/w<week>/<uid> = {n: name, s: ships sunk, g: gold earned, c: captains sunk} for this week (Monday to Sunday, UTC)
+// board/all/<uid> = {n, xp, s} for Google captains (guests start over each time, so they only appear weekly)
+const googleCache = new Map();
+async function isGoogle(uid) {
+  if (googleCache.has(uid)) return googleCache.get(uid);
+  let g = false;
+  try { const u = await admin.auth().getUser(uid); g = u.providerData.some(p => p.providerId === 'google.com'); } catch (e) {}
+  googleCache.set(uid, g); return g;
+}
+const cleanName = n => String(n || '').replace(/[^\p{L}\p{N} '_-]/gu, '').trim().slice(0, 16) || 'Captain';
+async function boardAdd(db, uid, name, add, save) {
+  const wk = E.weekOf(Date.now());
+  await db.ref(`board/w${wk}/${uid}`).transaction(r => {
+    const o = r || { s: 0, g: 0, c: 0 };
+    o.n = name ? cleanName(name) : (o.n || 'Captain'); o.s = (o.s | 0) + (add.s | 0); o.g = (o.g | 0) + (add.g | 0); o.c = (o.c | 0) + (add.c | 0); return o;
+  });
+  if (save && name && await isGoogle(uid)) await db.ref(`board/all/${uid}`).set({ n: cleanName(name), xp: save.xp | 0, s: save.sunk | 0 });
+}
+
 async function strike(db, uid, reason) {
   const res = await db.ref(`ref/strikes/${uid}`).transaction(n => (n || 0) + 1);
   const count = res.snapshot.val();
@@ -59,7 +79,9 @@ exports.refereeDeath = onValueCreated('/deaths/{id}', async (event) => {
   const verdict = R.judgeDeath(death, life, Date.now());
   if (!verdict) return;
   const name = ((await db.ref(`players/${death.v}/n`).get()).val()) || 'a captain';
-  await db.ref(`saves/${verdict.killer}`).transaction(s => E.applyPvpKill(s, Date.now()));
+  const kres = await db.ref(`saves/${verdict.killer}`).transaction(s => E.applyPvpKill(s, Date.now()));
+  const kname = (await db.ref(`players/${verdict.killer}/n`).get()).val();
+  await boardAdd(db, verdict.killer, kname, { s: 1, g: E.PVP.g, c: 1 }, kres.snapshot.val());
   // the reward itself is already in the killer's save; this just tells their phone to show a banner
   await db.ref(`rewards/${verdict.killer}`).push({ g: E.PVP.g, n: String(name).slice(0, 16), t: Date.now() });
   await db.ref(`stats/${verdict.killer}/kills`).transaction(n => (n || 0) + 1);
@@ -108,7 +130,7 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
   }
   const player = (await db.ref(`players/${uid}`).get()).val();
   let verdict = null;
-  await db.ref(`saves/${uid}`).transaction(save => {
+  const res = await db.ref(`saves/${uid}`).transaction(save => {
     verdict = E.processRequest(save, req, player, Date.now());
     const out = verdict.save;
     // tells the phone which of its requests have been dealt with
@@ -116,6 +138,8 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
     return out;
   });
   if (verdict && !verdict.ok) logger.info('request refused', { uid, k: req.k, reason: verdict.reason });
+  if (verdict && verdict.ok && req.k === 'kill') await boardAdd(db, uid, player && player.n, { s: 1, g: E.KILL[req.e].g }, res.snapshot.val());
+  else if (verdict && verdict.ok && (req.k === 'daily' || req.k === 'quest') && await isGoogle(uid)) await boardAdd(db, uid, player && player.n, {}, res.snapshot.val());
   if (verdict && verdict.strike) await strike(db, uid, 'claims: ' + verdict.reason);
 });
 
