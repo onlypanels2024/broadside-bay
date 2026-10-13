@@ -365,6 +365,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
       <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
       <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
       <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
+      <button class="btn ghost" id="seatog">Sea sounds: <span id="seav">On</span></button>
       <button class="btn ghost" id="buzztog">Vibration: <span id="buzzv">On</span></button>
       <button class="btn ghost" id="wxtog">Rain &amp; lightning: <span id="wxtogv">On</span></button>
       <button class="btn ghost" id="drawtog">Captains' drawings: <span id="drawtogv">Shown</span></button>
@@ -949,9 +950,23 @@ function makeShip(o){
   const shadowM=new THREE.MeshBasicMaterial({map:softTex,color:L('#02303f'),transparent:true,opacity:.55,depthWrite:false});
   const collarM=new THREE.MeshBasicMaterial({map:collarTex,color:0xffffff,transparent:true,opacity:.75,depthWrite:false});
   const sh=new THREE.Mesh(GROUND,shadowM),co=new THREE.Mesh(GROUND,collarM);sh.renderOrder=1;co.renderOrder=2;scene.add(sh,co);
-  g.userData={inner,hullM,guns,flag,ground:[sh,co],own:[hullM,deckM,castleM,sailM,shadowM,collarM].concat(o.own?[flagM,sTex,fTex]:[]),ownGeo:[rg]};
+  g.userData={inner,hullM,sailM,sTex,guns,flag,ground:[sh,co],own:[hullM,deckM,castleM,sailM,shadowM,collarM].concat(o.own?[flagM,sTex,fTex]:[]),ownGeo:[rg]};
   scene.add(g);return g;
 }
+// Ships show their damage: torn sails at 2/3 hull, more holes and fire at 1/3.
+function tearSails(g,level){const u=g.userData;if(!u.sailM||!u.sTex||!u.sTex.image)return;
+  const src=u.sTex.image,c=document.createElement('canvas');c.width=src.width;c.height=src.height;const x=c.getContext('2d');x.drawImage(src,0,0);
+  const S=c.width,r=mulberry(level*7919+S);x.globalCompositeOperation='destination-out';
+  for(let i=0;i<(level>1?14:6);i++){const cx=r()*S,cy=S*.15+r()*S*.8,rad=S*(.03+r()*(level>1?.09:.05));x.beginPath();for(let k=0;k<9;k++){const a=k/9*TAU,rr=rad*(.55+r()*.7);x.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr);}x.closePath();x.fill();}
+  if(level>1){x.beginPath();x.moveTo(0,S);for(let i=0;i<=12;i++)x.lineTo(i/12*S,S-r()*S*.18);x.lineTo(S,S);x.closePath();x.fill();}
+  x.globalCompositeOperation='source-atop';x.fillStyle='rgba(40,25,10,.25)';x.fillRect(0,0,S,S);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;
+  if(u.tornTex)u.tornTex.dispose();u.tornTex=t;u.sailM.map=t;u.sailM.alphaTest=.5;u.sailM.transparent=false;u.sailM.needsUpdate=true;}
+function mendSails(g){const u=g.userData;if(!u.tornTex)return;u.sailM.map=u.sTex;u.sailM.alphaTest=0;u.sailM.needsUpdate=true;u.tornTex.dispose();u.tornTex=null;}
+function damageFx(g,holder,frac,x,z,dt,sc){if(!g||!g.visible)return;const lvl=frac>.67?0:frac>.34?1:2;
+  if(lvl!==holder.dmg){holder.dmg=lvl;if(lvl)tearSails(g,lvl);else mendSails(g);}
+  if(lvl&&Math.random()<dt*(lvl>1?7:3)){const y=2+(sc||1)*.8;smoke(x+rnd(-.8,.8)*(sc||1),y,z+rnd(-.8,.8)*(sc||1),1,lvl>1,.7*(sc||1));
+    if(lvl>1&&Math.random()<.5)spark(x+rnd(-.6,.6),y-.4,z+rnd(-.6,.6),{color:'#ff8a3c',add:true,s:rnd(.6,1.2),life:.35,vy:2.5});}}
 function poseShip(g,x,z,a,t,phase,turn){
   const ca=Math.cos(a),sa=Math.sin(a),s=g.scale.x*2;
   const hf=wh(x+ca*s,z+sa*s,t),hb=wh(x-ca*s,z-sa*s,t),hl=wh(x+sa*s*.6,z-ca*s*.6,t),hr=wh(x-sa*s*.6,z+ca*s*.6,t);
@@ -962,7 +977,7 @@ function poseShip(g,x,z,a,t,phase,turn){
   if(g.userData.flag)g.userData.flag.rotation.y=Math.sin(t*5+phase)*.3;
 }
 function hideGround(g){if(g.userData.ground)g.userData.ground.forEach(m=>m.visible=false);}
-function disposeGroup(g){scene.remove(g);if(g.userData.ground)g.userData.ground.forEach(m=>scene.remove(m));if(g.userData.own)g.userData.own.forEach(m=>m.dispose());if(g.userData.ownGeo)g.userData.ownGeo.forEach(x=>x.dispose());}
+function disposeGroup(g){if(g.userData.tornTex)g.userData.tornTex.dispose();scene.remove(g);if(g.userData.ground)g.userData.ground.forEach(m=>scene.remove(m));if(g.userData.own)g.userData.own.forEach(m=>m.dispose());if(g.userData.ownGeo)g.userData.ownGeo.forEach(x=>x.dispose());}
 
 /* ================= islands ================= */
 const islands=[];
@@ -1092,6 +1107,27 @@ let buzzLast=0;
 function buzz(kind){if(!buzzOn)return;const now=performance.now();if(kind==='light'&&now-buzzLast<120)return;buzzLast=now;
   const H=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Haptics;
   try{if(H){H.impact({style:kind==='heavy'?'HEAVY':kind==='medium'?'MEDIUM':'LIGHT'});return;}if(navigator.vibrate)navigator.vibrate(kind==='heavy'?60:kind==='medium'?30:12);}catch(e){}}
+let seaOn=true;try{seaOn=localStorage.getItem('bb-sea')!=='0'}catch(e){}
+const SEA={on:false,t:0,creakT:5,gullT:4};
+function seaStart(){if(!ac||SEA.on)return;SEA.on=true;const n=ac.sampleRate*4,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);let l=0;
+  for(let i=0;i<n;i++){const w=Math.random()*2-1;l=(l+.02*w)/1.02;d[i]=l*3.2;}   // brown noise, a soft roar
+  const mk=(type,freq,q)=>{const s=ac.createBufferSource();s.buffer=b;s.loop=true;s.playbackRate.value=.6+Math.random()*.3;const f=ac.createBiquadFilter();f.type=type;f.frequency.value=freq;if(q)f.Q.value=q;const g=ac.createGain();g.gain.value=0;s.connect(f);f.connect(g);g.connect(ac.destination);s.start();return g;};
+  SEA.waves=mk('lowpass',520);SEA.wind=mk('bandpass',1400,.6);
+  // rain: white noise hiss
+  const wb=ac.createBuffer(1,ac.sampleRate*2,ac.sampleRate),wd=wb.getChannelData(0);for(let i=0;i<wd.length;i++)wd[i]=Math.random()*2-1;
+  const rs=ac.createBufferSource();rs.buffer=wb;rs.loop=true;const rf=ac.createBiquadFilter();rf.type='highpass';rf.frequency.value=2500;const rg=ac.createGain();rg.gain.value=0;rs.connect(rf);rf.connect(rg);rg.connect(ac.destination);rs.start();SEA.rain=rg;}
+function creak(vol){if(!ac)return;const t=ac.currentTime,o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain();o.type='sawtooth';
+  const f0=rnd(70,110);o.frequency.setValueAtTime(f0,t);o.frequency.linearRampToValueAtTime(f0*rnd(.75,.9),t+.5);f.type='bandpass';f.frequency.value=rnd(500,900);f.Q.value=6;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.08);g.gain.linearRampToValueAtTime(vol*.6,t+.35);g.gain.linearRampToValueAtTime(0,t+.55);o.connect(f);f.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+.6);}
+function gull(vol){if(!ac)return;const t0=ac.currentTime;for(let k=0;k<(Math.random()<.5?2:3);k++){const t=t0+k*.28,o=ac.createOscillator(),g=ac.createGain();o.type='triangle';
+  const f=rnd(1500,1900);o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f*.62,t+.2);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.03);g.gain.exponentialRampToValueAtTime(.001,t+.22);
+  o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+.25);}}
+function seaTick(dt){if(!ac)return;if(!SEA.on)seaStart();const on=seaOn&&!document.hidden,k=Math.min(1,dt*2);
+  const wv=on?(.05+.05*Math.min(2,WX.amp)+Math.min(.04,Math.abs(P.v)*.003)):0,wd=on?(.012+.05*WX.cloud):0,rn=on?.05*WX.rain:0;
+  SEA.waves.gain.value+=(wv-SEA.waves.gain.value)*k;SEA.wind.gain.value+=(wd-SEA.wind.gain.value)*k;SEA.rain.gain.value+=(rn-SEA.rain.gain.value)*k;
+  if(!on||state==='title')return;
+  SEA.creakT-=dt*(1+Math.abs(turnHeel)*20);if(SEA.creakT<=0){SEA.creakT=rnd(5,11);creak(.05+.03*WX.amp);}
+  SEA.gullT-=dt;if(SEA.gullT<=0){SEA.gullT=rnd(5,10);const near=islands.some(i=>Math.hypot(i.x-P.x,i.z-P.z)<40);if(near&&WX.rain<.3&&WX.night<.5)gull(.035);}}
 function chime(hi){if(!ac)return;const o=ac.createOscillator(),g=ac.createGain(),n=ac.currentTime,f=hi?1320:880;o.type='triangle';o.frequency.setValueAtTime(f,n);
   o.frequency.exponentialRampToValueAtTime(f*2,n+.12);g.gain.setValueAtTime(.1,n);g.gain.exponentialRampToValueAtTime(.001,n+.25);o.connect(g);g.connect(ac.destination);o.start();o.stop(n+.3);}
 
@@ -1657,6 +1693,8 @@ fb.addEventListener('contextmenu',e=>e.preventDefault());
 $('snd').onclick=()=>{audio();setMusic(!MUS.on);};
 function updWxTog(){$('wxtogv').textContent=WX.fx?'On':'Off';}
 $('wxtog').onclick=()=>{audio();WX.fx=!WX.fx;try{localStorage.setItem('bb-wxfx',WX.fx?'1':'0')}catch(e){}updWxTog();};
+function updSea(){$('seav').textContent=seaOn?'On':'Off';}updSea();
+$('seatog').onclick=()=>{audio();seaOn=!seaOn;try{localStorage.setItem('bb-sea',seaOn?'1':'0')}catch(e){}updSea();};
 function updBuzz(){$('buzzv').textContent=buzzOn?'On':'Off';}updBuzz();
 $('buzztog').onclick=()=>{audio();buzzOn=!buzzOn;try{localStorage.setItem('bb-buzz',buzzOn?'1':'0')}catch(e){}updBuzz();buzz('medium');};
 function updDrawTog(){$('drawtogv').textContent=hideDraw?'Hidden':'Shown';}updDrawTog();
@@ -2389,7 +2427,7 @@ function netTick(dt){
     const tx=pr.x,tz=pr.z;r.x+=(tx-r.x)*Math.min(1,dt*8);r.z+=(tz-r.z)*Math.min(1,dt*8);r.a+=angDiff(pr.a||0,r.a)*Math.min(1,dt*8);r.v=pr.v||0;
     if(Math.hypot(tx-r.x,tz-r.z)>30){r.x=tx;r.z=tz;}
     r.ship.userData.ground.forEach(m=>m.visible=r.ship.visible);
-    if(r.ship.visible){poseShip(r.ship,r.x,r.z,r.a,clock,r.peer.length,0);r.ship.userData.guns.visible=!!pr.sg;
+    if(r.ship.visible){poseShip(r.ship,r.x,r.z,r.a,clock,r.peer.length,0);damageFx(r.ship,r,(pr.hp|0)/Math.max(1,pr.mx|0),r.x,r.z,dt,r.sc||1);r.ship.userData.guns.visible=!!pr.sg;
       if(wakeT<=0&&r.v>2.5)wake(r,r.sc||1,TRAIL_COL[cosOf(pr.cx).trail]);}
     if(r.tag){r.tag.visible=r.ship.visible&&Math.hypot(r.x-P.x,r.z-P.z)<90;r.tag.position.set(r.x,9*(r.sc||1),r.z);
       remoteChat(r,pr.qc);const saying=r.sayT>clock?r.say:'';
@@ -2730,7 +2768,7 @@ function updWeather(dt){
   rain.visible=WX.rain>.03;rainM.opacity=WX.rain*.42;
   if(rain.visible){const cx=look.x,cz=look.z;for(let i=0;i<RAIN_N;i++){const d=rainD[i];d.y-=d.v*dt;if(d.y<0){d.y=rnd(24,32);d.x=rnd(-45,45);d.z=rnd(-45,45);}
     const o=i*6,x=cx+d.x,z=cz+d.z;rainPos[o]=x;rainPos[o+1]=d.y;rainPos[o+2]=z;rainPos[o+3]=x+.25;rainPos[o+4]=d.y+1.3;rainPos[o+5]=z+.12;}rainGeo.attributes.position.needsUpdate=true;}
-  if(WX.fx&&w.kind==='storm'&&w.rain>.6&&state!=='title'){WX.thunderT-=dt;if(WX.thunderT<=0){WX.thunderT=rnd(7,16);WX.flash=1;setTimeout(()=>{noise(1.6,90,.55);noise(.5,400,.25);},rnd(400,1500));}}
+  if(WX.fx&&w.kind==='storm'&&w.rain>.6&&state!=='title'){WX.thunderT-=dt;if(WX.thunderT<=0){WX.thunderT=rnd(7,16);const far=Math.random()<.5;WX.flash=far?.45:1;setTimeout(()=>{if(far){noise(2.6,70,.3);}else{noise(1.6,90,.55);noise(.5,400,.25);}},far?rnd(1500,3200):rnd(300,900));}}
   // tell the captain when the weather turns
   const label=(w.day<.5?'n':'d')+w.kind;
   if(WX.kind&&label!==WX.kind&&state==='play'){const was=WX.kind;
@@ -2742,12 +2780,12 @@ function updWeather(dt){
 /* ================= render ================= */
 const look=new THREE.Vector3(),camPos=new THREE.Vector3(0,40,40),EM_HIT=L('#7a1a0c'),EM_FAST=L('#0b2a40'),EM_NONE=new THREE.Color(0),EM_FLASH=new THREE.Color(.8,.8,.8);
 function render(dt){
-  updWeather(dt);
+  updWeather(dt);seaTick(dt);
   waterMat.uniforms.uTime.value=clock;
   const step=WS/WN;water.position.x=Math.round(P.x/step)*step;water.position.z=Math.round(P.z/step)*step;
-  if(state!=='over')poseShip(pship,P.x,P.z,P.a,clock,0,turnHeel);
+  if(state!=='over'){poseShip(pship,P.x,P.z,P.a,clock,0,turnHeel);if(state!=='title')damageFx(pship,P,P.hp/Math.max(1,maxHp()),P.x,P.z,dt,SHIP().scale);else if(P.dmg){P.dmg=0;mendSails(pship);}}
   pship.userData.hullM.emissive.copy(P.inv>0&&state==='play'&&Math.floor(clock*12)%2?EM_HIT:pw.speed>0?EM_FAST:EM_NONE);
-  for(const e of enemies){poseShip(e.g,e.x,e.z,e.a,clock,e.phase,e.turn);e.g.userData.hullM.emissive.copy(e.flash>0?EM_FLASH:EM_NONE);
+  for(const e of enemies){poseShip(e.g,e.x,e.z,e.a,clock,e.phase,e.turn);if(e.kind!=='boss'||e.hp<e.max)damageFx(e.g,e,Math.max(0,e.hp)/e.max,e.x,e.z,dt,e.g.scale.x);e.g.userData.hullM.emissive.copy(e.flash>0?EM_FLASH:EM_NONE);
     const w=e.r*1.3;e.bar.visible=e.kind!=='boss'&&e.hp<e.max;e.bar.position.set(e.x,e.big?9.5:7.8,e.z);e.bar.quaternion.copy(cam.quaternion);
     e.bar.children[0].scale.x=w;e.bar.children[0].position.x=-w/2;e.fg.scale.x=w*Math.max(0,e.hp)/e.max;e.fg.position.x=-w/2;}
   const k=camK;
