@@ -5,3 +5,4 @@ android-app/www/
 *.keystore
 *.jks
 functions/node_modules/
+store/
