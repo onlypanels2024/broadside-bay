@@ -259,6 +259,21 @@ details.how summary{cursor:pointer;font-weight:700;letter-spacing:.14em;text-tra
 details.how summary::-webkit-details-marker{display:none}
 #err{position:fixed;inset:0;display:grid;place-items:center;padding:16px;text-align:center;z-index:5;background:var(--ink)}
 @media (prefers-reduced-motion:reduce){#banner,.bossfill{transition:none}}
+@media (orientation:landscape){
+  .overlay.sheet{place-items:stretch end}
+  .card.dress{max-height:none;height:100%;width:min(430px,50vw);max-width:none;border-radius:16px 0 0 16px;padding-top:max(14px,env(safe-area-inset-top,0px))}
+  .viewctl{right:auto;left:14px}
+  .viewhint{left:25%}}
+@media (max-height:520px){
+  .overlay{padding:8px}
+  .card{padding:14px 18px}
+  .card h1{font-size:28px;margin:2px 0}.card h2{font-size:22px;margin:2px 0}.card p{margin:4px 0;font-size:14px}
+  .btn{margin-top:8px;padding:9px 22px;font-size:15px}.btn.ghost{margin-top:6px}
+  .modes{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;align-items:start}.modes .btn{min-width:0;width:100%}
+  .modes .savenote,.modes .onlinenote,.modes .linkbtn{grid-column:1/-1}
+  .card.dress{padding-bottom:10px}
+  #dock,#dig{bottom:calc(env(safe-area-inset-bottom,0px) + 120px)}}
+@media (min-width:900px) and (min-height:600px) and (orientation:landscape){.top,.overlay .card,#fire,#aim,#dock,#dig,.hint,#banner,.viewctl,.chatbox{zoom:1.25}#map{zoom:1.2}}
 @media (min-width:700px) and (min-height:900px){.top,.overlay .card,#fire,#aim,#dock,#dig,.hint,#banner,.viewctl,.chatbox{zoom:1.3}#map{zoom:1.25}.card.dress{max-width:640px}}
 </style>
 
@@ -517,7 +532,7 @@ scene.fog=new THREE.Fog(SKY.hor.clone(),100,260);
 const cam=new THREE.PerspectiveCamera(50,1,1,1000);
 let W,H,camK=1;const FOGB={near:100,far:260};
 function resize(){W=innerWidth;H=innerHeight;R.setSize(W,H,false);cam.aspect=W/H;cam.updateProjectionMatrix();
-  camK=Math.min(1.75,Math.max(1,.9/cam.aspect));const D=40*camK;FOGB.near=D*1.3;FOGB.far=D*3.4;scene.fog.near=D*1.3;scene.fog.far=D*3.4;
+  camK=Math.min(1.75,Math.max(1,.9/cam.aspect));const D=40*camK*(cam.aspect>1?1.7:1);FOGB.near=D*1.3;FOGB.far=D*3.4;scene.fog.near=D*1.3;scene.fog.far=D*3.4;
   if(waterMat){waterMat.uniforms.uFogNear.value=scene.fog.near;waterMat.uniforms.uFogFar.value=scene.fog.far;}}
 let waterMat=null;
 
@@ -2521,10 +2536,10 @@ function render(dt){
     const w=e.r*1.3;e.bar.visible=e.kind!=='boss'&&e.hp<e.max;e.bar.position.set(e.x,e.big?9.5:7.8,e.z);e.bar.quaternion.copy(cam.quaternion);
     e.bar.children[0].scale.x=w;e.bar.children[0].position.x=-w/2;e.fg.scale.x=w*Math.max(0,e.hp)/e.max;e.fg.position.x=-w/2;}
   const k=camK;
-  if(showcase){if(!view.drag&&view.pts.size===0){view.idle+=dt;if(view.idle>3)view.yaw+=dt*.16;}const a=view.yaw,sc=SHIP().scale,port=W<H,z=view.zoom,rr=(port?19:14)*sc*z;camPos.set(P.x+Math.cos(a)*rr,(port?6.5:5)*sc*z*view.pitch,P.z+Math.sin(a)*rr);look.set(P.x,(port?-5.5:-1.5)*sc*z,P.z);cam.position.copy(camPos);}
+  if(showcase){if(!view.drag&&view.pts.size===0){view.idle+=dt;if(view.idle>3)view.yaw+=dt*.16;}const a=view.yaw,sc=SHIP().scale,port=W<H,z=view.zoom,rr=(port?19:14)*sc*z;camPos.set(P.x+Math.cos(a)*rr,(port?6.5:5)*sc*z*view.pitch,P.z+Math.sin(a)*rr);look.set(P.x,(port?-5.5:-1.5)*sc*z,P.z);if(!port){const off=rr*.32;look.x+=Math.sin(a)*off;look.z-=Math.cos(a)*off;}cam.position.copy(camPos);}
   else if(state==='title'){const a=clock*.12;camPos.set(P.x+Math.cos(a)*22,9,P.z+Math.sin(a)*22);look.set(P.x,2.5,P.z);cam.position.copy(camPos);}
   else{const tx=P.x+Math.cos(P.a)*3,tz=P.z+Math.sin(P.a)*3;
-    const ck=k*(1+(SHIP().scale-1)*.55);camPos.lerp(new THREE.Vector3(tx,27*ck,tz+25*ck),Math.min(1,dt*3));look.set(camPos.x,0,camPos.z-25*ck-3);
+    const ck=k*(1+(SHIP().scale-1)*.55),land=W>H,ch=(land?31:27)*ck,cz=(land?15:25)*ck;camPos.lerp(new THREE.Vector3(tx,ch,tz+cz),Math.min(1,dt*3));look.set(camPos.x,0,camPos.z-cz-(land?1.5:3));
     cam.position.copy(camPos);if(shake>0){cam.position.x+=rnd(-shake,shake);cam.position.z+=rnd(-shake,shake);}}
   cam.lookAt(look);
   sky.position.copy(cam.position);

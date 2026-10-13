@@ -28,9 +28,9 @@ jobs:
           if [ -f google-services.json ]; then cp google-services.json android/app/; else echo "::warning::google-services.json missing - Google sign-in will not work in this build"; fi
           # include the Google provider of the sign-in plugin
           sed -i 's/^ext {/ext {\n    rgcfaIncludeGoogle = true/' android/variables.gradle
-      - name: Portrait only, keep the screen on
+      - name: Turn with the phone (portrait and landscape)
         run: |
-          sed -i 's/android:name=".MainActivity"/android:name=".MainActivity"\n            android:screenOrientation="portrait"/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:name=".MainActivity"/android:name=".MainActivity"\n            android:screenOrientation="fullUser"/' android/app/src/main/AndroidManifest.xml
           grep -n "screenOrientation" android/app/src/main/AndroidManifest.xml
       - name: App icon and splash
         run: npx @capacitor/assets generate --android --iconBackgroundColor '#071a24' --splashBackgroundColor '#071a24'
