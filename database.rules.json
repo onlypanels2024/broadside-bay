@@ -87,6 +87,12 @@
         },
         "fl": {
           ".validate": "newData.isString() && root.child('saves').child($uid).child('fleet').exists() && newData.val() === root.child('fleets').child(root.child('saves').child($uid).child('fleet').val()).child('tag').val()"
+        },
+        "ti": {
+          ".validate": "newData.isString() && newData.val() === root.child('saves').child($uid).child('title').val()"
+        },
+        "cx": {
+          ".validate": "newData.isString() && newData.val() === root.child('saves').child($uid).child('cx').val()"
         }
       }
     },
@@ -162,13 +168,13 @@
           ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && !root.child('banned').child($uid).exists()",
           ".validate": "newData.hasChildren(['k','t']) && newData.child('t').val() === now",
           "k": {
-            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|check|daily|quest|fleet|reset)$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|check|daily|quest|fleet|title|cos|reset)$/)"
           },
           "e": {
             ".validate": "newData.isString() && newData.val().matches(/^(sloop|galleon|boss|treasure|merchant|escort|kraken)$/)"
           },
           "id": {
-            ".validate": "newData.isString() && newData.val().matches(/^(broadside|reload|sails|hull|triple|brig|corvette|frigate|galleon|manowar|[0-9]{1,9})$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^([a-z0-9_]{0,16})$/)"
           },
           "t": {
             ".validate": "newData.val() === now"
@@ -202,6 +208,9 @@
           },
           "who": {
             ".validate": "newData.isString() && newData.val().length <= 64"
+          },
+          "cx": {
+            ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}$/)"
           }
         }
       }

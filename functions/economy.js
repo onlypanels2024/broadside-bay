@@ -72,6 +72,12 @@
     if (s.dchk && typeof s.dchk === 'object' && DW_RE.test(s.dchk.dw || '')) o.dchk = { dw: s.dchk.dw, ok: !!s.dchk.ok, why: String(s.dchk.why || '').slice(0, 80), t: num(s.dchk.t) ? s.dchk.t : 0 }; else delete o.dchk;
     if (s.ck && typeof s.ck === 'object' && num(s.ck.n) && num(s.ck.t)) o.ck = { n: s.ck.n, t: s.ck.t }; else delete o.ck;
     // daily chest {d: last day claimed, st: streak} and today's quests {d: day, p: [progress x3], c: [claimed x3]}
+    // lifetime counts for the captain's log and achievements
+    o.ks = {}; for (const k of ['sloop', 'galleon', 'boss', 'merchant', 'kraken', 'treasure', 'escort', 'captain']) { const v = s.ks && s.ks[k]; if (num(v) && v > 0) o.ks[k] = Math.floor(v); }
+    if (!Object.keys(o.ks).length) delete o.ks;
+    for (const k of ['dn', 'bs']) { if (num(s[k]) && s[k] > 0) o[k] = Math.floor(s[k]); else delete o[k]; }
+    if (typeof s.title === 'string' && ACH.some(a => a.id === s.title)) o.title = s.title; else delete o.title;
+    if (typeof s.cx === 'string' && /^[0-9]{4}$/.test(s.cx)) o.cx = s.cx; else delete o.cx;
     if (typeof s.kl === 'string' && /^[0-9]{1,9}$/.test(s.kl)) o.kl = s.kl; else delete o.kl;
     if (typeof s.fleet === 'string' && /^[A-Za-z0-9_-]{1,30}$/.test(s.fleet)) o.fleet = s.fleet; else delete o.fleet;
     if (s.fmsg && typeof s.fmsg === 'object') o.fmsg = { ok: !!s.fmsg.ok, why: String(s.fmsg.why || '').slice(0, 80), t: num(s.fmsg.t) ? s.fmsg.t : 0 }; else delete o.fmsg;
@@ -128,6 +134,37 @@ const dayOf=now=>Math.floor(now/86400000);
 function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
   const pool=QUESTS.map((q,i)=>i),out=[];while(out.length<3){const k=Math.floor(rnd()*pool.length);out.push(pool.splice(k,1)[0]);}return out.sort((x,y)=>x-y);}
 /*ENDDAILYDEF*/
+  /*ACHDEF*/// Achievements come from the captain's online record. Some give a title; some unlock looks (cosmetics).
+const ACH=[
+  {id:'first',n:'First Blood',d:'Sink your first ship',st:'sunk',need:1,ti:'Sea Dog'},
+  {id:'sloops',n:'Sloop Hunter',d:'Sink 50 pirate sloops',st:'ks.sloop',need:50,ti:'Sloop Hunter'},
+  {id:'galleons',n:'Galleon Breaker',d:'Sink 25 pirate galleons',st:'ks.galleon',need:25,ti:'Galleon Breaker'},
+  {id:'boss',n:'Boss Slayer',d:'Sink a boss ship',st:'ks.boss',need:1,ti:'Boss Slayer'},
+  {id:'bosses',n:'Terror of the Bosses',d:'Sink 10 boss ships',st:'ks.boss',need:10,ti:'Terror of the Bosses'},
+  {id:'kraken',n:'Kraken Slayer',d:'Help slay the kraken',st:'ks.kraken',need:1,ti:'Kraken Slayer'},
+  {id:'treasure',n:'Treasure Hunter',d:'Dig up 5 treasures',st:'ks.treasure',need:5,ti:'Treasure Hunter'},
+  {id:'raider',n:'Raider',d:'Sink 5 merchant ships',st:'ks.merchant',need:5,ti:'Raider'},
+  {id:'guardian',n:'Guardian of Trade',d:'Escort 5 convoys to port',st:'ks.escort',need:5,ti:'Guardian of Trade'},
+  {id:'hunter',n:'Captain Hunter',d:'Sink 10 other captains',st:'ks.captain',need:10,ti:'Captain Hunter'},
+  {id:'rich',n:'Wealthy',d:'Earn 10,000 gold',st:'earned',need:10000,ti:'the Wealthy'},
+  {id:'faithful',n:'Faithful',d:'Open the daily chest 7 days in a row',st:'bs',need:7,ti:'the Faithful'},
+  {id:'admiral',n:'Admiral of the Fleet',d:'Reach the rank of Admiral',st:'xp',need:9000,ti:'Admiral of the Fleet'},
+  {id:'sotl',n:'Ship of the Line',d:'Own a Man-o\'-War',st:'ship.manowar',need:1,ti:'Ship of the Line'},
+  {id:'fleet',n:'Fleet Sailor',d:'Join a fleet',st:'fleet',need:1,ti:'Fleet Sailor'},
+];
+// Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (or nothing).
+const COS={
+  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'}],
+  ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'}],
+  fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
+  pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
+};
+const COS_SLOTS=['trail','ball','fig','pet'];
+function achStat(s,st){if(!s)return 0;if(st.startsWith('ks.'))return (s.ks&&s.ks[st.slice(3)])|0;if(st==='ship.manowar')return s.ships&&s.ships.manowar?1:0;if(st==='fleet')return s.fleet?1:0;return s[st]|0;}
+const achDone=(s,a)=>achStat(s,a.st)>=a.need;
+function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return false;
+  return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
+/*ENDACHDEF*/
   const docked = p => !!p && inHarbour(p.x, p.z);
   const atSea = (p, now) => !!p && p.al === 1 && num(p.t) && now - p.t <= RATE.freshMs && !inHarbour(p.x, p.z);
 
@@ -159,6 +196,7 @@ function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F
         else { if (rl.b < K.pts) return reject('sinking faster than pirates appear'); rl.b -= K.pts; }
         rl.rj = 0; s.rl = rl;
         const ship = ['sloop', 'galleon', 'boss', 'merchant', 'kraken'].includes(req.e);
+        s.ks = { ...(s.ks || {}), [req.e]: ((s.ks && s.ks[req.e]) | 0) + 1 };
         s.gold += K.g; s.earned += K.g; s.xp += K.xp; if (ship) s.sunk += 1;
         questEvent(s, req.e, 1, now); if (ship) questEvent(s, 'ship', 1, now); questEvent(s, 'gold', K.g, now);
         return { save: s, ok: true };
@@ -201,7 +239,7 @@ function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F
         if (d && d.d >= day) return no('already claimed today');
         const st = d && d.d === day - 1 ? d.st + 1 : 1;
         const g = DAILY_CHEST[Math.min(st, DAILY_CHEST.length) - 1];
-        s.daily = { d: day, st }; s.gold += g; s.xp += 10 * Math.min(st, 7);
+        s.daily = { d: day, st }; s.bs = Math.max(s.bs | 0, st); s.gold += g; s.xp += 10 * Math.min(st, 7);
         return { save: s, ok: true, g };
       }
       case 'quest': {
@@ -212,8 +250,18 @@ function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F
         q.c[i] = true; s.gold += Q.g; s.xp += Q.xp;
         return { save: s, ok: true };
       }
+      case 'title': {
+        if (req.id === '' || req.id === 'none') { delete s.title; return { save: s, ok: true }; }
+        const a = ACH.find(x => x.id === req.id);
+        if (!a || !achDone(s, a)) return no('title not earned');
+        s.title = a.id; return { save: s, ok: true };
+      }
+      case 'cos': {
+        if (!cosOk(s, req.cx)) return no('look not unlocked');
+        if (req.cx === '0000') delete s.cx; else s.cx = req.cx; return { save: s, ok: true };
+      }
       case 'reset': {
-        const f = fresh(); if (s.rl) f.rl = s.rl;   // keep the rate limiter so a reset can't be used to farm
+        const f = fresh(); if (s.rl) f.rl = s.rl; for (const k of ['ks', 'dn', 'bs']) if (s[k]) f[k] = s[k];   // the captain's log survives a new voyage   // keep the rate limiter so a reset can't be used to farm
         const pt = s.paint && checkPaint(s.paint.lk, s.paint.dw, 0); if (pt) f.paint = pt;   // keep colours a Deckhand may use
         return { save: f, ok: true };
       }
@@ -249,9 +297,9 @@ function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F
     questsFor(day).forEach((qi, i) => { const Q = QUESTS[qi]; if (Q.ev === ev && !q.c[i]) q.p[i] = Math.min(Q.n, q.p[i] + amount); });
   }
   // A captain sank: they lose half the gold in their hold.
-  function applyDeath(saveIn) { const s = norm(saveIn); s.gold -= Math.floor(s.gold / 2); return s; }
+  function applyDeath(saveIn) { const s = norm(saveIn); s.gold -= Math.floor(s.gold / 2); s.dn = (s.dn | 0) + 1; return s; }
   // A captain sank another captain (already confirmed by the hit referee).
-  function applyPvpKill(saveIn, now) { const s = norm(saveIn); s.gold += PVP.g; s.earned += PVP.g; s.xp += PVP.xp; s.sunk += 1;
+  function applyPvpKill(saveIn, now) { const s = norm(saveIn); s.gold += PVP.g; s.earned += PVP.g; s.xp += PVP.xp; s.sunk += 1; s.ks = { ...(s.ks || {}), captain: ((s.ks && s.ks.captain) | 0) + 1 };
     if (num(now)) { questEvent(s, 'captain', 1, now); questEvent(s, 'ship', 1, now); questEvent(s, 'gold', PVP.g, now); } return s; }
 
   // Fleets: Google captains of rank 2 (Bosun) or more can found one for 500 gold; up to 20 captains each.
@@ -277,6 +325,6 @@ function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F
   }
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

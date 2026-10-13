@@ -252,3 +252,27 @@ test('sea events pay once per their gap; a kraken only once per appearance', () 
   assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'kraken', id: '778' }, seaAt(NOW + 900000), NOW + 900000).ok, true);
   assert.strictEqual(E.processRequest(null, { k: 'kill', e: 'merchant' }, inPort, NOW).ok, false, 'not from a harbour');
 });
+
+test('achievements come from the referee\'s counts; titles and looks only once earned', () => {
+  let s = null;
+  assert.strictEqual(E.processRequest(s, { k: 'title', id: 'first' }, null, NOW).ok, false);
+  s = E.processRequest(s, { k: 'kill', e: 'sloop' }, atSea, NOW).save;
+  assert.strictEqual(s.ks.sloop, 1);
+  let r = E.processRequest(s, { k: 'title', id: 'first' }, null, NOW); assert.strictEqual(r.ok, true); assert.strictEqual(r.save.title, 'first'); s = r.save;
+  assert.strictEqual(E.processRequest(s, { k: 'cos', cx: '0001' }, null, NOW).ok, true, 'parrot after first blood');
+  assert.strictEqual(E.processRequest(s, { k: 'cos', cx: '0201' }, null, NOW).ok, false, 'purple shot needs the kraken');
+  s = E.processRequest(s, { k: 'kill', e: 'kraken', id: '5' }, seaAt(NOW + 1000), NOW + 1000).save;
+  assert.strictEqual(E.processRequest(s, { k: 'cos', cx: '2201' }, null, NOW).ok, true);
+  assert.strictEqual(E.processRequest(s, { k: 'cos', cx: '9999' }, null, NOW).ok, false);
+  assert.strictEqual(E.processRequest(s, { k: 'title', id: 'admiral' }, null, NOW).ok, false);
+  assert.strictEqual(E.applyDeath(s).dn, 1);
+  assert.strictEqual(E.applyPvpKill(s).ks.captain, 1);
+  assert.strictEqual(E.processRequest(s, { k: 'reset' }, null, NOW).save.ks.kraken, 1, 'the log survives a new voyage');
+});
+
+test("the game's achievements are the referee's, word for word", () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'src-artifact.html'), 'utf8');
+  const eco = require('fs').readFileSync(require('path').join(__dirname, '..', 'functions', 'economy.js'), 'utf8');
+  const grab = t => t.slice(t.indexOf('/*ACHDEF*/'), t.indexOf('/*ENDACHDEF*/'));
+  assert.ok(grab(eco).length > 500); assert.strictEqual(grab(src), grab(eco));
+});

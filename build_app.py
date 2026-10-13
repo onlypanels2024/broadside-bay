@@ -149,7 +149,7 @@ rep("function remoteName(r){const key=r.by||(r.pr&&r.pr.id);",
     "function remoteName(r){if(r.pr&&typeof r.pr.n==='string'){const n=FB?FB.cleanName(r.pr.n):r.pr.n;if(n.length>=2)return n;}const key=r.by||(r.pr&&r.pr.id);")
 rep("      if(pr.kb&&pr.kb===NET.myPeer){NET.kills++;","      if(!NET.fb&&pr.kb&&pr.kb===NET.myPeer){NET.kills++;")
 rep("""      const [_,x,z,vx,vz]=sh;if(typeof x!=='number'||Math.hypot(x-P.x,z-P.z)>140)continue;
-      const m=new THREE.Mesh(BALL,M.ball);m.castShadow=true;scene.add(m);balls.push({m,x,z,vx:+vx||0,vz:+vz||0,life:1.1,max:1.1,owner:'r',from:p.peer,trail:0});""",
+      const m=new THREE.Mesh(BALL,ballMat(cosOf(pr.cx).ball));m.castShadow=true;scene.add(m);balls.push({m,x,z,vx:+vx||0,vz:+vz||0,life:1.1,max:1.1,owner:'r',from:p.peer,trail:0});""",
 """      let [_,x,z,vx,vz,st]=sh;if(typeof x!!=='number'||Math.hypot(x-P.x,z-P.z)>140)continue;vx=+vx||0;vz=+vz||0;
       // real-time: the ball has already been flying while it travelled to us, so start it where it is now
       const age=(NET.room&&NET.room.serverNow&&typeof st==='number')?Math.max(0,Math.min(.6,(NET.room.serverNow()-st)/1000)):0;
@@ -157,7 +157,7 @@ rep("""      const [_,x,z,vx,vz]=sh;if(typeof x!=='number'||Math.hypot(x-P.x,z-P
       if(age>0&&state==='play'&&MODE==='open'&&!isMate(p.peer)){const dx=vx*age,dz=vz*age,L2=dx*dx+dz*dz;let k=L2>0?((P.x-x)*dx+(P.z-z)*dz)/L2:0;k=Math.max(0,Math.min(1,k));
         const cx=x+dx*k,cz=z+dz*k;if(Math.hypot(P.x-cx,P.z-cz)<P.r+.5){spark(x,1.3,z,{color:'#ffd99a',add:true,s:1.8,life:.1});boom(cx,cz,false);
           if(!inSafe(P)){NET.lastHitBy=p.peer;NET.lastHitT=clock;if(NET.room.reportHit)NET.room.reportHit(p.peer,id,P.x,P.z,st+age*k*1000);hurtPlayer();}continue;}}
-      const m=new THREE.Mesh(BALL,M.ball);m.castShadow=true;scene.add(m);balls.push({m,x:x+vx*age,z:z+vz*age,vx,vz,life:1.1-age,max:1.1,owner:'r',from:p.peer,sid:id,trail:0});""".replace("!!==","!=="))
+      const m=new THREE.Mesh(BALL,ballMat(cosOf(pr.cx).ball));m.castShadow=true;scene.add(m);balls.push({m,x:x+vx*age,z:z+vz*age,vx,vz,life:1.1-age,max:1.1,owner:'r',from:p.peer,sid:id,trail:0});""".replace("!!==","!=="))
 rep("if(!inSafe(P)){NET.lastHitBy=b.from;NET.lastHitT=clock;hurtPlayer();}",
     "if(!inSafe(P)){NET.lastHitBy=b.from;NET.lastHitT=clock;if(NET.fb&&NET.room&&NET.room.reportHit)NET.room.reportHit(b.from,b.sid|0,P.x,P.z,NET.room.serverNow());hurtPlayer();}")
 rep("  if(MODE==='open'){NET.deaths++;","  if(MODE==='open'){NET.deaths++;if(NET.fb&&NET.room&&NET.room.reportDeath)NET.room.reportDeath();")
@@ -257,6 +257,12 @@ function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.un
 # ---- the shared kraken
 rep("function krakenWatch(slot,cb){return ()=>{};}","function krakenWatch(slot,cb){return FB&&NET.room?FB.krakenWatch(slot,cb):()=>{};}")
 rep("function krakenHitShared(slot){}","function krakenHitShared(slot){if(FB&&NET.room)FB.krakenHit(slot);}")
+# ---- captain's log, titles and looks
+rep("function logOn(){return false;}","function logOn(){return econServer()&&!!NET.srv;}")
+rep("function logSave(){return null;}","function logSave(){return NET.srv;}")
+rep("sh:SHIPS.indexOf(SHIP()),fl:myFleetTag()||null,","sh:SHIPS.indexOf(SHIP()),fl:myFleetTag()||null,ti:(NET.srv&&NET.srv.title)||null,cx:(NET.srv&&NET.srv.cx)||null,")
+rep("else Object.assign(p,{sh:null,fl:null,","else Object.assign(p,{sh:null,fl:null,ti:null,cx:null,")
+rep("econSync();dailyNotice();fleetChanged();});","econSync();dailyNotice();fleetChanged();achNotice();});")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

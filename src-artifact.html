@@ -147,6 +147,18 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .flform{text-align:left;margin-top:12px}
 .flform .lbl{display:block;margin:10px 0 4px}
 .flform .btn{display:block;margin:16px auto 0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+.stat{padding:8px 4px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(214,178,98,.2)}
+.stat b{display:block;font-family:var(--display);font-size:19px;color:var(--parch);font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--muted);letter-spacing:.04em}
+.chiprow.wrap{flex-wrap:wrap;overflow:visible}
+.tchip{flex:0 0 auto;padding:7px 11px;border-radius:16px;cursor:pointer;font:600 13px var(--body);border:1px solid rgba(214,178,98,.35);background:transparent;color:var(--text)}
+.tchip.on{background:rgba(214,178,98,.2);border-color:var(--brass-hi);color:var(--brass-hi)}
+.tchip.locked{opacity:.45}
+.achlist{display:flex;flex-direction:column;gap:6px;text-align:left}
+.ach{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.04)}
+.ach .ic{font-size:18px;text-align:center}.ach b{font-size:14px;color:var(--text)}.ach small{display:block;font-size:12px;color:var(--muted)}
+.ach.done{border:1px solid rgba(120,200,140,.5)}.ach .pr{font-size:12px;color:var(--brass-hi);font-variant-numeric:tabular-nums}
 .qreset{font-size:12px;color:var(--muted);margin-top:10px}
 .chip.online{color:#9ff0c0;border-color:rgba(120,230,170,.55);display:inline-flex;align-items:center;gap:6px}
 .chip.online i{width:7px;height:7px;border-radius:50%;background:#5be38f;box-shadow:0 0 8px #5be38f}
@@ -298,6 +310,7 @@ details.how summary::-webkit-details-marker{display:none}
     <div class="menulist">
       <button class="btn" id="menuresume">Resume</button>
       <button class="btn ghost" id="snd" aria-label="Music on or off">Music: <span id="sndv">On</span></button>
+      <button class="btn ghost" id="menulog" hidden>Captain's log</button>
       <button class="btn ghost" id="menufleet" hidden>Fleet</button>
       <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
       <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
@@ -367,6 +380,18 @@ details.how summary::-webkit-details-marker{display:none}
     <div class="blist" id="blist"></div>
     <div class="qreset" id="bnote"></div>
     <button class="btn ghost" id="boardclose">Back</button>
+  </div>
+</div>
+<div class="overlay" id="logov" hidden>
+  <div class="card">
+    <div class="eyebrow">Everything you've done at sea</div>
+    <h2>Captain's log</h2>
+    <div class="stats" id="logstats"></div>
+    <div class="dsec"><div class="lbl">Your title <span id="logtitle"></span></div><div class="chiprow wrap" id="logtitles"></div></div>
+    <div id="logcos"></div>
+    <p class="dressmsg" id="logmsg"></p>
+    <div class="dsec"><div class="lbl">Achievements <span id="logcount"></span></div><div class="achlist" id="logach"></div></div>
+    <button class="btn ghost" id="logclose">Back</button>
   </div>
 </div>
 <div class="overlay" id="fleetov" hidden>
@@ -681,6 +706,8 @@ const M={
   coconut:std({color:L('#5a3b1f'),roughness:.7}),
   plank:std({map:woodTex,color:L('#8a5a34'),roughness:.8}),
   ball:std({color:L('#1a1a1a'),metalness:.8,roughness:.35}),
+  fireball:std({color:L('#4a1606'),emissive:L('#ff6a1a'),emissiveIntensity:2.2,metalness:.4,roughness:.4}),purpleball:std({color:L('#2a1040'),emissive:L('#b25cff'),emissiveIntensity:2,metalness:.5,roughness:.35}),goldball:std({color:L('#ffcf55'),metalness:1,roughness:.2}),
+  parrotR:std({color:L('#d8261c'),roughness:.6}),parrotG:std({color:L('#2fae3c'),roughness:.6}),parrotB:std({color:L('#2d5fd0'),roughness:.6}),beak:std({color:L('#f2c230'),roughness:.5}),fur:std({color:L('#6b4423'),roughness:.9}),furL:std({color:L('#c9a27a'),roughness:.9}),
   hotball:std({color:L('#3a1208'),emissive:L('#ff4a1a'),emissiveIntensity:1.4,metalness:.5,roughness:.4}),
   coin:std({color:L('#ffcf55'),metalness:1,roughness:.22}),parch:std({color:L('#e9d9a8'),roughness:.9}),ribbon:std({color:L('#a3271c'),roughness:.6}),
   barrel:std({map:woodTex,color:L('#9a6a3e'),roughness:.75}),
@@ -738,6 +765,19 @@ const G={
   castle:new THREE.BoxGeometry(1.25,.5,1),
 };
 const flagMats={};
+const TRAIL_COL=['#ffffff','#ffd65a','#c58bff','#5be3a0'];
+const ballMat=i=>[M.ball,M.fireball,M.purpleball,M.goldball][i|0]||M.ball;
+// figureheads (1 mermaid, 2 lion, 3 eagle, 4 sea serpent) and pets (1 parrot, 2 monkey), all small and simple
+function addFigurehead(add,kind,x,y){const B=M.brass;
+  if(kind===1){add(new THREE.CylinderGeometry(.12,.2,.55,10),B,x,y+.05,0).rotation.z=-.5;add(new THREE.SphereGeometry(.13,10,8),B,x+.16,y+.36,0);add(new THREE.ConeGeometry(.16,.3,8),B,x-.2,y-.25,0).rotation.z=2.4;}
+  else if(kind===2){add(new THREE.SphereGeometry(.24,12,10),B,x+.08,y+.2,0);const mn=add(new THREE.TorusGeometry(.22,.09,8,16),B,x+.02,y+.2,0);mn.rotation.y=Math.PI/2;add(new THREE.BoxGeometry(.18,.12,.14),B,x+.3,y+.14,0);}
+  else if(kind===3){add(new THREE.SphereGeometry(.17,10,8),B,x+.1,y+.26,0);add(new THREE.ConeGeometry(.07,.2,8),B,x+.3,y+.24,0).rotation.z=-Math.PI/2;[1,-1].forEach(s2=>{const w=add(new THREE.BoxGeometry(.5,.05,.42),B,x-.05,y+.15,s2*.3);w.rotation.x=s2*.5;});}
+  else if(kind===4){for(let i=0;i<5;i++)add(new THREE.SphereGeometry(.16-i*.015,10,8),B,x+.08-i*.1,y+.05+Math.sin(i*1.4)*.14+i*.05,0);add(new THREE.ConeGeometry(.1,.22,8),B,x+.24,y+.12,0).rotation.z=-Math.PI/2;}}
+function addPet(add,kind,x,y){
+  if(kind===1){add(new THREE.SphereGeometry(.12,10,8),M.parrotR,x,y+.12,0).scale.set(.9,1.3,.9);add(new THREE.SphereGeometry(.08,10,8),M.parrotR,x+.03,y+.3,0);add(new THREE.ConeGeometry(.035,.08,6),M.beak,x+.11,y+.29,0).rotation.z=-Math.PI/2;
+    [1,-1].forEach(s2=>add(new THREE.BoxGeometry(.16,.05,.03),M.parrotB,x-.02,y+.13,s2*.1).rotation.z=.6);add(new THREE.BoxGeometry(.04,.2,.06),M.parrotG,x-.1,y-.02,0).rotation.z=.4;}
+  else if(kind===2){add(new THREE.SphereGeometry(.13,10,8),M.fur,x,y+.12,0);add(new THREE.SphereGeometry(.1,10,8),M.fur,x+.02,y+.3,0);add(new THREE.SphereGeometry(.06,8,6),M.furL,x+.09,y+.28,0);
+    [1,-1].forEach(s2=>add(new THREE.SphereGeometry(.04,8,6),M.furL,x,y+.33,s2*.1));add(new THREE.TorusGeometry(.12,.025,6,12,Math.PI*1.3),M.fur,x-.16,y+.1,0).rotation.y=Math.PI/2;}}
 const lampGlowM=new THREE.SpriteMaterial({map:softTex,color:L('#ffb85a'),transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
 function makeShip(o){
   const g=new THREE.Group(),inner=new THREE.Group();g.add(inner);
@@ -750,6 +790,9 @@ function makeShip(o){
   const add=(geo,m,x,y,z,parent=inner)=>{const me=new THREE.Mesh(geo,m);me.position.set(x,y,z);me.castShadow=true;me.receiveShadow=true;parent.add(me);return me;};
   add(hullGeo(o.side,o.bottom,o.trim,o.band?(o.tband||o.band):null),hullM,0,0,0);
   add(DECK,deckM,0,0,0);
+  const sub=(px,py,sc)=>{const gg=new THREE.Group();gg.position.set(px,py,0);gg.scale.setScalar(sc);inner.add(gg);return (geo,m,x,y,z)=>add(geo,m,x,y,z,gg);};
+  if(o.fig)addFigurehead(sub(LB+.05,edge(LB).yt-.05,2.3),o.fig,0,0);
+  if(o.pet)addPet(sub(-LS+.75,edge(-LS+.75).yt+.08+.5*((o.castleH||1)-1),2.4),o.pet,0,0);
   const sc=edge(-1.9),cH=o.castleH||1;const castle=add(G.castle,castleM,-1.95,sc.yt+.12+.25*(cH-1),0);castle.scale.z=sc.w*1.8;castle.scale.y=cH;
   if(o.forecastle){const fe=edge(2.2);const fc=add(G.castle,castleM,2.15,fe.yt+.1,0);fc.scale.set(.85,.8,fe.w*1.7);}
   const ropes=[];
@@ -1077,7 +1120,7 @@ function setShip(id){
   const old=pship,frac=Math.max(0,Math.min(1,P.hp/Math.max(1,maxHp())));
   shipId=shipById(id).id;owned[shipId]=true;
   sinking=sinking.filter(s=>s.g!==old);disposeGroup(old);
-  pship=makeShip(lookFor(shipId,Object.assign(paintLook(paint),fleetFlag(myFleetTag()))));P.r=1.7*SHIP().scale;
+  pship=makeShip(lookFor(shipId,Object.assign(paintLook(paint),fleetFlag(myFleetTag()),cosShip(myCos()))));P.r=1.7*SHIP().scale;
   P.hp=Math.max(1,Math.round(maxHp()*frac));if(typeof updAim==='function')updAim();
 }
 function careerFrom(sv){xp=sv?(sv.xp|0):0;owned=Object.assign({brig:true},(sv&&sv.ships&&typeof sv.ships==='object')?sv.ships:{});
@@ -1471,7 +1514,76 @@ let lastQuestDone=null;
 function dailyNotice(){if(!dailyOn())return;const st=dailyState(),k=st.day+':'+st.quests.map(q=>q.done?1:0).join('');
   if(lastQuestDone&&lastQuestDone.slice(0,lastQuestDone.indexOf(':'))===String(st.day)){st.quests.forEach((q,i)=>{if(q.done&&!q.claimed&&lastQuestDone.split(':')[1][i]==='0')setTimeout(()=>{showBanner('Quest done: '+questText(q.Q));chime(true);},400);});}
   lastQuestDone=k;daily.lastKey='';}
+/*ACHDEF*/// Achievements come from the captain's online record. Some give a title; some unlock looks (cosmetics).
+const ACH=[
+  {id:'first',n:'First Blood',d:'Sink your first ship',st:'sunk',need:1,ti:'Sea Dog'},
+  {id:'sloops',n:'Sloop Hunter',d:'Sink 50 pirate sloops',st:'ks.sloop',need:50,ti:'Sloop Hunter'},
+  {id:'galleons',n:'Galleon Breaker',d:'Sink 25 pirate galleons',st:'ks.galleon',need:25,ti:'Galleon Breaker'},
+  {id:'boss',n:'Boss Slayer',d:'Sink a boss ship',st:'ks.boss',need:1,ti:'Boss Slayer'},
+  {id:'bosses',n:'Terror of the Bosses',d:'Sink 10 boss ships',st:'ks.boss',need:10,ti:'Terror of the Bosses'},
+  {id:'kraken',n:'Kraken Slayer',d:'Help slay the kraken',st:'ks.kraken',need:1,ti:'Kraken Slayer'},
+  {id:'treasure',n:'Treasure Hunter',d:'Dig up 5 treasures',st:'ks.treasure',need:5,ti:'Treasure Hunter'},
+  {id:'raider',n:'Raider',d:'Sink 5 merchant ships',st:'ks.merchant',need:5,ti:'Raider'},
+  {id:'guardian',n:'Guardian of Trade',d:'Escort 5 convoys to port',st:'ks.escort',need:5,ti:'Guardian of Trade'},
+  {id:'hunter',n:'Captain Hunter',d:'Sink 10 other captains',st:'ks.captain',need:10,ti:'Captain Hunter'},
+  {id:'rich',n:'Wealthy',d:'Earn 10,000 gold',st:'earned',need:10000,ti:'the Wealthy'},
+  {id:'faithful',n:'Faithful',d:'Open the daily chest 7 days in a row',st:'bs',need:7,ti:'the Faithful'},
+  {id:'admiral',n:'Admiral of the Fleet',d:'Reach the rank of Admiral',st:'xp',need:9000,ti:'Admiral of the Fleet'},
+  {id:'sotl',n:'Ship of the Line',d:'Own a Man-o\'-War',st:'ship.manowar',need:1,ti:'Ship of the Line'},
+  {id:'fleet',n:'Fleet Sailor',d:'Join a fleet',st:'fleet',need:1,ti:'Fleet Sailor'},
+];
+// Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (or nothing).
+const COS={
+  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'}],
+  ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'}],
+  fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
+  pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
+};
+const COS_SLOTS=['trail','ball','fig','pet'];
+function achStat(s,st){if(!s)return 0;if(st.startsWith('ks.'))return (s.ks&&s.ks[st.slice(3)])|0;if(st==='ship.manowar')return s.ships&&s.ships.manowar?1:0;if(st==='fleet')return s.fleet?1:0;return s[st]|0;}
+const achDone=(s,a)=>achStat(s,a.st)>=a.need;
+function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return false;
+  return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
+/*ENDACHDEF*/
 function reportDrawing(tg,dw){}
+/* ---- captain's log, titles and looks (online; the referee keeps the counts) ---- */
+function logOn(){return false;}
+function logSave(){return null;}
+const titleOf=id=>{const a=ACH.find(x=>x.id===id);return a?a.ti:'';};
+function cosOf(cx){const c=typeof cx==='string'&&/^[0-9]{4}$/.test(cx)?cx:'0000';return{trail:+c[0],ball:+c[1],fig:+c[2],pet:+c[3]};}
+const cosShip=c=>({fig:c.fig||0,pet:c.pet||0});
+let localCx=null;   // what I just chose, until the referee's copy catches up
+function myCos(){const sv=logSave();return cosOf(localCx||(sv&&sv.cx)||'0000');}
+function cosCode(c){return ''+c.trail+c.ball+c.fig+c.pet;}
+const COS_LABEL={trail:'Wake',ball:'Cannonballs',fig:'Figurehead',pet:'Ship\'s pet'};
+function renderLog(){const sv=logSave()||{};const st=(k)=>achStat(sv,k);
+  const ks=k=>st('ks.'+k),tot=['sloop','galleon','boss','merchant','kraken'].reduce((a,k)=>a+ks(k),0)+ks('captain');
+  const rows=[['Ships sunk',sv.sunk|0],['Sloops',ks('sloop')],['Galleons',ks('galleon')],['Bosses',ks('boss')],['Merchants',ks('merchant')],['Krakens',ks('kraken')],
+    ['Captains sunk',ks('captain')],['Treasures',ks('treasure')],['Convoys escorted',ks('escort')],['Gold earned',(sv.earned|0).toLocaleString()],['Times sunk',sv.dn|0],['Best chest streak',sv.bs|0]];
+  $('logstats').innerHTML='';for(const [n,v] of rows){const d=document.createElement('div');d.className='stat';d.innerHTML=`<b>${v}</b><span>${n}</span>`;$('logstats').appendChild(d);}
+  // titles
+  const tbox=$('logtitles');tbox.innerHTML='';const cur=sv.title||'';$('logtitle').textContent=cur?titleOf(cur):'none';
+  const none=document.createElement('button');none.className='tchip'+(cur?'':' on');none.textContent='No title';none.onclick=()=>{econRequest({k:'title',id:''});$('logmsg').textContent='Title removed.';};tbox.appendChild(none);
+  for(const a of ACH)if(achDone(sv,a)){const b=document.createElement('button');b.className='tchip'+(cur===a.id?' on':'');b.textContent=a.ti;b.onclick=()=>{econRequest({k:'title',id:a.id});$('logmsg').textContent='Other captains now see you as "'+a.ti+'".';};tbox.appendChild(b);}
+  // looks
+  const cb=$('logcos');cb.innerHTML='';const mc=myCos();
+  for(const k of COS_SLOTS){const sec=document.createElement('div');sec.className='dsec';sec.innerHTML=`<div class="lbl">${COS_LABEL[k]} <span>${COS[k][mc[k]].n}</span></div>`;const row=document.createElement('div');row.className='chiprow wrap';
+    COS[k].forEach((o,i)=>{const a=o.a&&ACH.find(x=>x.id===o.a),ok=!a||achDone(sv,a);const b=document.createElement('button');b.className='tchip'+(mc[k]===i?' on':'')+(ok?'':' locked');b.id='cos-'+k+i;b.textContent=(ok?'':'🔒 ')+o.n;
+      b.onclick=()=>{if(!ok){$('logmsg').textContent='Unlock with the achievement "'+a.n+'": '+a.d+'.';return;}const c={...myCos(),[k]:i};localCx=cosCode(c);econRequest({k:'cos',cx:localCx});setShip(shipId);chime(true);renderLog();$('logmsg').textContent=COS_LABEL[k]+': '+o.n;};
+      row.appendChild(b);});sec.appendChild(row);cb.appendChild(sec);}
+  // achievements
+  const al=$('logach');al.innerHTML='';let n=0;
+  for(const a of ACH){const v=Math.min(a.need,st(a.st)),done=v>=a.need;if(done)n++;const d=document.createElement('div');d.className='ach'+(done?' done':'');
+    d.innerHTML=`<span class="ic">${done?'🏆':'⚓'}</span><div><b></b><small></small></div><span class="pr">${done?'✓':(a.need>1?v.toLocaleString()+' / '+a.need.toLocaleString():'')}</span>`;
+    d.querySelector('b').textContent=a.n;d.querySelector('small').textContent=a.d+(a.ti?' · title: '+a.ti:'');al.appendChild(d);}
+  $('logcount').textContent=n+' of '+ACH.length;}
+function openLog(){if(!logOn())return;audio();$('menuov').hidden=true;$('logmsg').textContent='';renderLog();$('logov').hidden=false;}
+$('menulog').onclick=openLog;$('logclose').onclick=()=>{audio();$('logov').hidden=true;$('menuov').hidden=false;};
+// announce achievements the referee's counts just reached
+let achKnown=null;
+function achNotice(){const sv=logSave();if(!sv)return;const done=ACH.filter(a=>achDone(sv,a)).map(a=>a.id);
+  if(achKnown){const fresh=done.filter(id=>!achKnown.includes(id));fresh.forEach((id,i)=>{const a=ACH.find(x=>x.id===id);setTimeout(()=>{showBanner('Achievement: '+a.n);chime(true);setTimeout(()=>chime(true),150);},700+i*2000);});}
+  achKnown=done;if(localCx&&sv.cx===localCx)localCx=null;if(!$('logov').hidden)renderLog();}
 /* ---- fleets (the app: online Open sea, Google captains; the referee runs them) ---- */
 function fleetOn(){return false;}
 function fleetGoogle(){return true;}
@@ -1578,7 +1690,7 @@ function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.cl
   menuPaused=!onlineAtSea();if(menuPaused)state='paused';
   $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
   $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
-  $('menureport').hidden=!onlineAtSea();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
+  $('menureport').hidden=!onlineAtSea();$('menulog').hidden=!logOn();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
   $('menuleave').textContent=MODE==='open'?'Main menu':'Leave battle';
   $('menuleavenote').textContent=MODE==='open'?'Your voyage is saved when you leave.':'';
   $('menuov').hidden=false;}
@@ -1592,6 +1704,7 @@ function handleBack(){
   if(!$('dailyov').hidden){$('dailyclose').click();return true;}
   if(!$('boardov').hidden){$('boardclose').click();return true;}
   if(!$('fleetov').hidden){$('fleetclose').click();return true;}
+  if(!$('logov').hidden){$('logclose').click();return true;}
   if(!$('menuov').hidden){closeMenu();return true;}
   const jo=$('joinov');if(jo&&!jo.hidden){$('joinback').click();return true;}
   if(state==='play'){openMenu();return true;}
@@ -1634,7 +1747,7 @@ stick.appendChild(knob);stick.hidden=true;document.body.appendChild(stick);
 /* ================= combat helpers ================= */
 function shoot(s,ang,speed,owner,quiet,off=0){
   const ox=s.x+Math.cos(s.a)*off,oz=s.z+Math.sin(s.a)*off,reach=off?s.r*.6:s.r+1.8;
-  const m=new THREE.Mesh(BALL,owner==='b'?M.hotball:M.ball);m.castShadow=true;scene.add(m);
+  const m=new THREE.Mesh(BALL,owner==='b'?M.hotball:owner==='p'?ballMat(myCos().ball):M.ball);m.castShadow=true;scene.add(m);
   const sx=ox+Math.cos(ang)*reach,sz=oz+Math.sin(ang)*reach;
   const bvx=Math.cos(ang)*speed+Math.cos(s.a)*s.v*.5,bvz=Math.sin(ang)*speed+Math.sin(s.a)*s.v*.5;
   balls.push({m,x:sx,z:sz,vx:bvx,vz:bvz,life:1.1,max:1.1,owner:owner==='p'?'p':'e',trail:0});
@@ -1660,8 +1773,8 @@ function gameOver(){
 }
 function freeSpot(near,minD,maxD){for(let k=0;k<20;k++){const a=rnd(0,TAU),d=rnd(minD,maxD),B=BOUND(),x=Math.max(-B+3,Math.min(B-3,near.x+Math.cos(a)*d)),z=Math.max(-B+3,Math.min(B-3,near.z+Math.sin(a)*d));
   if(islands.every(r=>Math.hypot(x-r.x,z-r.z)>r.r*1.5+2))return{x,z};}return null;}
-function wake(s,size){const bx=s.x-Math.cos(s.a)*2.6*size,bz=s.z-Math.sin(s.a)*2.6*size;
-  spark(bx+rnd(-.3,.3),0,bz+rnd(-.3,.3),{flat:true,op:.7,s:1.3*size,life:2.2,grow:2.4});
+function wake(s,size,col){const bx=s.x-Math.cos(s.a)*2.6*size,bz=s.z-Math.sin(s.a)*2.6*size;
+  spark(bx+rnd(-.3,.3),0,bz+rnd(-.3,.3),col&&col!=='#ffffff'?{flat:true,op:.8,s:1.3*size,life:2.2,grow:2.4,color:col,add:true}:{flat:true,op:.7,s:1.3*size,life:2.2,grow:2.4});
   if(s.v>7&&Math.random()<.5){const fx=s.x+Math.cos(s.a)*3*size,fz=s.z+Math.sin(s.a)*3*size;
     spark(fx,.4,fz,{tex:smokeTex,color:'#ffffff',op:.7,s:rnd(.5,.9)*size,life:.5,vx:Math.cos(s.a+Math.PI/2*(Math.random()<.5?1:-1))*2.5,vy:rnd(1.5,3),vz:Math.sin(s.a+Math.PI/2)*2.5,g:9});}}
 
@@ -1694,7 +1807,8 @@ function netSend(){
 function remoteName(r){const key=r.by||(r.pr&&r.pr.id);if(key&&NET.names[key])return NET.names[key];
   if(key&&NET.user&&!r.asked){r.asked=true;NET.user.profiles([key]).then(ps=>{const n=ps[key]&&ps[key].name;if(n){NET.names[key]=n;r.tagKey='';}}).catch(()=>{});}
   return 'Captain';}
-function tagTex(name,hp,mx,col,mate){const c=document.createElement('canvas');c.width=256;c.height=72;const g=c.getContext('2d');
+function tagTex(name,hp,mx,col,mate,ttl){const c=document.createElement('canvas');c.width=256;c.height=ttl?94:72;const g=c.getContext('2d');
+  if(ttl){g.font='italic 600 19px "Barlow Semi Condensed",Arial,sans-serif';g.textAlign='center';g.lineWidth=4;g.strokeStyle='rgba(0,0,0,.6)';g.strokeText(ttl,128,88);g.fillStyle='#f1d897';g.fillText(ttl,128,88);}
   g.font='700 30px "Barlow Semi Condensed",Arial,sans-serif';g.textAlign='center';g.lineWidth=6;g.strokeStyle='rgba(0,0,0,.65)';g.strokeText(name,128,32);g.fillStyle=mate?'#a8ffc0':'#ffffff';g.fillText(name,128,32);
   const w=Math.min(200,mx*22),seg=w/mx;for(let i=0;i<mx;i++){g.fillStyle=i<hp?'#e2574a':'rgba(255,255,255,.25)';g.fillRect(128-w/2+i*seg+2,46,seg-4,12);}
   g.fillStyle=col;g.fillRect(118,62,20,6);
@@ -1703,11 +1817,11 @@ function ensureRemoteShip(r){
   if(r.ship)return;const ci=((r.pr.c|0)%NET_COLORS.length+NET_COLORS.length)%NET_COLORS.length;
   const RS=SHIPS[r.pr.sh|0]||SHIPS[0];r.shi=r.pr.sh|0;r.sc=RS.scale;
   const pt={lk:r.pr.lk,dw:typeof r.pr.dw==='string'?r.pr.dw:''};r.lkKey=remoteLookKey(r.pr);
-  r.ship=makeShip(lookFor(RS.id,Object.assign(decodeLk(pt.lk)?paintLook(pt,hideThis(pt.dw)):{sail:NET_SAILS[ci],stripe:NET_COLORS[ci],flag:NET_COLORS[ci]},fleetFlag(r.pr.fl),{guns:true})));
+  r.ship=makeShip(lookFor(RS.id,Object.assign(decodeLk(pt.lk)?paintLook(pt,hideThis(pt.dw)):{sail:NET_SAILS[ci],stripe:NET_COLORS[ci],flag:NET_COLORS[ci]},fleetFlag(r.pr.fl),cosShip(cosOf(r.pr.cx)),{guns:true})));
   r.tag=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false,depthWrite:false}));r.tag.renderOrder=12;r.tag.scale.set(7,2,1);scene.add(r.tag);r.tagKey='';
   r.x=r.pr.x;r.z=r.pr.z;r.a=r.pr.a;r.vis=true;r.col=NET_COLORS[ci];
 }
-const remoteLookKey=pr=>(pr.lk||'')+(pr.dw||'')+(hideThis(pr.dw)?'h':'')+'|'+(pr.fl||'')+(fleetByTag(pr.fl)?'f':'');
+const remoteLookKey=pr=>(pr.lk||'')+(pr.dw||'')+(hideThis(pr.dw)?'h':'')+'|'+(pr.fl||'')+(fleetByTag(pr.fl)?'f':'')+'|'+(pr.cx||'');
 function dropRemoteShip(r){if(r.ship){disposeGroup(r.ship);r.ship=null;}if(r.tag){scene.remove(r.tag);if(r.tag.material.map)r.tag.material.map.dispose();r.tag.material.dispose();r.tag=null;}}
 function netProcess(list){
   let online=0,sailing=0;const seen=new Set();
@@ -1730,7 +1844,7 @@ function netProcess(list){
     // their new cannon shots
     for(const sh of (pr.s||[])){const id=sh[0]|0;if(id<=r.maxShot)continue;r.maxShot=id;
       const [_,x,z,vx,vz]=sh;if(typeof x!=='number'||Math.hypot(x-P.x,z-P.z)>140)continue;
-      const m=new THREE.Mesh(BALL,M.ball);m.castShadow=true;scene.add(m);balls.push({m,x,z,vx:+vx||0,vz:+vz||0,life:1.1,max:1.1,owner:'r',from:p.peer,trail:0});
+      const m=new THREE.Mesh(BALL,ballMat(cosOf(pr.cx).ball));m.castShadow=true;scene.add(m);balls.push({m,x,z,vx:+vx||0,vz:+vz||0,life:1.1,max:1.1,owner:'r',from:p.peer,trail:0});
       spark(x,1.3,z,{color:'#ffd99a',add:true,s:1.8,life:.1});const dd=Math.hypot(x-P.x,z-P.z);if(dd<60)noise(.25,800,.3*(1-dd/60));}
   }
   for(const [k,r] of NET.peers)if(!seen.has(k)){dropRemoteShip(r);NET.peers.delete(k);}
@@ -1747,10 +1861,10 @@ function netTick(dt){
     if(Math.hypot(tx-r.x,tz-r.z)>30){r.x=tx;r.z=tz;}
     r.ship.userData.ground.forEach(m=>m.visible=r.ship.visible);
     if(r.ship.visible){poseShip(r.ship,r.x,r.z,r.a,clock,r.peer.length,0);r.ship.userData.guns.visible=!!pr.sg;
-      if(wakeT<=0&&r.v>2.5)wake(r,r.sc||1);}
+      if(wakeT<=0&&r.v>2.5)wake(r,r.sc||1,TRAIL_COL[cosOf(pr.cx).trail]);}
     if(r.tag){r.tag.visible=r.ship.visible&&Math.hypot(r.x-P.x,r.z-P.z)<90;r.tag.position.set(r.x,9*(r.sc||1),r.z);
-      const mate=isMate(r.peer),nm=(pr.fl&&/^[A-Z0-9]{2,4}$/.test(pr.fl)?'['+pr.fl+'] ':'')+remoteName(r)+(pr.dk?' (in port)':''),key=nm+'|'+pr.hp+'|'+pr.mx+'|'+mate;
-      if(key!==r.tagKey){r.tagKey=key;if(r.tag.material.map)r.tag.material.map.dispose();r.tag.material.map=tagTex(nm,pr.hp|0,Math.max(1,pr.mx|0),mate?'#5be38f':r.col,mate);r.tag.material.needsUpdate=true;}}
+      const ttl=titleOf(pr.ti),mate=isMate(r.peer),nm=(pr.fl&&/^[A-Z0-9]{2,4}$/.test(pr.fl)?'['+pr.fl+'] ':'')+remoteName(r)+(pr.dk?' (in port)':''),key=nm+'|'+pr.hp+'|'+pr.mx+'|'+mate+'|'+ttl;
+      if(key!==r.tagKey){r.tagKey=key;if(r.tag.material.map)r.tag.material.map.dispose();r.tag.material.map=tagTex(nm,pr.hp|0,Math.max(1,pr.mx|0),mate?'#5be38f':r.col,mate,ttl);r.tag.scale.y=ttl?2.6:2;r.tag.material.needsUpdate=true;}}
   }
   // HUD
   const el=$('online'),inGame=state!=='title';
@@ -1801,7 +1915,7 @@ function update(dt){
     else if(firing&&P.cool<=0){P.cool=cd;const S=SHIP(),n=S.bow,lat=.55*S.scale,px=Math.cos(P.a+Math.PI/2),pz=Math.sin(P.a+Math.PI/2);
       for(let i=0;i<n;i++){const l=n>1?-lat+2*lat*i/(n-1):0;shoot({x:P.x+px*l,z:P.z+pz*l,a:P.a,v:P.v,r:P.r},P.a,30,'p',i>0);}
       if(up.triple){shoot(P,P.a-.16,29,'p',true);shoot(P,P.a+.16,29,'p',true)}}
-    if(doWake&&Math.abs(P.v)>2.5)wake(P,SHIP().scale);
+    if(doWake&&Math.abs(P.v)>2.5)wake(P,SHIP().scale,TRAIL_COL[myCos().trail]);
 
     puTimer-=dt;if(puTimer<=0){puTimer=rnd(16,24);const s=freeSpot(P,10,20);if(s)addPickup(randPU(),s.x,s.z);}
     if(MODE==='open')openWorldTick(dt);
