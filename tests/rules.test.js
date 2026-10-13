@@ -244,3 +244,10 @@ test('the size of the open sea can only grow during a day, then starts again', (
   assert.strictEqual(db.as({ uid: 'A' }).write('/world', { day, tier: 9 }, { now: T0 }).allowed, false);
   assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(400, 0, {}), T0).allowed, false, 'new ships still start at a port');
 });
+
+test('schooners: only if owned, and their hull is 4 plus armour', () => {
+  const owns = targaryen.database(rules, { saves: { A: { ships: { brig: true, schooner: true }, up: { hull: 0 } } } }, T0);
+  assert.strictEqual(writeAs(owns, 'A', '/players/A', ship(21, 0, { sh: 5, mx: 4, hp: 4 }), T0).allowed, true);
+  assert.strictEqual(writeAs(owns, 'A', '/players/A', ship(21, 0, { sh: 5, mx: 6, hp: 6 }), T0).allowed, false);
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh: 5, mx: 4, hp: 4 }), T0).allowed, false);
+});

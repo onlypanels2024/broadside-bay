@@ -294,3 +294,10 @@ test('the starter reward is given once per captain, even after a new voyage', ()
   const reset = E.processRequest(r.save, { k: 'reset' }, null, NOW).save;
   assert.strictEqual(E.processRequest(reset, { k: 'starter' }, null, NOW).ok, false);
 });
+
+test('schooner costs 600 at Bosun; fire ships pay and count as ships', () => {
+  const r = E.processRequest({ ...E.fresh(), gold: 700, xp: 300 }, { k: 'ship', id: 'schooner' }, inPort, NOW);
+  assert.strictEqual(r.ok, true); assert.strictEqual(r.save.gold, 100);
+  const k = E.processRequest(null, { k: 'kill', e: 'fireship' }, atSea, NOW);
+  assert.deepStrictEqual([k.save.gold, k.save.sunk, k.save.ks.fireship], [120, 1, 1]);
+});

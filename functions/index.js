@@ -191,7 +191,7 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
   });
   if (verdict && !verdict.ok) logger.info('request refused', { uid, k: req.k, reason: verdict.reason });
   if (verdict && verdict.ok && req.k === 'kill') await portScore(db, myFleet, port, E.PORT_PTS[req.e] || 0);
-  if (verdict && verdict.ok && req.k === 'kill') await boardAdd(db, uid, player && player.n, { s: ['sloop', 'galleon', 'boss', 'merchant', 'kraken'].includes(req.e) ? 1 : 0, g: E.KILL[req.e].g }, res.snapshot.val());
+  if (verdict && verdict.ok && req.k === 'kill') await boardAdd(db, uid, player && player.n, { s: ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken'].includes(req.e) ? 1 : 0, g: E.KILL[req.e].g }, res.snapshot.val());
   else if (verdict && verdict.ok && (req.k === 'daily' || req.k === 'quest') && await isGoogle(uid)) await boardAdd(db, uid, player && player.n, {}, res.snapshot.val());
   if (verdict && verdict.strike) await strike(db, uid, 'claims: ' + verdict.reason);
 });

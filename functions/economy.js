@@ -12,8 +12,9 @@
     frigate: { rank: 3, price: 2000, hull: 9 },
     galleon: { rank: 5, price: 4500, hull: 12 },
     manowar: { rank: 7, price: 9000, hull: 15 },
+    schooner: { rank: 2, price: 600, hull: 4 },
   };
-  const SHIP_ORDER = ['brig', 'corvette', 'frigate', 'galleon', 'manowar'];
+  const SHIP_ORDER = ['brig', 'corvette', 'frigate', 'galleon', 'manowar', 'schooner'];
   const UPGRADES = {
     broadside: { max: 1, price: () => 350 },
     reload: { max: 3, price: l => 140 + l * 110 },
@@ -27,6 +28,7 @@
     sloop: { g: 70, xp: 20, pts: 1 },
     galleon: { g: 210, xp: 50, pts: 2.5 },
     boss: { g: 550, xp: 250, pts: 0 },
+    fireship: { g: 120, xp: 35, pts: 1.5 },
     // sea events: each has its own minimum time between claims (gap, ms)
     treasure: { g: 400, xp: 60, pts: 0, gap: 60000 },
     merchant: { g: 500, xp: 80, pts: 0, gap: 150000 },
@@ -74,7 +76,7 @@
     if (s.ck && typeof s.ck === 'object' && num(s.ck.n) && num(s.ck.t)) o.ck = { n: s.ck.n, t: s.ck.t }; else delete o.ck;
     // daily chest {d: last day claimed, st: streak} and today's quests {d: day, p: [progress x3], c: [claimed x3]}
     // lifetime counts for the captain's log and achievements
-    o.ks = {}; for (const k of ['sloop', 'galleon', 'boss', 'merchant', 'kraken', 'treasure', 'escort', 'captain', 'duel']) { const v = s.ks && s.ks[k]; if (num(v) && v > 0) o.ks[k] = Math.floor(v); }
+    o.ks = {}; for (const k of ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'treasure', 'escort', 'captain', 'duel']) { const v = s.ks && s.ks[k]; if (num(v) && v > 0) o.ks[k] = Math.floor(v); }
     if (!Object.keys(o.ks).length) delete o.ks;
     for (const k of ['dn', 'bs']) { if (num(s[k]) && s[k] > 0) o[k] = Math.floor(s[k]); else delete o[k]; }
     if (typeof s.title === 'string' && ACH.some(a => a.id === s.title)) o.title = s.title; else delete o.title;
@@ -198,7 +200,7 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
         }
         else { if (rl.b < K.pts) return reject('sinking faster than pirates appear'); rl.b -= K.pts; }
         rl.rj = 0; s.rl = rl;
-        const ship = ['sloop', 'galleon', 'boss', 'merchant', 'kraken'].includes(req.e);
+        const ship = ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken'].includes(req.e);
         s.ks = { ...(s.ks || {}), [req.e]: ((s.ks && s.ks[req.e]) | 0) + 1 };
         const g = Math.round(K.g * (opts && opts.goldMul || 1));
         s.gold += g; s.earned += g; s.xp += K.xp; if (ship) s.sunk += 1;
@@ -335,7 +337,7 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
   }
   // Port battles: fleets earn points for their port by sinking ships within PORT_R of it. Last week's winner holds
   // the port this week, and its captains get PORT_BONUS more gold for sinkings near it.
-  const PORT_R = 70, PORT_BONUS = 1.25, PORT_PTS = { sloop: 1, galleon: 2, boss: 5, merchant: 3, kraken: 5, captain: 3 };
+  const PORT_R = 70, PORT_BONUS = 1.25, PORT_PTS = { sloop: 1, galleon: 2, fireship: 2, boss: 5, merchant: 3, kraken: 5, captain: 3 };
   const portNear = (x, z) => num(x) && num(z) ? PORTS.findIndex(([px, pz]) => Math.hypot(x - px, z - pz) < PORT_R) : -1;
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
