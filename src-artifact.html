@@ -170,6 +170,11 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .chap{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;padding:10px;border-radius:9px;border:1px solid rgba(214,178,98,.3);background:rgba(255,255,255,.04);text-align:left}
 .chap b{font-family:var(--display);color:var(--parch);font-size:15px}.chap small{grid-column:1/-1;color:#b8ccd3;font-size:13px;line-height:1.35}
 .chap .stars{color:var(--brass-hi);letter-spacing:2px}.chap.locked{opacity:.5}
+.tutbox{grid-column:1/-1;padding:10px 12px;margin-bottom:6px;border-radius:10px;border:1px solid var(--brass);background:rgba(214,178,98,.1);font-size:14px;color:var(--parch)}
+.tutbox .btn{display:block;margin:8px auto 0}.tutbox .linkbtn{margin-top:4px}
+.objective.tut{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 205px);width:min(440px,calc(100vw - 32px));box-sizing:border-box;z-index:2;font-size:16px;text-align:center;padding:10px 14px;border-color:var(--brass-hi);box-shadow:0 0 20px rgba(214,178,98,.35)}
+.glowpulse{animation:glowp 1.1s ease-out infinite}
+@keyframes glowp{0%{box-shadow:0 0 0 0 rgba(255,214,90,.85)}100%{box-shadow:0 0 0 24px rgba(255,214,90,0)}}
 .qreset{font-size:12px;color:var(--muted);margin-top:10px}
 .chip.online{color:#9ff0c0;border-color:rgba(120,230,170,.55);display:inline-flex;align-items:center;gap:6px}
 .chip.online i{width:7px;height:7px;border-radius:50%;background:#5be38f;box-shadow:0 0 8px #5be38f}
@@ -314,6 +319,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <div class="rule"></div>
     <p>Take command of your brig and make your fortune on the open sea.</p>
     <div class="modes">
+      <div class="tutbox" id="tutbox" hidden><b>New here?</b> Learn to sail and fight in two minutes.<button class="btn" id="goTut">First voyage</button><button class="linkbtn" id="skipTut">Skip it</button></div>
       <button class="btn" id="goOpen">Open sea</button>
       <div class="savenote" id="savenote" hidden></div>
       <div class="onlinenote" id="onlinenote" hidden></div>
@@ -324,18 +330,8 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
       <div class="savenote" id="storynote" hidden></div>
       <button class="btn ghost dressbtn" id="goDress">Ship &amp; colours</button>
       <button class="linkbtn" id="goBoard" hidden>Leaderboards</button>
+      <button class="linkbtn" id="replayTut" hidden>Replay the first voyage</button>
     </div>
-    <details class="how"><summary>How to play</summary>
-    <ul>
-      <li><b>Open sea (online):</b> other captains who have this game open sail the same sea. Sink them for gold, or team up against the pirates. Harbours are safe from everyone. Explore a large sea of islands. Pirate ships roam and attack when you come close. Dock at any of the three ports to repair and shop; harbours are safe. A boss ship appears every few minutes. If you sink, you return to port with your upgrades but lose half the gold you carry. Your progress is saved on this device.</li>
-      <li><b>Wave battle:</b> survive wave after wave in a small bay, shop between waves, boss every 5 waves.</li>
-      <li>Drag on the left of the screen to steer. Hold <b>Fire</b> to shoot.</li>
-      <li>The button above Fire switches between your front cannon and 3 cannons on each side. Side cannons are unlocked in the shop or with a purple power-up.</li>
-      <li>Blue lights give speed. Orange lights give rapid fire. Purple lights give side cannons for a while.</li>
-      <li><b>Ranks and ships:</b> sinking ships earns experience. Rank up from Deckhand to Admiral to unlock bigger ships in the harbour's Shipyard, then buy them with gold. Bigger ships carry more hull and cannons but are slower and turn less sharply. Open sea and Wave battle each keep their own rank and ships.</li>
-      <li><b>Ship &amp; colours:</b> choose which of your ships to sail, paint the hull, trim, sails and flag, and pick an emblem or draw your own. Do it from the main menu or in any harbour (the Paint tab). More colours and emblems unlock as you rank up.</li>
-      <li>Tap <b>Menu</b> at the top to pause, turn the music on or off, or go back to the main menu to switch between Open sea and Wave battle.</li>
-    </ul></details>
     <div class="sub" style="font-size:11px;opacity:.7">Music instrument recordings: FluidR3 GM soundfont by Frank Wen, CC BY 3.0.</div>
   </div>
 </div>
@@ -1387,7 +1383,8 @@ const SHOP=[
 ];
 function openShop(){
   state='shop';MUS.mode='shop';firing=false;joy=null;fb.classList.remove('on');$('dock').hidden=true;
-  if(MODE==='open'){const [p]=nearestPort(P.x,P.z);P.v=0;$('shoptitle').textContent=p.name;$('shopnote').textContent='Safe in harbour. Spend your gold, then set sail.';$('next').textContent='Set sail';$('shopmenu').hidden=false;saveOpen();}
+  if(MODE==='story'&&story.tut){if(story.step===5)setTimeout(()=>tutStep(6),60);P.v=0;$('shoptitle').textContent='Port Solace';$('shopnote').textContent='This is the harbour. Spend gold on upgrades, then set sail.';$('next').textContent='Finish the voyage';$('shopmenu').hidden=true;}
+  else if(MODE==='open'){const [p]=nearestPort(P.x,P.z);P.v=0;$('shoptitle').textContent=p.name;$('shopnote').textContent='Safe in harbour. Spend your gold, then set sail.';$('next').textContent='Set sail';$('shopmenu').hidden=false;saveOpen();}
   else{$('shoptitle').textContent=wave%5===0?'Boss sunk':'Wave '+wave+' cleared';
   $('shopnote').textContent='Spend your gold before you sail again. Wave '+(wave+1)+(((wave+1)%5===0)?' brings a boss ship.':' is next.');$('next').textContent='Next wave';$('shopmenu').hidden=true;}
   setTab('up');$('shopov').hidden=false;
@@ -1432,9 +1429,10 @@ function renderShop(){
       econRequest(it.id==='repair'?{k:'repair'}:{k:'up',id:it.id});updHud();renderShop();saveCareer();};
     box.appendChild(b);
   }
+  tutShopCheck();
 }
-$('next').onclick=()=>{audio();if(coop&&coopNextBlocked())return;MUS.mode='play';$('shopov').hidden=true;state='play';if(MODE==='open'){saveOpen();lastPortName='';}else if(coop&&coop.role==='guest')coop.rd=wave;else nextWave();};
-$('dock').onclick=()=>{audio();if(state==='play'&&MODE==='open')openShop();};
+$('next').onclick=()=>{audio();if(MODE==='story'&&story.tut){$('shopov').hidden=true;tutDone();return;}if(coop&&coopNextBlocked())return;MUS.mode='play';$('shopov').hidden=true;state='play';if(MODE==='open'){saveOpen();lastPortName='';}else if(coop&&coop.role==='guest')coop.rd=wave;else nextWave();};
+$('dock').onclick=()=>{audio();if(state==='play'&&(MODE==='open'||(MODE==='story'&&story.tut)))openShop();};
 
 /* ================= shipwright: choose a ship, paint it, pick or draw an emblem ================= */
 let showcase=false;
@@ -1826,7 +1824,7 @@ function storyObjective(){const c=STORY[story.i];let t=c.goal;
   if(story.i===0&&story.guard)t+=` · her hull ${Math.max(0,story.guard.hp)}/${story.guard.max}`;
   if(story.i===1)t=`Raiders left to sink: ${Math.max(0,story.left-story.kills)}`;
   $('objective').textContent='★ '+t;}
-function storyTick(dt){if(!story.on||state!=='play')return;story.t+=dt;const i=story.i;seaEventsTick(dt);
+function storyTick(dt){if(story.tut&&story.on){tutTick(dt);return;}if(!story.on||state!=='play')return;story.t+=dt;const i=story.i;seaEventsTick(dt);
   if(i===0){const m=story.guard;if(story.arrived){storyEnd(true,'The taxes reached Coral Haven safely.');return;}if(!m||m.hp<=0){storyEnd(false,'The merchant was sunk.');return;}
     story.spawnT-=dt;if(story.spawnT<=0&&story.left>0){story.spawnT=14;story.left--;const a=Math.atan2(m.z-P.z,m.x-P.x)+rnd(-.6,.6),x=m.x+Math.cos(a)*55,z=m.z+Math.sin(a)*55;storyFoe(Math.random()<.3?'galleon':'sloop',x,z,Math.random()<.6?m:null);showBanner('Pirates closing in!');}
   }
@@ -1840,6 +1838,50 @@ function storyTick(dt){if(!story.on||state!=='play')return;story.t+=dt;const i=s
   if(i===4&&kraken.dead&&story.t>3){storyEnd(true,'The kraken will trouble no one again.');return;}
   storyObjective();}
 function storyKill(e){if(MODE==='story')story.kills++;}
+/* ---- the first voyage: a guided lesson in the harbour ---- */
+const TUT=[
+  {t:'Drag anywhere on the left half of the screen to steer and sail. Head out of the harbour.',el:'hint'},
+  {t:'Hold FIRE to shoot your front cannon. Sink the target ahead of you!',el:'fire'},
+  {t:'Ships also have cannons along each side. Tap this button to switch to them.',el:'aim'},
+  {t:'Now turn so the target is beside you and fire a broadside!',el:'fire'},
+  {t:'Sail over the gold coins to pick them up.',el:null},
+  {t:'Sail back into the harbour and tap Dock.',el:'dock'},
+  {t:'Buy an upgrade with your gold. Bigger sails make you faster.',el:'shop'},
+];
+function tutDoneBefore(){try{return localStorage.getItem('bb-tut')==='1'}catch(e){return false}}
+function tutNote(){$('tutbox').hidden=tutDoneBefore();$('replayTut').hidden=!tutDoneBefore();}
+$('replayTut').onclick=()=>{audio();startTutorial();};
+$('skipTut').onclick=()=>{audio();try{localStorage.setItem('bb-tut','1')}catch(e){}tutNote();};
+$('goTut').onclick=()=>{audio();startTutorial();};
+function tutGlow(id){document.querySelectorAll('.glowpulse').forEach(e=>e.classList.remove('glowpulse'));if(id&&$(id))$(id).classList.add('glowpulse');}
+function tutStep(n){story.step=n;const T=TUT[n];$('objective').textContent=T.t;$('objective').classList.add('tut');chime(true);
+  tutGlow(T.el==='hint'?null:T.el==='shop'?'buy-sails':T.el);if(T.el==='hint')$('hint').hidden=false;
+  const clear=(x,z)=>islands.every(i=>Math.hypot(x-i.x,z-i.z)>i.r*1.6+4);
+  const spot=(base,dist)=>{for(const da of [0,.35,-.35,.7,-.7,Math.PI])for(const dd of [dist,dist*.8,dist*1.25]){const x=P.x+Math.cos(base+da)*dd,z=P.z+Math.sin(base+da)*dd;if(clear(x,z))return{x,z};}return{x:P.x+Math.cos(base)*dist,z:P.z+Math.sin(base)*dist};};
+  if(n===1){const q=spot(P.a,22),x=q.x,z=q.z;const e=storyFoe('sloop',x,z);Object.assign(e,{mode:'dummy',hp:1,max:1,speed:0,cool:1e9});story.tg=e;}
+  if(n===2){up.broadside=1;updAim();}
+  if(n===3){const q=spot(P.a+Math.PI/2,14),x=q.x,z=q.z;const e=storyFoe('sloop',x,z);Object.assign(e,{mode:'dummy',hp:1,max:1,speed:0,cool:1e9,a:P.a});story.tg=e;}
+  if(n===4){for(let i=0;i<5;i++)addPickup('coin',P.x+Math.cos(P.a)*8+rnd(-4,4),P.z+Math.sin(P.a)*8+rnd(-4,4),10);}
+  if(n===6){gold=Math.max(gold,200);updHud();renderShop();setTimeout(()=>tutGlow('buy-sails'),50);}}
+function startTutorial(){
+  clearWorld();MODE='story';buildOpenWorld();Object.assign(story,{i:-1,tut:true,on:true,guard:null,kills:0,dug:false,kraken:null,t:0,spawnT:0,left:0,arrived:false,step:-1,tg:null});
+  treasure=null;convoy=null;KR.hp=60;up={hull:0,sails:0,reload:0,triple:0,broadside:0};pw={speed:0,rapid:0,side:0};gold=0;earned=0;sunk=0;wave=0;
+  setShip('brig');placeAtPort(PORTS[0]);P.a=0;P.hp=maxHp();setAim('front');story.sx=P.x;story.sz=P.z;
+  $('wavelbl').textContent='Sunk';$('boss').hidden=true;$('map').hidden=false;$('rankrow').hidden=true;$('dock').hidden=true;
+  $('objective').hidden=false;$('start').hidden=true;setIslandUniforms();updHud();musPlay();state='play';tutStep(0);}
+function tutTick(dt){const n=story.step;
+  if(n===0&&Math.hypot(P.x-story.sx,P.z-story.sz)>28)tutStep(1);
+  else if((n===1||n===3)&&(!story.tg||story.tg.hp<=0)){if(n===1)tutStep(2);else tutStep(4);}
+  else if(n===2&&aim==='side')tutStep(3);
+  else if(n===4&&!pickups.some(p=>p.k==='coin')&&clock>0)tutStep(5);
+  else if(n===5){const [p,pd]=nearestPort(P.x,P.z),near=pd<SAFE_R-3;if($('dock').hidden===near){$('dock').hidden=!near;$('docklbl').textContent='Dock at '+p.name;}}}
+function tutShopCheck(){if(MODE==='story'&&story.tut&&story.step===6&&(up.sails||up.reload||up.hull||up.triple||up.broadside)){tutGlow('next');$('objective').textContent='Well done, captain! Tap "Finish the voyage".';}}
+function tutDone(){story.on=false;story.tut=false;tutGlow(null);$('objective').hidden=true;$('objective').classList.remove('tut');state='paused';
+  const first=!tutDoneBefore();try{localStorage.setItem('bb-tut','1')}catch(e){}
+  if(first){try{const w=loadWaves()||{gold:0,xp:0,ships:{brig:true},ship:'brig'};w.gold=(w.gold|0)+300;localStorage.setItem(WAVE_KEY,JSON.stringify(w));localStorage.setItem('bb-starter','1');}catch(e){}}
+  $('storyeye').textContent='First voyage complete';$('storyh').textContent='Ready to sail';
+  $('storytxt').textContent=(first?'Your starter reward: 300 gold in your Wave battle hold, and 300 gold for your first online voyage. ':'')+'Open sea is the shared online world. Wave battle is quick fights in a bay. Story has five missions to play alone.';
+  $('storylist').innerHTML='';const g=$('storygo');g.hidden=false;g.textContent='Main menu';g.onclick=()=>{$('storyov').hidden=true;toMenu();};$('storyov').hidden=false;chime(true);setTimeout(()=>chime(true),180);}
 function storyEnd(won,why){if(!story.on)return;story.on=false;$('objective').hidden=true;firing=false;joy=null;
   const i=story.i,c=STORY[i],p=storyProg(),frac=P.hp/maxHp(),stars=won?(frac>=.7?3:frac>=.35?2:1):0,first=won&&!p[i];
   if(won){p[i]=Math.max(p[i]|0,stars);storySave(p);if(first){try{const w=loadWaves()||{gold:0,xp:0,ships:{brig:true},ship:'brig'};w.gold=(w.gold|0)+c.reward;localStorage.setItem(WAVE_KEY,JSON.stringify(w));}catch(e){}}
@@ -2076,12 +2118,12 @@ $('aim').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation
 $('aim').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleAim();}});
 $('sndv').textContent=MUS.on?'On':'Off';
 function waveNote(){const w=loadWaves();$('wavenote').hidden=!w;if(w)$('wavenote').textContent=`${RANKS[rankOf(w.xp|0)].n} · ${shipById(w.ship).name} · ${w.gold|0} gold`;}
-function refreshStart(){waveNote();storyNote();const sv=loadOpen();$('savenote').hidden=!sv;$('newVoyage').hidden=!sv;$('newVoyage').textContent='Start a new voyage';$('newVoyage').classList.remove('warn');newArm=false;
+function refreshStart(){waveNote();storyNote();tutNote();const sv=loadOpen();$('savenote').hidden=!sv;$('newVoyage').hidden=!sv;$('newVoyage').textContent='Start a new voyage';$('newVoyage').classList.remove('warn');newArm=false;
   $('goOpen').textContent=sv?'Continue voyage':'Open sea';if(sv)$('savenote').textContent=`Saved voyage: ${RANKS[rankOf(sv.xp|0)].n} · ${shipById(sv.ship).name} · ${sv.gold|0} gold`;}
 let newArm=false;
 $('newVoyage').onclick=()=>{if(!newArm){newArm=true;$('newVoyage').textContent='Tap again to erase your saved voyage';$('newVoyage').classList.add('warn');return;}
   try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshStart();};
-function toMenu(){if(coop)endCoop();$('objective').hidden=true;story.on=false;$('storyov').hidden=true;if(MODE==='open'&&state!=='over')saveOpen();if(MODE==='waves')saveWaves();$('rankrow').hidden=true;state='title';firing=false;joy=null;
+function toMenu(){if(coop)endCoop();$('objective').hidden=true;$('objective').classList.remove('tut');tutGlow(null);story.on=false;story.tut=false;$('storyov').hidden=true;if(MODE==='open'&&state!=='over')saveOpen();if(MODE==='waves')saveWaves();$('rankrow').hidden=true;state='title';firing=false;joy=null;
   ['over','shopov','dock','boss','hint','map','menuov'].forEach(id=>$(id).hidden=true);refreshStart();$('start').hidden=false;}
 $('goOpen').onclick=()=>{audio();const b=$('goOpen');if(b.disabled)return;b.disabled=true;b.textContent='Charting the sea…';
   setTimeout(()=>{startOpen(false);b.disabled=false;musPlay();$('start').hidden=true;$('hint').hidden=false;state='play';showBanner(PORTS[0].name);},40);};
@@ -2281,6 +2323,7 @@ function update(dt){
     const pSafe=MODE==='open'&&inSafe(P);
     for(const e of enemies){
       if(e.proxy){proxyMove(e,dt);continue;}
+      if(e.mode==='dummy'){e.flash-=dt;continue;}
       const dx=P.x-e.x,dz=P.z-e.z,d=Math.hypot(dx,dz),toP=Math.atan2(dz,dx),want=e.kind==='boss'?20:e.big?18:14;
       if(e.mode==='convoy'||e.mode==='escort'){convoyAI(e,dt,d);continue;}
       if(MODE==='open'){

@@ -79,6 +79,7 @@
     for (const k of ['dn', 'bs']) { if (num(s[k]) && s[k] > 0) o[k] = Math.floor(s[k]); else delete o[k]; }
     if (typeof s.title === 'string' && ACH.some(a => a.id === s.title)) o.title = s.title; else delete o.title;
     if (typeof s.cx === 'string' && /^[0-9]{4}$/.test(s.cx)) o.cx = s.cx; else delete o.cx;
+    if (s.sg0 === true) o.sg0 = true; else delete o.sg0;
     if (typeof s.kl === 'string' && /^[0-9]{1,9}$/.test(s.kl)) o.kl = s.kl; else delete o.kl;
     if (typeof s.fleet === 'string' && /^[A-Za-z0-9_-]{1,30}$/.test(s.fleet)) o.fleet = s.fleet; else delete o.fleet;
     if (s.fmsg && typeof s.fmsg === 'object') o.fmsg = { ok: !!s.fmsg.ok, why: String(s.fmsg.why || '').slice(0, 80), t: num(s.fmsg.t) ? s.fmsg.t : 0 }; else delete o.fmsg;
@@ -263,8 +264,12 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
         if (!cosOk(s, req.cx)) return no('look not unlocked');
         if (req.cx === '0000') delete s.cx; else s.cx = req.cx; return { save: s, ok: true };
       }
+      case 'starter': {
+        if (s.sg0) return no('starter reward already given');
+        s.sg0 = true; s.gold += 300; return { save: s, ok: true };
+      }
       case 'reset': {
-        const f = fresh(); if (s.rl) f.rl = s.rl; for (const k of ['ks', 'dn', 'bs']) if (s[k]) f[k] = s[k];   // the captain's log survives a new voyage   // keep the rate limiter so a reset can't be used to farm
+        const f = fresh(); if (s.rl) f.rl = s.rl; if (s.sg0) f.sg0 = true; for (const k of ['ks', 'dn', 'bs']) if (s[k]) f[k] = s[k];   // the captain's log survives a new voyage   // keep the rate limiter so a reset can't be used to farm
         const pt = s.paint && checkPaint(s.paint.lk, s.paint.dw, 0); if (pt) f.paint = pt;   // keep colours a Deckhand may use
         return { save: f, ok: true };
       }

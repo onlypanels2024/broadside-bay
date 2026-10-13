@@ -287,3 +287,10 @@ test('a duel win pays the duel prize and counts towards Duelist', () => {
   const s = E.applyDuelWin(E.fresh());
   assert.deepStrictEqual([s.gold, s.xp, s.ks.duel], [100, 60, 1]);
 });
+
+test('the starter reward is given once per captain, even after a new voyage', () => {
+  let r = E.processRequest(null, { k: 'starter' }, null, NOW); assert.strictEqual(r.ok, true); assert.strictEqual(r.save.gold, 300);
+  assert.strictEqual(E.processRequest(r.save, { k: 'starter' }, null, NOW).ok, false);
+  const reset = E.processRequest(r.save, { k: 'reset' }, null, NOW).save;
+  assert.strictEqual(E.processRequest(reset, { k: 'starter' }, null, NOW).ok, false);
+});

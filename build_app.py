@@ -62,10 +62,6 @@ rep(".linkbtn.warn{color:#ffb4a6}",
 .namein{display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:12px 14px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);font:600 17px var(--body);text-align:center}
 .namein:focus{outline:2px solid var(--brass);outline-offset:1px}
 .joinerr{color:#ffb4a6;font-size:14px}""")
-rep("<li><b>Open sea (online):</b> other captains who have this game open sail the same sea.",
-    "<li><b>Open sea (online):</b> sign in with Google to save your progress, or sail as a guest. Other captains sail the same sea.")
-rep("      <li>Tap <b>Menu</b> at the top",
-    "      <li>A referee checks every hit between captains, so cheating gets you removed from online play.</li>\n      <li>Tap <b>Menu</b> at the top")
 
 # ---- saving: Google = cloud, guest = nothing, no Firebase at all = this phone
 rep("function saveOpen(){if(MODE!=='open')return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(careerData()))}catch(e){}}",
@@ -77,8 +73,8 @@ rep("  const sv=fresh?null:loadOpen();","  if(sv===undefined)sv=fresh?null:loadO
 rep("  pw={speed:0,rapid:0,side:0};placeAtPort(p);updAim();updChips();","  pw={speed:0,rapid:0,side:0};NET.rs=(NET.rs|0)+1;placeAtPort(p);updAim();updChips();")
 
 # ---- start screen + join flow
-rep("function refreshStart(){waveNote();storyNote();const sv=loadOpen();",
-"""function refreshStart(){waveNote();storyNote();
+rep("function refreshStart(){waveNote();storyNote();tutNote();const sv=loadOpen();",
+"""function refreshStart(){waveNote();storyNote();tutNote();
   if(FB){$('savenote').hidden=true;$('newVoyage').hidden=true;$('goOpen').textContent='Open sea';
     const u=FB.user();if(u&&u.google){$('savenote').hidden=false;$('savenote').textContent='Signed in as '+u.name;
       FB.loadSave().then(sv=>{if(!sv)return;$('goOpen').textContent='Continue voyage';$('savenote').textContent=`Signed in as ${u.name} · ${RANKS[rankOf(sv.xp|0)].n} · ${shipById(sv.ship).name} · ${sv.gold|0} gold`;
@@ -299,6 +295,8 @@ function worldCheck(){if(!FB||!NET.room)return;const today=Math.floor(serverNowM
 rep("  NET.online=online;NET.sailing=sailing;","  NET.online=online;NET.sailing=sailing;if(typeof worldCheck==='function')worldCheck();")
 rep("  NET.fleets={};NET.unfleets=","  NET.unworld=FB.watchWorld(w=>{NET.world=w;setWorldTier(worldTierWanted());});\n  NET.fleets={};NET.unfleets=")
 rep("if(NET.unfleets){NET.unfleets();NET.unfleets=null;}","if(NET.unfleets){NET.unfleets();NET.unfleets=null;}if(NET.unworld){NET.unworld();NET.unworld=null;}")
+# ---- starter reward for the first online voyage (the referee gives it once per Google account)
+rep("  [2500,6000].forEach(ms=>setTimeout(()=>{","  setTimeout(()=>{try{if(localStorage.getItem('bb-starter')==='1'&&FB.user()&&FB.user().google&&econServer()){econRequest({k:'starter'});addGold(300);updHud();showBanner('Starter reward: 300 gold');localStorage.removeItem('bb-starter');}}catch(e){}},3500);\n  [2500,6000].forEach(ms=>setTimeout(()=>{")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 
