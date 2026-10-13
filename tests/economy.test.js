@@ -188,3 +188,44 @@ test('drawing checks are limited per hour (the AI costs money)', () => {
   assert.strictEqual(ok, E.CHECKS.perHour);
   assert.strictEqual(E.checkQuota(s, NOW + 3600001).ok, true);
 });
+
+const DAY = 86400000;
+test('daily chest: once a day, bigger every day in a row, back to day 1 after a missed day', () => {
+  const t0 = Math.floor(NOW / DAY) * DAY + 3600000;
+  let s = null; const got = [];
+  for (let d = 0; d < 9; d++) { const r = E.processRequest(s, { k: 'daily' }, null, t0 + d * DAY); assert.strictEqual(r.ok, true); got.push(r.g); s = r.save;
+    assert.strictEqual(E.processRequest(s, { k: 'daily' }, null, t0 + d * DAY + 5000).ok, false, 'twice the same day'); }
+  assert.deepStrictEqual(got, [100, 150, 200, 300, 400, 500, 750, 750, 750]);
+  const r = E.processRequest(s, { k: 'daily' }, null, t0 + 10 * DAY);
+  assert.strictEqual(r.g, 100, 'missed a day: streak starts again');
+});
+
+test('quests: progress comes from what the referee approved, rewards only once and only when finished', () => {
+  // find a day whose quests include sinking sloops
+  let day = Math.floor(NOW / DAY); while (!E.questsFor(day).some(q => E.QUESTS[q].id === 'sloops')) day++;
+  const t = day * DAY + 1000, i = E.questsFor(day).findIndex(q => E.QUESTS[q].id === 'sloops'), Q = E.QUESTS[E.questsFor(day)[i]];
+  let s = null;
+  assert.strictEqual(E.processRequest(s, { k: 'quest', id: String(i) }, null, t).reason, 'quest not finished');
+  for (let k = 0; k < Q.n; k++) s = E.processRequest(s, { k: 'kill', e: 'sloop' }, seaAt(t + k * 1000), t + k * 1000).save;
+  assert.strictEqual(s.q.p[i], Q.n);
+  const g0 = s.gold, r = E.processRequest(s, { k: 'quest', id: String(i) }, null, t + 20000);
+  assert.strictEqual(r.ok, true); assert.strictEqual(r.save.gold, g0 + Q.g);
+  assert.strictEqual(E.processRequest(r.save, { k: 'quest', id: String(i) }, null, t + 21000).reason, 'already claimed');
+  // the next day is a fresh start
+  assert.strictEqual(E.processRequest(r.save, { k: 'quest', id: String(i) }, null, t + DAY).ok, false);
+  assert.strictEqual(E.processRequest(s, { k: 'quest', id: '7' }, null, t).ok, false);
+});
+
+test('sinking a captain counts towards the captain quest', () => {
+  let day = Math.floor(NOW / DAY); while (!E.questsFor(day).some(q => E.QUESTS[q].id === 'captain')) day++;
+  const i = E.questsFor(day).findIndex(q => E.QUESTS[q].id === 'captain');
+  const s = E.applyPvpKill(null, day * DAY + 5);
+  assert.strictEqual(s.q.p[i], 1);
+});
+
+test("the game's daily quest list is the referee's, word for word", () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'src-artifact.html'), 'utf8');
+  const eco = require('fs').readFileSync(require('path').join(__dirname, '..', 'functions', 'economy.js'), 'utf8');
+  const grab = t => t.slice(t.indexOf('/*DAILYDEF*/'), t.indexOf('/*ENDDAILYDEF*/'));
+  assert.ok(grab(eco).length > 200); assert.strictEqual(grab(src), grab(eco));
+});

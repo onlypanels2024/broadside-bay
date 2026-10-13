@@ -64,6 +64,9 @@
     if (!Object.keys(o.dok).length) delete o.dok;
     if (s.dchk && typeof s.dchk === 'object' && DW_RE.test(s.dchk.dw || '')) o.dchk = { dw: s.dchk.dw, ok: !!s.dchk.ok, why: String(s.dchk.why || '').slice(0, 80), t: num(s.dchk.t) ? s.dchk.t : 0 }; else delete o.dchk;
     if (s.ck && typeof s.ck === 'object' && num(s.ck.n) && num(s.ck.t)) o.ck = { n: s.ck.n, t: s.ck.t }; else delete o.ck;
+    // daily chest {d: last day claimed, st: streak} and today's quests {d: day, p: [progress x3], c: [claimed x3]}
+    if (s.daily && num(s.daily.d) && num(s.daily.st)) o.daily = { d: s.daily.d, st: Math.max(1, Math.min(999, Math.floor(s.daily.st))) }; else delete o.daily;
+    if (s.q && num(s.q.d) && Array.isArray(s.q.p) && Array.isArray(s.q.c)) o.q = { d: s.q.d, p: [0, 1, 2].map(i => num(s.q.p[i]) ? Math.max(0, Math.floor(s.q.p[i])) : 0), c: [0, 1, 2].map(i => s.q.c[i] === true) }; else delete o.q;
     return o;
   }
   // Is this paint allowed for a captain with this much XP? Returns the cleaned paint or null.
@@ -100,6 +103,21 @@
   }
   return{ok:true};
 }/*ENDDRAWRULES*/
+  /*DAILYDEF*/const DAILY_CHEST=[100,150,200,300,400,500,750];
+const QUESTS=[
+  {id:'sloops',t:'Sink {n} pirate sloops',ev:'sloop',n:6,g:200,xp:60},
+  {id:'galleons',t:'Sink {n} pirate galleons',ev:'galleon',n:2,g:250,xp:80},
+  {id:'boss',t:'Sink a boss ship',ev:'boss',n:1,g:400,xp:150},
+  {id:'captain',t:'Sink another captain',ev:'captain',n:1,g:300,xp:120},
+  {id:'gold',t:'Earn {n} gold from sinkings',ev:'gold',n:600,g:200,xp:60},
+  {id:'fit',t:'Fit {n} upgrades in a harbour',ev:'upgrade',n:2,g:150,xp:40},
+  {id:'any',t:'Sink {n} ships of any kind',ev:'ship',n:10,g:300,xp:100},
+];
+const dayOf=now=>Math.floor(now/86400000);
+// The same three quests for every captain on a given day (UTC).
+function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+  const pool=QUESTS.map((q,i)=>i),out=[];while(out.length<3){const k=Math.floor(rnd()*pool.length);out.push(pool.splice(k,1)[0]);}return out.sort((x,y)=>x-y);}
+/*ENDDAILYDEF*/
   const docked = p => !!p && inHarbour(p.x, p.z);
   const atSea = (p, now) => !!p && p.al === 1 && num(p.t) && now - p.t <= RATE.freshMs && !inHarbour(p.x, p.z);
 
@@ -125,6 +143,7 @@
         else { if (rl.b < K.pts) return reject('sinking faster than pirates appear'); rl.b -= K.pts; }
         rl.rj = 0; s.rl = rl;
         s.gold += K.g; s.earned += K.g; s.xp += K.xp; s.sunk += 1;
+        questEvent(s, req.e, 1, now); questEvent(s, 'ship', 1, now); questEvent(s, 'gold', K.g, now);
         return { save: s, ok: true };
       }
       case 'up': {
@@ -135,7 +154,7 @@
         if (lvl >= U.max) return no('already fitted');
         const price = U.price(lvl);
         if (s.gold < price) return no('not enough gold');
-        s.gold -= price; s.up[req.id] = lvl + 1;
+        s.gold -= price; s.up[req.id] = lvl + 1; questEvent(s, 'upgrade', 1, now);
         return { save: s, ok: true };
       }
       case 'repair': {
@@ -159,6 +178,22 @@
         if (!pt) return no('paint not unlocked');
         if (pt.dw && !(s.dok && s.dok[pt.dw])) return no('drawing not approved');
         s.paint = pt; return { save: s, ok: true };
+      }
+      case 'daily': {
+        const day = dayOf(now), d = s.daily;
+        if (d && d.d >= day) return no('already claimed today');
+        const st = d && d.d === day - 1 ? d.st + 1 : 1;
+        const g = DAILY_CHEST[Math.min(st, DAILY_CHEST.length) - 1];
+        s.daily = { d: day, st }; s.gold += g; s.xp += 10 * Math.min(st, 7);
+        return { save: s, ok: true, g };
+      }
+      case 'quest': {
+        const i = Number(req.id); if (![0, 1, 2].includes(i)) return no('unknown quest');
+        const day = dayOf(now); const q = questDay(s, day); const Q = QUESTS[questsFor(day)[i]];
+        if (q.c[i]) return no('already claimed');
+        if (q.p[i] < Q.n) return no('quest not finished');
+        q.c[i] = true; s.gold += Q.g; s.xp += Q.xp;
+        return { save: s, ok: true };
       }
       case 'reset': {
         const f = fresh(); if (s.rl) f.rl = s.rl;   // keep the rate limiter so a reset can't be used to farm
@@ -189,11 +224,19 @@
     if (s.paint && s.paint.dw === dw) s.paint = { lk: s.paint.lk.slice(0, 6) + '1' };
     return s;
   }
+  // Today's quest record (a new day starts fresh).
+  function questDay(s, day) { if (!s.q || s.q.d !== day) s.q = { d: day, p: [0, 0, 0], c: [false, false, false] }; return s.q; }
+  // Something happened that may count towards today's quests.
+  function questEvent(s, ev, amount, now) {
+    const day = dayOf(now), q = questDay(s, day);
+    questsFor(day).forEach((qi, i) => { const Q = QUESTS[qi]; if (Q.ev === ev && !q.c[i]) q.p[i] = Math.min(Q.n, q.p[i] + amount); });
+  }
   // A captain sank: they lose half the gold in their hold.
   function applyDeath(saveIn) { const s = norm(saveIn); s.gold -= Math.floor(s.gold / 2); return s; }
   // A captain sank another captain (already confirmed by the hit referee).
-  function applyPvpKill(saveIn) { const s = norm(saveIn); s.gold += PVP.g; s.earned += PVP.g; s.xp += PVP.xp; s.sunk += 1; return s; }
+  function applyPvpKill(saveIn, now) { const s = norm(saveIn); s.gold += PVP.g; s.earned += PVP.g; s.xp += PVP.xp; s.sunk += 1;
+    if (num(now)) { questEvent(s, 'captain', 1, now); questEvent(s, 'ship', 1, now); questEvent(s, 'gold', PVP.g, now); } return s; }
 
-  const api = { processRequest, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

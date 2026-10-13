@@ -120,6 +120,21 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .seg.on{background:linear-gradient(#e2574a,#9c231a);border-color:#e9786d}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
 .netrow{display:flex;gap:8px;flex-wrap:wrap}
+.qchip{pointer-events:auto;cursor:pointer;font-family:var(--body);color:var(--brass-hi);border:1px solid rgba(214,178,98,.55);background:var(--glass);position:relative}
+.qchip .dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:#ff5a3a;box-shadow:0 0 8px #ff5a3a}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px}
+.day{border-radius:8px;padding:6px 0 5px;border:1px solid rgba(214,178,98,.3);background:rgba(255,255,255,.04);font-size:11px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
+.day b{font-family:var(--display);font-size:12px;color:var(--parch)}
+.day.done{background:rgba(120,200,140,.12);border-color:rgba(120,200,140,.5)}
+.day.today{border-color:var(--brass-hi);box-shadow:0 0 0 1px var(--brass-hi);background:rgba(214,178,98,.16)}
+.qlist{display:flex;flex-direction:column;gap:8px;margin-top:10px;text-align:left}
+.qrow{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:9px 10px;border-radius:9px;border:1px solid rgba(214,178,98,.3);background:rgba(255,255,255,.04)}
+.qrow.done{border-color:rgba(120,200,140,.6)}
+.qrow .qt{font-size:14px;font-weight:600;color:var(--text)}
+.qrow .qr{font-size:12px;color:var(--brass-hi)}
+.qrow .qbar{grid-column:1/-1;height:6px;border-radius:3px;background:rgba(0,0,0,.4);overflow:hidden}
+.qrow .qbar i{display:block;height:100%;background:linear-gradient(90deg,#a77d2c,var(--brass-hi))}
+.qreset{font-size:12px;color:var(--muted);margin-top:10px}
 .chip.online{color:#9ff0c0;border-color:rgba(120,230,170,.55);display:inline-flex;align-items:center;gap:6px}
 .chip.online i{width:7px;height:7px;border-radius:50%;background:#5be38f;box-shadow:0 0 8px #5be38f}
 .chip.online.off{color:var(--muted);border-color:rgba(255,255,255,.2)}
@@ -172,6 +187,7 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .btn{margin-top:16px;font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:.14em;text-transform:uppercase;padding:13px 30px;border-radius:8px;cursor:pointer;
   color:#1b1306;border:1px solid var(--brass-hi);background:linear-gradient(#f0d48c,#c99a3e);box-shadow:0 6px 18px rgba(214,178,98,.3)}
 .btn:active{transform:translateY(2px)}
+.btn:disabled{opacity:.5;cursor:default;box-shadow:none;transform:none}
 .btn:focus-visible,.item:focus-visible{outline:2px solid var(--parch);outline-offset:3px}
 .sub{font-size:13px;color:var(--muted);margin-top:12px}
 .purse{display:inline-flex;gap:8px;align-items:baseline;font-family:var(--display);font-weight:800;font-size:22px;color:var(--brass-hi);font-variant-numeric:tabular-nums}
@@ -223,7 +239,7 @@ details.how summary::-webkit-details-marker{display:none}
     <button class="panel menubtn" id="menubtn" aria-label="Open menu"><span class="bars"><i></i><i></i><i></i></span><span class="lbl">Menu</span></button>
   </div>
   <div class="rankrow" id="rankrow" hidden><span class="rk" id="rkname">Deckhand</span><div class="xpbar"><div id="xpfill"></div></div></div>
-  <div class="netrow"><span class="chip online off" id="online" hidden><i></i><span id="onlinetxt">Offline</span></span></div>
+  <div class="netrow"><span class="chip online off" id="online" hidden><i></i><span id="onlinetxt">Offline</span></span><button class="chip qchip" id="qchip" hidden><span id="qchiptxt">Quests</span><b class="dot" id="qdot" hidden></b></button></div>
   <div class="chips" id="chips"></div>
   <div class="boss" id="boss" hidden><div class="name" id="bossname">The Iron Maw</div><div class="bossbar"><div class="bossfill" id="bossfill"></div></div></div>
 </div>
@@ -272,6 +288,7 @@ details.how summary::-webkit-details-marker{display:none}
     <div class="menulist">
       <button class="btn" id="menuresume">Resume</button>
       <button class="btn ghost" id="snd" aria-label="Music on or off">Music: <span id="sndv">On</span></button>
+      <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
       <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
       <button class="btn ghost" id="drawtog">Captains' drawings: <span id="drawtogv">Shown</span></button>
       <button class="btn ghost" id="menuleave">Main menu</button>
@@ -346,6 +363,20 @@ details.how summary::-webkit-details-marker{display:none}
     <p class="menunote">Captains near you flying their own drawing. Reporting hides it for you straight away, and the referee checks it again. Rude drawings are removed for everyone.</p>
     <div class="replist" id="replist"></div>
     <button class="btn" id="repdone">Back</button>
+  </div>
+</div>
+<div class="overlay" id="dailyov" hidden>
+  <div class="card">
+    <div class="eyebrow">Every day at sea</div>
+    <h2>Daily chest</h2>
+    <p class="menunote" id="chestnote">Come back every day for a bigger chest.</p>
+    <div class="days" id="days"></div>
+    <button class="btn" id="chestbtn">Open chest</button>
+    <div class="rule"></div>
+    <h2 style="font-size:22px">Today's quests</h2>
+    <div class="qlist" id="qlist"></div>
+    <div class="qreset" id="qreset"></div>
+    <button class="btn ghost" id="dailyclose">Back to sea</button>
   </div>
 </div>
 <div class="overlay" id="over" hidden>
@@ -1380,6 +1411,67 @@ fb.addEventListener('pointerdown',e=>{audio();if(state==='play')firing=true;fb.c
 fb.addEventListener('contextmenu',e=>e.preventDefault());
 $('snd').onclick=()=>{audio();setMusic(!MUS.on);};
 function updDrawTog(){$('drawtogv').textContent=hideDraw?'Hidden':'Shown';}updDrawTog();
+/*DAILYDEF*/const DAILY_CHEST=[100,150,200,300,400,500,750];
+const QUESTS=[
+  {id:'sloops',t:'Sink {n} pirate sloops',ev:'sloop',n:6,g:200,xp:60},
+  {id:'galleons',t:'Sink {n} pirate galleons',ev:'galleon',n:2,g:250,xp:80},
+  {id:'boss',t:'Sink a boss ship',ev:'boss',n:1,g:400,xp:150},
+  {id:'captain',t:'Sink another captain',ev:'captain',n:1,g:300,xp:120},
+  {id:'gold',t:'Earn {n} gold from sinkings',ev:'gold',n:600,g:200,xp:60},
+  {id:'fit',t:'Fit {n} upgrades in a harbour',ev:'upgrade',n:2,g:150,xp:40},
+  {id:'any',t:'Sink {n} ships of any kind',ev:'ship',n:10,g:300,xp:100},
+];
+const dayOf=now=>Math.floor(now/86400000);
+// The same three quests for every captain on a given day (UTC).
+function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+  const pool=QUESTS.map((q,i)=>i),out=[];while(out.length<3){const k=Math.floor(rnd()*pool.length);out.push(pool.splice(k,1)[0]);}return out.sort((x,y)=>x-y);}
+/*ENDDAILYDEF*/
+/* ---- daily chest and quests (online Open sea; the referee pays) ---- */
+function dailyOn(){return econServer()&&!!NET.srv;}          // the app: online Open sea with the referee
+function dailySave(){return NET.srv;}         // the app: the referee's copy of this captain's save
+function serverNowMs(){return NET.room&&NET.room.serverNow?NET.room.serverNow():Date.now();}
+const daily={claimedDay:-1,qclaimed:{},from:'sea',lastKey:''};
+function dailyState(){const sv=dailySave()||{},day=dayOf(serverNowMs()),d=sv.daily;
+  const canChest=!(d&&d.d>=day)&&daily.claimedDay!==day,streakIfClaim=d&&d.d===day-1?d.st+1:(d&&d.d===day?d.st:1);
+  const qs=questsFor(day),q=sv.q&&sv.q.d===day?sv.q:{p:[0,0,0],c:[false,false,false]};
+  const quests=qs.map((qi,i)=>{const Q=QUESTS[qi];const done=q.p[i]>=Q.n,claimed=q.c[i]||daily.qclaimed[day+':'+i];return{Q,i,p:Math.min(q.p[i],Q.n),done,claimed};});
+  return{day,canChest,streak:Math.max(1,streakIfClaim),quests};}
+const questText=Q=>Q.t.replace('{n}',Q.n);
+function updQuestChip(){const on=dailyOn()&&state==='play';$('qchip').hidden=!on;if(!on)return;
+  const st=dailyState(),done=st.quests.filter(q=>q.claimed).length,claimable=st.canChest||st.quests.some(q=>q.done&&!q.claimed);
+  const key=done+'|'+claimable;if(key===daily.lastKey)return;daily.lastKey=key;
+  $('qchiptxt').textContent='Quests '+done+'/3';$('qdot').hidden=!claimable;}
+function renderDaily(){const st=dailyState();
+  const days=$('days');days.innerHTML='';
+  const shown=st.canChest?st.streak:st.streak;   // today's box is the streak day
+  for(let i=1;i<=7;i++){const el=document.createElement('div');const g=DAILY_CHEST[i-1];
+    const cur=Math.min(shown,7),isToday=i===cur,done=i<cur||(i===cur&&!st.canChest);
+    el.className='day'+(done?' done':'')+(isToday&&st.canChest?' today':'');el.innerHTML=`<span>Day ${i}${i===7?'+':''}</span><b>${g}</b>`;days.appendChild(el);}
+  const g=DAILY_CHEST[Math.min(st.streak,7)-1];
+  $('chestbtn').disabled=!st.canChest;$('chestbtn').textContent=st.canChest?`Open chest: ${g} gold`:'Opened today ✓';
+  $('chestnote').textContent=st.canChest?(st.streak>1?`Day ${st.streak} in a row! Keep it up for a bigger chest.`:'Come back every day for a bigger chest. Miss a day and it starts again.'):`Day ${st.streak} in a row. Come back tomorrow for the next chest.`;
+  const ql=$('qlist');ql.innerHTML='';
+  for(const q of st.quests){const r=document.createElement('div');r.className='qrow'+(q.done?' done':'');
+    const tx=document.createElement('div');tx.innerHTML=`<div class="qt"></div><div class="qr">${q.Q.g} gold · ${q.Q.xp} XP</div>`;tx.querySelector('.qt').textContent=questText(q.Q)+(q.Q.n>1?`  (${q.p}/${q.Q.n})`:'');r.appendChild(tx);
+    const b=document.createElement('button');b.className='shipbtn';b.id='qclaim-'+q.i;
+    if(q.claimed){b.textContent='Claimed ✓';b.disabled=true;}else if(q.done){b.textContent='Claim';b.onclick=()=>claimQuest(q);}else{b.textContent='In progress';b.disabled=true;b.classList.add('ghost');}
+    r.appendChild(b);const bar=document.createElement('div');bar.className='qbar';bar.innerHTML=`<i style="width:${Math.round(q.p/q.Q.n*100)}%"></i>`;r.appendChild(bar);ql.appendChild(r);}
+  const left=86400000-(serverNowMs()%86400000),h=Math.floor(left/3600000),m=Math.floor(left%3600000/60000);
+  $('qreset').textContent=`New chest and quests in ${h} h ${m} min.`+(st.quests.some(q=>q.Q.ev==='captain')?' Captains sunk count only when the referee confirms them.':'');}
+function openDaily(from){if(!dailyOn())return;daily.from=from;audio();firing=false;joy=null;if(state==='play'&&!onlineAtSea())state='paused';
+  ['menuov'].forEach(id=>$(id).hidden=true);renderDaily();$('dailyov').hidden=false;}
+function closeDaily(){$('dailyov').hidden=true;if(state==='paused'){state='play';}if(daily.from==='menu')$('menuov').hidden=false;}
+$('dailyclose').onclick=()=>{audio();closeDaily();};
+$('menudaily').onclick=()=>{audio();openDaily('menu');};
+$('qchip').onclick=e=>{e.stopPropagation();openDaily('sea');};
+$('chestbtn').onclick=()=>{const st=dailyState();if(!st.canChest)return;const g=DAILY_CHEST[Math.min(st.streak,7)-1];
+  daily.claimedDay=st.day;addGold(g);addXP(10*Math.min(st.streak,7));econRequest({k:'daily'});chime(true);setTimeout(()=>chime(true),160);updHud();showBanner('Chest opened: '+g+' gold');renderDaily();daily.lastKey='';};
+function claimQuest(q){const st=dailyState();daily.qclaimed[st.day+':'+q.i]=true;addGold(q.Q.g);addXP(q.Q.xp);econRequest({k:'quest',id:String(q.i)});chime(true);updHud();showBanner('Quest reward: '+q.Q.g+' gold');renderDaily();daily.lastKey='';}
+// called when the referee's save changes: announce quests that just got finished
+let lastQuestDone=null;
+function dailyNotice(){if(!dailyOn())return;const st=dailyState(),k=st.day+':'+st.quests.map(q=>q.done?1:0).join('');
+  if(lastQuestDone&&lastQuestDone.slice(0,lastQuestDone.indexOf(':'))===String(st.day)){st.quests.forEach((q,i)=>{if(q.done&&!q.claimed&&lastQuestDone.split(':')[1][i]==='0')setTimeout(()=>{showBanner('Quest done: '+questText(q.Q));chime(true);},400);});}
+  lastQuestDone=k;daily.lastKey='';}
 function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}
 function openReport(){const box=$('replist');box.innerHTML='';let n=0;
   if(typeof NET!=='undefined')for(const r of NET.peers.values()){const pr=r.pr||{};if(pr.m!=='open'||!DW_RE.test(pr.dw||'')||!decodeLk(pr.lk)||decodeLk(pr.lk).e!==DRAW_E)continue;n++;
@@ -1400,7 +1492,7 @@ function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.cl
   menuPaused=!onlineAtSea();if(menuPaused)state='paused';
   $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
   $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
-  $('menureport').hidden=!onlineAtSea();
+  $('menureport').hidden=!onlineAtSea();$('menudaily').hidden=!dailyOn();
   $('menuleave').textContent=MODE==='open'?'Main menu':'Leave battle';
   $('menuleavenote').textContent=MODE==='open'?'Your voyage is saved when you leave.':'';
   $('menuov').hidden=false;}
@@ -1411,6 +1503,7 @@ function handleBack(){
   if(!$('drawov').hidden){$('padcancel').click();return true;}
   if(!$('dressov').hidden){closeDress();return true;}
   if(!$('reportov').hidden){$('repdone').click();return true;}
+  if(!$('dailyov').hidden){$('dailyclose').click();return true;}
   if(!$('menuov').hidden){closeMenu();return true;}
   const jo=$('joinov');if(jo&&!jo.hidden){$('joinback').click();return true;}
   if(state==='play'){openMenu();return true;}
@@ -1447,6 +1540,7 @@ $('newVoyage').onclick=()=>{if(!newArm){newArm=true;$('newVoyage').textContent='
 function toMenu(){if(MODE==='open'&&state!=='over')saveOpen();if(MODE==='waves')saveWaves();$('rankrow').hidden=true;state='title';firing=false;joy=null;
   ['over','shopov','dock','boss','hint','map','menuov'].forEach(id=>$(id).hidden=true);refreshStart();$('start').hidden=false;}
 function launchOpen(sv){const b=$('goOpen');b.disabled=true;b.textContent='Charting the sea…';
+  [2500,6000].forEach(ms=>setTimeout(()=>{if(!daily.auto&&state==='play'&&dailyOn()&&dailyState().canChest&&$('menuov').hidden){daily.auto=true;openDaily('sea');}},ms));
   setTimeout(()=>{startOpen(false,sv);if(FB&&saveMode==='server')applyWish();b.disabled=false;b.textContent='Open sea';musPlay();['start','joinov'].forEach(id=>$(id).hidden=true);$('hint').hidden=false;state='play';showBanner(PORTS[0].name);},40);}
 function showJoin(){const u=FB.user();$('joinerr').hidden=true;
   $('joinsigned').hidden=!(u&&u.google);$('joinchoose').hidden=!!(u&&u.google);if(u&&u.google)$('joinname').textContent=u.name;
@@ -1523,7 +1617,7 @@ function goOnline(){if(!FB||NET.room||NET.banned)return;const u=FB.user();if(!u)
   const R=FB.openRoom();NET.room=R;NET.ok=true;NET.myId=R.uid;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;
   R.onConnection(c=>{NET.ok=c;netUiKey='';});
   R.onReward(r=>{NET.kills++;showBanner('You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
-  NET.pending=new Map();NET.srv=null;NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();});
+  NET.pending=new Map();NET.srv=null;NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();});
   R.onBanned(()=>{NET.banned=true;closeOnline();saveMode='none';showBanner('Removed from online play by the referee');});}
 function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
 refreshStart();
@@ -1628,7 +1722,7 @@ function update(dt){
     if(Math.random()<.3)smoke(s.g.position.x,1.5,s.g.position.z,1,true);
     if(s.t>3){if(s.keep)s.g.visible=false;else disposeGroup(s.g);}}
   sinking=sinking.filter(s=>s.t<=3);
-  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();if(NET.pending&&NET.pending.size)econSync();}
+  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();updQuestChip();if(NET.pending&&NET.pending.size)econSync();}
   netTick(dt);
   {let tg=0,bt=0;if(state==='play'){let nd=1e9;for(const e of enemies){if(e.mode==='roam')continue;const d=Math.hypot(e.x-P.x,e.z-P.z);if(d<nd)nd=d;if(e.kind==='boss'&&d<80)bt=1;}for(const r of remoteShips()){const d=Math.hypot(r.x-P.x,r.z-P.z);if(d<nd)nd=d;}tg=Math.max(0,Math.min(1,(44-nd)/24));if(bt)tg=Math.max(tg,.8);}musUpdate(dt,tg,bt);}
   wakeT-=dt;const doWake=wakeT<=0;if(doWake)wakeT=.07;

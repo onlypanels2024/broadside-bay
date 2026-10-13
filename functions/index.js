@@ -59,7 +59,7 @@ exports.refereeDeath = onValueCreated('/deaths/{id}', async (event) => {
   const verdict = R.judgeDeath(death, life, Date.now());
   if (!verdict) return;
   const name = ((await db.ref(`players/${death.v}/n`).get()).val()) || 'a captain';
-  await db.ref(`saves/${verdict.killer}`).transaction(s => E.applyPvpKill(s));
+  await db.ref(`saves/${verdict.killer}`).transaction(s => E.applyPvpKill(s, Date.now()));
   // the reward itself is already in the killer's save; this just tells their phone to show a banner
   await db.ref(`rewards/${verdict.killer}`).push({ g: E.PVP.g, n: String(name).slice(0, 16), t: Date.now() });
   await db.ref(`stats/${verdict.killer}/kills`).transaction(n => (n || 0) + 1);

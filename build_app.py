@@ -179,7 +179,7 @@ function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typ
   if(P.hp>maxHp())P.hp=maxHp();updHud();updXP();updAim();if(state==='shop')renderShop();}
 function econKill(kind){if(econServer()){const K=ONLINE_KILL[kind]||ONLINE_KILL.sloop;addGold(K.g);addXP(K.xp);sunk++;econRequest({k:'kill',e:kind});return;}
   """)
-rep("  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();}","  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();if(NET.pending&&NET.pending.size)econSync();}")
+rep("  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();updQuestChip();}","  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();updQuestChip();if(NET.pending&&NET.pending.size)econSync();}")
 # ---- ship paint online: other captains only ever see colours the referee has approved
 rep("sh:SHIPS.indexOf(SHIP()),lk:paint.lk,dw:paint.dw||null,",
     "sh:SHIPS.indexOf(SHIP()),lk:netPaint().lk||null,dw:netPaint().dw||null,")
@@ -223,6 +223,14 @@ rep("function drawCheck(dw){return Promise.resolve({ok:true});}",
 const _dc=drawCheck;drawCheck=async dw=>{const v=await _dc(dw);if(!v.ok&&v.why==='checker offline'&&FB){const st=await FB.checkerStatus();
   if(st&&!st.ok&&st.err)setTimeout(()=>{$('padmsg').textContent+=' (Details: '+String(st.err).slice(0,120)+')';},0);}return v;};""")
 rep("function reportDrawing(tg,dw){}","function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}")
+# ---- daily chest and quests: online Open sea, paid by the referee
+rep("function dailyOn(){return false;}","function dailyOn(){return econServer()&&!!NET.srv;}")
+rep("function dailySave(){return null;}","function dailySave(){return NET.srv;}")
+rep("  setTimeout(()=>{startOpen(false,sv);if(FB&&saveMode==='server')applyWish();b.disabled=false;",
+    "  [2500,6000].forEach(ms=>setTimeout(()=>{if(!daily.auto&&state==='play'&&dailyOn()&&dailyState().canChest&&$('menuov').hidden){daily.auto=true;openDaily('sea');}},ms));\n  setTimeout(()=>{startOpen(false,sv);if(FB&&saveMode==='server')applyWish();b.disabled=false;")
+rep("function serverNowMs(){return Date.now();}","function serverNowMs(){return NET.room&&NET.room.serverNow?NET.room.serverNow():Date.now();}")
+rep("NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();});",
+    "NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();});")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

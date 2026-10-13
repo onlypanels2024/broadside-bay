@@ -159,13 +159,13 @@
           ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && !root.child('banned').child($uid).exists()",
           ".validate": "newData.hasChildren(['k','t']) && newData.child('t').val() === now",
           "k": {
-            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|check|reset)$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|check|daily|quest|reset)$/)"
           },
           "e": {
             ".validate": "newData.isString() && newData.val().matches(/^(sloop|galleon|boss)$/)"
           },
           "id": {
-            ".validate": "newData.isString() && newData.val().matches(/^(broadside|reload|sails|hull|triple|brig|corvette|frigate|galleon|manowar)$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^(broadside|reload|sails|hull|triple|brig|corvette|frigate|galleon|manowar|0|1|2)$/)"
           },
           "t": {
             ".validate": "newData.val() === now"
