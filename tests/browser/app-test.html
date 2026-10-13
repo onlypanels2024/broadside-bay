@@ -260,7 +260,8 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 #dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 214px);z-index:2;margin:0;font-size:14px;padding:11px 22px;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis}
 #dock:active{transform:translateX(-50%) translateY(2px)}
 .modes{display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:6px}
-.modes .btn{min-width:230px}
+.modes .btn{min-width:230px;width:min(300px,100%)}
+.modes .linkbtn{display:block;margin:4px auto 0}
 .btn.ghost{background:transparent;color:var(--brass-hi);box-shadow:none;margin-top:10px}
 .savenote{font-size:14px;color:var(--brass-hi);margin-top:8px;font-variant-numeric:tabular-nums}
 .linkbtn{background:none;border:none;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font:inherit;font-size:14px;margin-top:12px;cursor:pointer;padding:4px}
@@ -274,7 +275,14 @@ details.how summary{cursor:pointer;font-weight:700;letter-spacing:.14em;text-tra
 details.how summary::-webkit-details-marker{display:none}
 #err{position:fixed;inset:0;display:grid;place-items:center;padding:16px;text-align:center;z-index:5;background:var(--ink)}
 @media (prefers-reduced-motion:reduce){#banner,.bossfill{transition:none}}
+/* the main menu is the only thing on screen at the title: no battle buttons behind it */
+body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.attitle #map{visibility:hidden}
 @media (orientation:landscape){
+  #start .card{max-width:860px;display:grid;grid-template-columns:1fr 1.1fr;column-gap:28px;align-items:center;text-align:center}
+  #start .card>*{grid-column:1}
+  #start .card>.modes{grid-column:2;grid-row:1 / span 8;align-self:center}
+  #start .modes .btn{width:100%;min-width:0}
+  .top{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
   .overlay.sheet{place-items:stretch end}
   .card.dress{max-height:none;height:100%;width:min(430px,50vw);max-width:none;border-radius:16px 0 0 16px;padding-top:max(14px,env(safe-area-inset-top,0px))}
   .viewctl{right:auto;left:14px}
@@ -284,8 +292,7 @@ details.how summary::-webkit-details-marker{display:none}
   .card{padding:14px 18px}
   .card h1{font-size:28px;margin:2px 0}.card h2{font-size:22px;margin:2px 0}.card p{margin:4px 0;font-size:14px}
   .btn{margin-top:8px;padding:9px 22px;font-size:15px}.btn.ghost{margin-top:6px}
-  .modes{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;align-items:start}.modes .btn{min-width:0;width:100%}
-  .modes .savenote,.modes .onlinenote,.modes .linkbtn{grid-column:1/-1}
+  .modes .btn{min-width:0;width:100%}
   .card.dress{padding-bottom:10px}
   #dock,#dig{bottom:calc(env(safe-area-inset-bottom,0px) + 120px)}}
 @media (min-width:900px) and (min-height:600px) and (orientation:landscape){.top,.overlay .card,#fire,#aim,#dock,#dig,.hint,#banner,.viewctl,.chatbox{zoom:1.25}#map{zoom:1.2}}
@@ -326,9 +333,9 @@ details.how summary::-webkit-details-marker{display:none}
       <button class="btn" id="goOpen">Open sea</button>
       <div class="savenote" id="savenote" hidden></div>
       <div class="onlinenote" id="onlinenote" hidden></div>
+      <button class="linkbtn" id="newVoyage" hidden>Start a new voyage</button>
       <button class="btn ghost" id="goWaves">Wave battle</button>
       <div class="savenote" id="wavenote" hidden></div>
-      <button class="linkbtn" id="newVoyage" hidden>Start a new voyage</button>
       <button class="btn ghost" id="goStory">Story</button>
       <div class="savenote" id="storynote" hidden></div>
       <button class="btn ghost dressbtn" id="goDress">Ship &amp; colours</button>
@@ -653,6 +660,10 @@ const WS=520,WN=200;
 const wgeo=new THREE.PlaneGeometry(WS,WS,WN,WN);wgeo.rotateX(-Math.PI/2);
 const water=new THREE.Mesh(wgeo,waterMat);water.frustumCulled=false;scene.add(water);
 addEventListener('resize',resize);resize();
+// Android sometimes reports the old size for a moment after the phone turns: measure again shortly after
+const reResize=()=>[60,250,600,1200].forEach(ms=>setTimeout(resize,ms));
+addEventListener('orientationchange',reResize);if(window.visualViewport)visualViewport.addEventListener('resize',reResize);
+try{screen.orientation&&screen.orientation.addEventListener('change',reResize);}catch(e){}
 
 /* ================= procedural textures ================= */
 function canvasTex(draw,w=256,h=w,srgb=true){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);
@@ -2712,6 +2723,7 @@ for(let i=0;i<5;i++){const r=rnd(2.8,4.2),a=i/5*TAU+.4,x=Math.cos(a)*rnd(18,32),
 setIslandUniforms();updHud();updAim();
 let last=performance.now();
 function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;
+  {const t=state==='title';if(t!==loop.title){loop.title=t;document.body.classList.toggle('attitle',t);}}
   if(state==='title'){P.a+=dt*.15;P.v=4;P.x+=Math.cos(P.a)*P.v*dt*.2;P.z+=Math.sin(P.a)*P.v*dt*.2;wakeT-=dt;if(wakeT<=0){wakeT=.12;wake(P,1);}}
   if(state!=='paused')update(dt);render(dt);requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
