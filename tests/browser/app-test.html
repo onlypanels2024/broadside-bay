@@ -459,6 +459,15 @@ details.how summary::-webkit-details-marker{display:none}
     <div><button class="linkbtn" id="storyback">Back</button></div>
   </div>
 </div>
+<div class="overlay" id="coopov" hidden>
+  <div class="card">
+    <div class="eyebrow">Sail together</div>
+    <h2>Wave battle together?</h2>
+    <p class="menunote" id="cooptxt"></p>
+    <button class="btn" id="coopyes">Join the battle</button>
+    <div><button class="linkbtn" id="coopno">No thanks</button></div>
+  </div>
+</div>
 <div class="overlay" id="duelov" hidden>
   <div class="card">
     <div class="eyebrow">A challenge</div>
@@ -1272,6 +1281,9 @@ function clearWorld(){
   islands.forEach(i=>{scene.remove(i.g);i.g.userData.ownGeo.forEach(x=>x.dispose())});islands.length=0;if(arenaG){scene.remove(arenaG);arenaG=null;}
 }
 function placeIslands(n,minFromCenter){
+  // in a co-op battle both phones must build the same islands, so use a random generator seeded by the host
+  if(coop&&!placeIslands.seeded){const seed=[...String(coop.host)].reduce((h,c)=>Math.imul(h^c.charCodeAt(0),16777619)>>>0,2166136261);const old=Math.random;Math.random=mulberry(seed);placeIslands.seeded=true;
+    try{placeIslands(n,minFromCenter);}finally{Math.random=old;placeIslands.seeded=false;}return;}
   for(let i=0;i<n;i++){for(let k=0;k<40;k++){const r=rnd(2.6,4.4),x=rnd(-ARENA+8,ARENA-8),z=rnd(-ARENA+8,ARENA-8);
     if(Math.hypot(x,z)>minFromCenter&&islands.every(o=>Math.hypot(o.x-x,o.z-z)>o.r+r+11)){const g=makeIsland(r);g.position.set(x,0,z);g.rotation.y=rnd(0,TAU);islands.push({g,x,z,r});break;}}}
   setIslandUniforms();
@@ -1348,12 +1360,13 @@ function reset(){
   nextWave();updHud();updXP();$('rankrow').hidden=false;
 }
 function nextWave(){wave++;waveTimer=2;if(wave%5===0)showBanner('Boss ship ahead',true);else showBanner('Wave '+wave);}
+let enemySeq=0;
 function spawnShip(kind,x,z){
   if(x===undefined){const ang=rnd(0,TAU),dist=kind==='boss'?48:40;x=Math.max(-ARENA,Math.min(ARENA,P.x+Math.cos(ang)*dist));z=Math.max(-ARENA,Math.min(ARENA,P.z+Math.sin(ang)*dist));}
-  const g=makeShip(LOOKS[kind]);
+  const g=makeShip(LOOKS[kind]);enemySeq++;
   const bar=new THREE.Group(),bg=new THREE.Mesh(BARW,barBgM),fg=new THREE.Mesh(BARW,barFgM);bg.renderOrder=10;fg.renderOrder=11;fg.position.z=.01;bar.add(bg,fg);bar.visible=false;scene.add(bar);
   const open=MODE==='open',hp=kind==='boss'?(open?30+Math.round(threat()*8):30+wave*3):kind==='galleon'?5:2;
-  enemies.push({g,bar,fg,kind,x,z,v:0,big:kind!=='sloop',hp,max:hp,r:kind==='boss'?4:kind==='galleon'?2.4:1.7,
+  enemies.push({id:enemySeq,g,bar,fg,kind,x,z,v:0,big:kind!=='sloop',hp,max:hp,r:kind==='boss'?4:kind==='galleon'?2.4:1.7,
     speed:kind==='boss'?4.6:kind==='galleon'?5.5:8+(open?threat()*.5:wave*.3),cool:rnd(1.4,2.6),flash:0,orbit:Math.random()<.5?1:-1,phase:rnd(0,TAU),atk:0,turn:0,mode:open?'roam':'attack',a:open?rnd(0,TAU):Math.atan2(P.z-z,P.x-x)});
   if(kind==='boss'){$('bossname').textContent=BOSS_NAMES[((open?bossCount:wave/5)-1+BOSS_NAMES.length*9)%BOSS_NAMES.length];if(!open)$('boss').hidden=false;$('bossfill').style.width='100%';}
 }
@@ -1427,7 +1440,7 @@ function renderShop(){
     box.appendChild(b);
   }
 }
-$('next').onclick=()=>{audio();MUS.mode='play';$('shopov').hidden=true;state='play';if(MODE==='open'){saveOpen();lastPortName='';}else nextWave();};
+$('next').onclick=()=>{audio();if(coop&&coopNextBlocked())return;MUS.mode='play';$('shopov').hidden=true;state='play';if(MODE==='open'){saveOpen();lastPortName='';}else if(coop&&coop.role==='guest')coop.rd=wave;else nextWave();};
 $('dock').onclick=()=>{audio();if(state==='play'&&MODE==='open')openShop();};
 
 /* ================= shipwright: choose a ship, paint it, pick or draw an emblem ================= */
@@ -1688,6 +1701,80 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
   return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
 /*ENDACHDEF*/
 function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}
+/* ---- co-op Wave battle with a friend: the inviter's phone runs the battle, the friend's phone follows ---- */
+function coopOn(){return !!(FB&&NET.room);}
+function coopNet(){if(!FB||!NET.room)return null;return{me:NET.myId,invite:(uid,ok)=>FB.coopInvite(uid,FB.user().name,ok),clear:uid=>FB.coopClear(uid),set:(p,v)=>FB.coopSet(p,v),watch:(p,cb)=>FB.coopWatch(p,cb)};}   // the app: {invite(uid,ok), clear(uid), set(path,v), watch(path,cb)->stop, me}
+let coop=null;const coopAsked=new Map();let coopOffer=null;
+function askCoop(uid,name){if(coop)return;coopAsked.set(uid,{name});coopNet().invite(uid,false);$('friendmsg').textContent='Invite sent to '+name+'. If they join, you both start a Wave battle together.';}
+function coopInbox(box){for(const [uid,m] of Object.entries(box||{})){if(!m)continue;const fresh=(serverNowMs()-(m.t||0))<60000;
+    if(m.ok){coopNet().clear(uid);if(fresh&&coopAsked.has(uid)&&!coop){coopAsked.delete(uid);startCoop('host',uid,m.n||'Captain');}continue;}
+    if(!fresh||coop||duel||state!=='play'){coopNet().clear(uid);continue;}
+    if(!coopOffer){coopOffer={uid,name:m.n||'Captain'};$('cooptxt').textContent=`${coopOffer.name} invites you to fight a Wave battle together. You keep your own Wave battle ship, gold and upgrades, and both get gold for every ship sunk.`;$('coopov').hidden=false;chime(true);buzz('medium');}}}
+$('coopyes').onclick=()=>{audio();const o=coopOffer;coopOffer=null;$('coopov').hidden=true;if(!o)return;coopNet().clear(o.uid);coopNet().invite(o.uid,true);startCoop('guest',o.uid,o.name);};
+$('coopno').onclick=()=>{audio();const o=coopOffer;coopOffer=null;$('coopov').hidden=true;if(o)coopNet().clear(o.uid);};
+function startCoop(role,peer,name){const N=coopNet();if(!N)return;if(MODE==='open'){saveOpen();}
+  ['menuov','friendov','shopov','dailyov','logov','fleetov','boardov','over'].forEach(id=>$(id).hidden=true);
+  coop={role,peer,name,host:role==='host'?N.me:peer,other:null,sendT:0,es:[],ps:[],sunk:[],seen:new Set(),seq:0,rd:0,st:null,g:null,stops:[],w:0,maxShot:0,maxEs:0};
+  reset();   // my own Wave battle ship, gold and upgrades
+  if(role==='guest'){enemies.forEach(e=>{disposeGroup(e.g);scene.remove(e.bar);});enemies=[];waveTimer=0;wave=0;}
+  const base='coop/'+coop.host;
+  if(role==='host'){N.set(base,{gu:peer,t:Date.now()});coop.stops.push(N.watch(base+'/g',v=>{coop.g=v;}));}
+  else coop.stops.push(N.watch(base+'/st',v=>{coop.st=v;}));
+  $('start').hidden=true;$('hint').hidden=false;musPlay();state='play';showBanner('Wave battle with '+name,true);}
+function endCoop(){const c=coop;if(!c)return;coop=null;c.stops.forEach(f=>f&&f());if(c.other){disposeGroup(c.other.g);}
+  enemies=enemies.filter(e=>{if(e.proxy){disposeGroup(e.g);scene.remove(e.bar);return false;}return true;});P.down=false;pship.visible=true;
+  const N=coopNet();if(N&&c.role==='host')N.set('coop/'+c.host,null);}
+function coopShot(owner,x,z,vx,vz){if(!coop)return;const d=[++coop.seq,+x.toFixed(1),+z.toFixed(1),+vx.toFixed(1),+vz.toFixed(1)];
+  if(owner==='p')coop.ps.push({d,t:clock});else if(coop.role==='host'&&(owner==='e'||owner==='b'))coop.es.push({d:d.concat([owner==='b'?1:0]),t:clock});}
+function myShipState(){return{x:+(P.x).toFixed(1),z:+(P.z).toFixed(1),a:+(P.a).toFixed(2),v:+(P.v).toFixed(1),hp:P.hp,mx:maxHp(),sh:SHIPS.indexOf(SHIP()),lk:paint.lk,dw:paint.dw||'',sg:canSide()?1:0,al:P.down?0:1,ps:coop.ps.map(s=>s.d),t:Date.now()};}
+function coopOther(st){const c=coop;if(!st)return;
+  if(!c.other||c.other.sh!==(st.sh|0)){if(c.other)disposeGroup(c.other.g);const RS=SHIPS[st.sh|0]||SHIPS[0];
+    c.other={g:makeShip(lookFor(RS.id,Object.assign(decodeLk(st.lk)?paintLook({lk:st.lk,dw:st.dw||''},hideDraw):{},{guns:true}))),x:st.x,z:st.z,a:st.a,sh:st.sh|0,sc:RS.scale,r:1.7*RS.scale};}
+  const o=c.other;o.tx=st.x;o.tz=st.z;o.ta=st.a;o.v=st.v||0;o.al=st.al!==0;o.hp=1;
+  // their new cannon shots: harmless to me, but they hit the enemies (the host decides the damage)
+  for(const sh of (st.ps||[])){const id=sh[0]|0;if(id<=c.maxShot)continue;c.maxShot=id;const m=new THREE.Mesh(BALL,M.ball);m.castShadow=true;scene.add(m);
+    balls.push({m,x:sh[1],z:sh[2],vx:sh[3],vz:sh[4],life:1.1,max:1.1,owner:c.role==='host'?'p2':'h',trail:0});}}
+function proxyMove(e,dt){e.x+=(e.tx-e.x)*Math.min(1,dt*8);e.z+=(e.tz-e.z)*Math.min(1,dt*8);e.a+=angDiff(e.ta,e.a)*Math.min(1,dt*8);e.flash-=dt;}
+function coopTick(dt){const c=coop,N=coopNet();if(!c||!N)return;
+  c.ps=c.ps.filter(s=>clock-s.t<1.6);c.es=c.es.filter(s=>clock-s.t<1.6);
+  // the other ship
+  const ot=c.role==='host'?c.g:(c.st&&c.st.h);if(ot)coopOther(ot);
+  if(c.other){const o=c.other;o.x+=(o.tx-o.x)*Math.min(1,dt*8);o.z+=(o.tz-o.z)*Math.min(1,dt*8);o.a+=angDiff(o.ta,o.a)*Math.min(1,dt*8);
+    o.g.visible=o.al;o.g.userData.ground.forEach(m=>m.visible=o.al);if(o.al)poseShip(o.g,o.x,o.z,o.a,clock,1.3,0);}
+  c.sendT-=dt;
+  if(c.role==='host'){
+    // pirates go for whichever ship is closer (and still afloat)
+    const o=c.other;for(const e of enemies){if(e.proxy)continue;const dp=P.down?1e9:Math.hypot(e.x-P.x,e.z-P.z),dg=o&&o.al?Math.hypot(e.x-o.x,e.z-o.z):1e9;e.tg=dg<dp?o:null;}
+    if(c.g&&Date.now()-(c.g.t||Date.now())>15000&&!c.lost){c.lost=true;showBanner(c.name+' left the battle');setTimeout(()=>{if(coop===c){endCoop();}},2500);}
+    if(c.g&&c.g.rd===wave&&c.waitNext){c.waitNext=false;$('next').disabled=false;$('next').click();}
+    if(P.down&&(!o||!o.al)&&state==='play'&&!c.over){c.over=true;N.set('coop/'+c.host+'/st/ph','over');gameOver();return;}
+    if(c.sendT<=0){c.sendT=.1;N.set('coop/'+c.host+'/st',{w:wave,ph:state==='shop'?'shop':c.over?'over':'fight',t:Date.now(),
+      e:enemies.filter(e=>!e.proxy).map(e=>[e.id,e.kind,+e.x.toFixed(1),+e.z.toFixed(1),+e.a.toFixed(2),Math.max(0,e.hp),e.max]),
+      es:c.es.map(s=>s.d),k:c.sunk.slice(-20),h:myShipState()});}
+  }else{
+    const st=c.st;if(!st)return;
+    // enemies as the host sees them
+    const ids=new Set();for(const r of (st.e||[])){const [id,kind,x,z,a,hp,max]=r;ids.add(id);let e=enemies.find(q=>q.proxy&&q.id===id);
+      if(!e){const g=makeShip(LOOKS[kind]||LOOKS.sloop);const bar=new THREE.Group(),bg=new THREE.Mesh(BARW,barBgM),fg=new THREE.Mesh(BARW,barFgM);bg.renderOrder=10;fg.renderOrder=11;fg.position.z=.01;bar.add(bg,fg);bar.visible=false;scene.add(bar);
+        e={id,proxy:true,g,bar,fg,kind,x,z,a,tx:x,tz:z,ta:a,hp,max,big:kind!=='sloop',r:kind==='boss'?4:kind==='galleon'?2.4:1.7,flash:0,phase:rnd(0,TAU),turn:0,v:0};enemies.push(e);}
+      if(hp<e.hp)e.flash=.15;e.tx=x;e.tz=z;e.ta=a;e.hp=hp;e.max=max;}
+    const sunk=new Map((st.k||[]).map(([id,kind])=>[id,kind]));
+    enemies=enemies.filter(e=>{if(!e.proxy||ids.has(e.id))return true;
+      if(sunk.has(e.id)&&!c.seen.has(e.id)){c.seen.add(e.id);boom(e.x,e.z,true,e.kind==='boss'?3:1);noise(.8,260,.5);econKill(e.kind);for(let i=0;i<(e.kind==='boss'?10:e.big?4:2);i++)addPickup('coin',e.x+rnd(-2,2),e.z+rnd(-2,2),e.kind==='boss'?25:e.big?15:10);
+        sinking.push({g:e.g,t:0});hideGround(e.g);scene.remove(e.bar);updHud();}else{disposeGroup(e.g);scene.remove(e.bar);}return false;});
+    // their pirates' cannonballs can hit me
+    for(const sh of (st.es||[])){const id=sh[0]|0;if(id<=c.maxEs)continue;c.maxEs=id;const m=new THREE.Mesh(BALL,sh[5]?M.hotball:M.ball);m.castShadow=true;scene.add(m);
+      balls.push({m,x:sh[1],z:sh[2],vx:sh[3],vz:sh[4],life:1.1,max:1.1,owner:'e',trail:0});}
+    // the waves follow the host
+    if(st.w!==wave){wave=st.w|0;coopRevive();if(state==='shop'){$('shopov').hidden=true;state='play';MUS.mode='play';}showBanner(wave%5===0?'Boss ship ahead':'Wave '+wave,wave%5===0);updHud();}
+    if(st.ph==='shop'&&state==='play'&&c.rd!==wave){addGold(wave*20);addXP(wave*10);updHud();coopRevive();openShop();}
+    if(st.ph==='over'&&!c.over){c.over=true;if(state!=='over')gameOver();}
+    if(c.sendT<=0){c.sendT=.1;const g=myShipState();g.rd=c.rd;N.set('coop/'+c.host+'/g',g);}
+    if(Date.now()-(st.t||0)>15000&&!c.lost){c.lost=true;showBanner(c.name+' left the battle');setTimeout(()=>{if(coop===c)toMenu();},2500);}
+  }}
+function coopDown(){P.down=true;P.hp=0;updHud();boom(P.x,P.z,true);pship.visible=false;pship.userData.ground.forEach(m=>m.visible=false);showBanner('Sunk! Back next wave if '+(coop?coop.name:'your friend')+' holds on',true);}
+function coopRevive(){if(!P.down)return;P.down=false;P.hp=maxHp();P.inv=2;pship.visible=true;pship.userData.ground.forEach(m=>m.visible=true);updHud();}
+function coopNextBlocked(){if(coop.role!=='host')return false;if(coop.g&&coop.g.rd===wave)return false;coop.waitNext=true;$('next').disabled=true;$('next').textContent='Waiting for '+coop.name+'…';return true;}
 /* ---- duels: a fair 1-on-1 in the arena (both in a brig with side cannons, no other upgrades) ---- */
 function duelOn(){return econServer()&&!!NET.srv;}
 function duelSend(uid,ok){FB.duelSend(uid,FB.user().name,ok);}            // the app: write a challenge (or, ok=true, an acceptance) to that captain
@@ -1830,10 +1917,10 @@ function renderFriends(){if($('friendov').hidden)return;const body=$('friendbody
   const reqs=Object.entries(fd.reqs||{});if(reqs.length){sec('Friend requests');for(const [uid,r] of reqs)row(r.n||'Captain','wants to be shipmates',[['Accept',()=>{friendAccept(uid,r.n||'Captain');$('friendmsg').textContent='You and '+(r.n||'Captain')+' are now friends.';}]],false);}
   const list=Object.entries(fd.list||{});sec('Your friends ('+list.length+')');
   if(!list.length){const p=document.createElement('p');p.className='menunote';p.textContent='No friends yet. Add captains you meet at sea from the list below.';body.appendChild(p);}
-  for(const [uid,name] of list){const atSea=typeof NET!=='undefined'&&NET.peers.has(uid);row(name,atSea?'● at sea, shown in blue on your chart':on.has(uid)?'● online':'offline',(atSea&&duelOn()?[['Duel',()=>askDuel(uid,name)]]:[]).concat([['Remove',()=>{friendRemove(uid);$('friendmsg').textContent=name+' removed.';},true]]),atSea||on.has(uid));}
+  for(const [uid,name] of list){const atSea=typeof NET!=='undefined'&&NET.peers.has(uid);row(name,atSea?'● at sea, shown in blue on your chart':on.has(uid)?'● online':'offline',(atSea&&duelOn()?[['Duel',()=>askDuel(uid,name)]]:[]).concat((atSea||on.has(uid))&&coopOn()?[['Wave battle',()=>askCoop(uid,name),true]]:[]).concat([['Remove',()=>{friendRemove(uid);$('friendmsg').textContent=name+' removed.';},true]]),atSea||on.has(uid));}
   if(typeof NET!=='undefined'){const near=[...NET.peers.values()].filter(r=>r.pr&&r.pr.m==='open'&&!fd.list[r.by||r.peer]&&(r.by||r.peer)!==me);
     if(near.length){sec('Captains at sea now');for(const r of near){const uid=r.by||r.peer,nm=remoteName(r),asked=friend.asked.has(uid);
-      row(nm,'',(duelOn()?[['Duel',()=>askDuel(uid,nm),true]]:[]).concat([[asked?'Asked ✓':'Add friend',()=>{if(asked)return;friend.asked.add(uid);friendAsk(uid,nm);$('friendmsg').textContent='Request sent to '+nm+'.';renderFriends();}]]),false);}}}}
+      row(nm,'',(duelOn()?[['Duel',()=>askDuel(uid,nm),true]]:[]).concat(coopOn()?[['Waves',()=>askCoop(uid,nm),true]]:[]).concat([[asked?'Asked ✓':'Add friend',()=>{if(asked)return;friend.asked.add(uid);friendAsk(uid,nm);$('friendmsg').textContent='Request sent to '+nm+'.';renderFriends();}]]),false);}}}}
 const friend={asked:new Set()};
 function openFriends(){if(!friendsOn())return;audio();$('menuov').hidden=true;$('friendmsg').textContent='';$('friendov').hidden=false;renderFriends();}
 $('menufriends').onclick=openFriends;$('friendclose').onclick=()=>{audio();$('friendov').hidden=true;$('menuov').hidden=false;};
@@ -1998,6 +2085,7 @@ function handleBack(){
   if(!$('logov').hidden){$('logclose').click();return true;}
   if(!$('friendov').hidden){$('friendclose').click();return true;}
   if(!$('duelov').hidden){$('duelno').click();return true;}
+  if(!$('coopov').hidden){$('coopno').click();return true;}
   if(!$('chatbox').hidden){$('chatbox').hidden=true;return true;}
   if(!$('menuov').hidden){closeMenu();return true;}
   const jo=$('joinov');if(jo&&!jo.hidden){$('joinback').click();return true;}
@@ -2032,7 +2120,7 @@ let newArm=false;
 $('newVoyage').onclick=()=>{if(!newArm){newArm=true;$('newVoyage').textContent='Tap again to erase your saved voyage';$('newVoyage').classList.add('warn');return;}
   if(FB){FB.request({k:'reset'});$('newVoyage').textContent='Starting a new voyage…';setTimeout(refreshStart,2500);return;}
   try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshStart();};
-function toMenu(){$('objective').hidden=true;story.on=false;$('storyov').hidden=true;if(MODE==='open'&&state!=='over')saveOpen();if(MODE==='waves')saveWaves();$('rankrow').hidden=true;state='title';firing=false;joy=null;
+function toMenu(){if(coop)endCoop();$('objective').hidden=true;story.on=false;$('storyov').hidden=true;if(MODE==='open'&&state!=='over')saveOpen();if(MODE==='waves')saveWaves();$('rankrow').hidden=true;state='title';firing=false;joy=null;
   ['over','shopov','dock','boss','hint','map','menuov'].forEach(id=>$(id).hidden=true);refreshStart();$('start').hidden=false;}
 function launchOpen(sv){const b=$('goOpen');b.disabled=true;b.textContent='Charting the sea…';
   [2500,6000].forEach(ms=>setTimeout(()=>{if(!daily.auto&&state==='play'&&dailyOn()&&dailyState().canChest&&$('menuov').hidden){daily.auto=true;openDaily('sea');}},ms));
@@ -2060,7 +2148,7 @@ $('joinguest').onclick=async()=>{audio();const n=FB.cleanName($('guestname').val
   b.disabled=false;b.textContent='Sail as guest';};
 $('joinout').onclick=async()=>{closeOnline();await FB.signOut();refreshStart();showJoin();};
 $('goWaves').onclick=()=>{audio();musPlay();$('start').hidden=true;$('hint').hidden=false;reset();state='play'};
-$('again').onclick=()=>{audio();$('over').hidden=true;if(MODE==='open'&&duel){endDuel();return;}if(MODE==='open')respawn();else if(MODE==='story')startStory(story.i);else{musPlay();reset();state='play';}};
+$('again').onclick=()=>{audio();$('over').hidden=true;if(coop){toMenu();return;}if(MODE==='open'&&duel){endDuel();return;}if(MODE==='open')respawn();else if(MODE==='story')startStory(story.i);else{musPlay();reset();state='play';}};
 $('overmenu').onclick=()=>{audio();toMenu();};$('shopmenu').onclick=()=>{audio();toMenu();};
 const stick=document.createElement('div'),knob=document.createElement('div');
 stick.style.cssText='position:fixed;width:116px;height:116px;margin:-58px 0 0 -58px;border-radius:50%;border:1px solid rgba(214,178,98,.6);background:rgba(6,22,32,.25);pointer-events:none;z-index:2';
@@ -2075,13 +2163,14 @@ function shoot(s,ang,speed,owner,quiet,off=0){
   const bvx=Math.cos(ang)*speed+Math.cos(s.a)*s.v*.5,bvz=Math.sin(ang)*speed+Math.sin(s.a)*s.v*.5;
   balls.push({m,x:sx,z:sz,vx:bvx,vz:bvz,life:1.1,max:1.1,owner:owner==='p'?'p':'e',trail:0});
   if(owner==='p'&&MODE==='open')netShot(sx,sz,bvx,bvz);
+  if(coop)coopShot(owner,sx,sz,bvx,bvz);
   spark(sx,1.3,sz,{color:'#ffd99a',add:true,s:1.8,life:.1});
   for(let i=0;i<4;i++)spark(sx,1.3,sz,{tex:smokeTex,color:'#e6e2da',op:.75,s:rnd(.9,1.5),life:rnd(.8,1.4),vx:Math.cos(ang)*rnd(1.5,4.5),vy:rnd(.4,1.2),vz:Math.sin(ang)*rnd(1.5,4.5),grow:2,spin:rnd(-.5,.5)});
   if(!quiet)noise(.28,owner==='p'?850:600,owner==='p'?.35:.22);
 }
 function collideIslands(s){let hit=false;for(const r of islands){const dx=s.x-r.x,dz=s.z-r.z;if(Math.abs(dx)>14||Math.abs(dz)>14)continue;const d=Math.hypot(dx,dz),m=r.r*1.3+s.r*.8;if(d<m&&d>0){s.x=r.x+dx/d*m;s.z=r.z+dz/d*m;s.v*=.6;hit=true;}}return hit;}
 function steer(s,target,rate,dt){const d=angDiff(target,s.a);const st=Math.max(-rate*dt,Math.min(rate*dt,d));s.a+=st;return st/dt;}
-function hurtPlayer(){if(P.inv>0||state!=='play')return;buzz('heavy');P.hp--;P.inv=1.2;shake=.9;updHud();noise(.4,400,.4);if(P.hp<=0)gameOver();}
+function hurtPlayer(){if(P.inv>0||state!=='play'||P.down)return;buzz('heavy');P.hp--;P.inv=1.2;shake=.9;updHud();noise(.4,400,.4);if(P.hp<=0){if(coop)coopDown();else gameOver();}}
 function gameOver(){
   state='over';musLament();firing=false;joy=null;boom(P.x,P.z,true);sinking.push({g:pship,t:0,keep:true});hideGround(pship);$('boss').hidden=true;$('dock').hidden=true;pw.speed=pw.rapid=pw.side=0;updAim();updChips();
   if(MODE==='open'){NET.deaths++;if(NET.fb&&NET.room&&NET.room.reportDeath)NET.room.reportDeath();NET.killer=(NET.lastHitBy&&clock-NET.lastHitT<6)?NET.lastHitBy:null;
@@ -2116,7 +2205,7 @@ function goOnline(){if(!FB||NET.room||NET.banned)return;const u=FB.user();if(!u)
   R.onReward(r=>{NET.kills++;showBanner(r.d?'Duel won: +100 gold':'You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
   NET.pending=new Map();NET.srv=null;NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();fleetChanged();achNotice();});
   NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});setTimeout(loadPorts,1500);
-  NET.unduel=FB.duelWatch(duelInbox);
+  NET.unduel=FB.duelWatch(duelInbox);NET.uncoop=FB.coopInboxWatch(coopInbox);
   let reqN=-1;NET.friends={list:{},reqs:{}};NET.unfriends=FB.watchFriends(fd=>{NET.friends={list:fd.list,reqs:fd.reqs};const n=Object.keys(fd.reqs).length;if(reqN>=0&&n>reqN&&state==='play')showBanner('New friend request (Menu → Friends)');reqN=n;renderFriends();});
   R.onBanned(()=>{NET.banned=true;closeOnline();saveMode='none';showBanner('Removed from online play by the referee');});}
 // my fleet or any fleet's details changed: redraw my flag, other ships' tags, and the fleet screen
@@ -2124,7 +2213,7 @@ let fleetKey='';
 function fleetChanged(){const f=fleetsAll()[myFleetId()],k=f?f.tag+f.col+f.em:'';if(k!==fleetKey){const had=fleetKey;fleetKey=k;if(state!=='title')setShip(shipId);if(had!==''||k!=='')NET.last=null;
     if(k&&!had&&state==='play')showBanner('You sail with ['+f.tag+'] '+f.n);}
   NET.last=null;renderFleet();}
-function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.unfleets){NET.unfleets();NET.unfleets=null;}if(NET.unfriends){NET.unfriends();NET.unfriends=null;}if(NET.unduel){NET.unduel();NET.unduel=null;}NET.friends=null;NET.fleets={};fleetKey='';if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
+function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.unfleets){NET.unfleets();NET.unfleets=null;}if(NET.unfriends){NET.unfriends();NET.unfriends=null;}if(NET.unduel){NET.unduel();NET.unduel=null;}if(NET.uncoop){NET.uncoop();NET.uncoop=null;}NET.friends=null;NET.fleets={};fleetKey='';if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
 refreshStart();
 if(FB)FB.ready.then(()=>{const u=FB.user();if(u&&!u.google){FB.signOut();}else if(u)goOnline();refreshStart();});
 function netShot(x,z,vx,vz){if(!NET.room)return;const st=NET.room.serverNow?NET.room.serverNow():Date.now();NET.shots.push({d:[++NET.shotSeq,+x.toFixed(1),+z.toFixed(1),+vx.toFixed(1),+vz.toFixed(1),st],t:clock});if(NET.shots.length>30)NET.shots.shift();}
@@ -2245,7 +2334,7 @@ function update(dt){
     if(keys.ArrowUp||keys.KeyW)thrust=1;if(keys.ArrowDown||keys.KeyS)thrust=-.3;
     turnHeel+=(-tr*.05*Math.min(1,P.v/10)-turnHeel)*Math.min(1,dt*3);
     const top=SHIP().speed*(1+.12*up.sails)*(pw.speed>0?1.55:1);
-    P.v+=(thrust*top-P.v)*Math.min(1,dt*1.6);
+    P.v+=(thrust*top-P.v)*Math.min(1,dt*1.6);if(P.down){P.v=0;firing=false;}
     P.x+=Math.cos(P.a)*P.v*dt;P.z+=Math.sin(P.a)*P.v*dt;
     {const B=BOUND();P.x=Math.max(-B,Math.min(B,P.x));P.z=Math.max(-B,Math.min(B,P.z));}
     collideIslands(P);
@@ -2261,11 +2350,13 @@ function update(dt){
     puTimer-=dt;if(puTimer<=0){puTimer=rnd(16,24);const s=freeSpot(P,10,20);if(s)addPickup(randPU(),s.x,s.z);}
     if(MODE==='open')openWorldTick(dt);
     else if(MODE==='story')storyTick(dt);
+    else if(coop&&coop.role==='guest'){}
     else if(waveTimer>0){waveTimer-=dt;if(waveTimer<=0)spawnWave();}
-    else if(enemies.length===0){addGold(wave*20);addXP(wave*10);updHud();openShop();}
+    else if(enemies.length===0){addGold(wave*20);addXP(wave*10);updHud();if(coop)coopRevive();openShop();}
 
     const pSafe=MODE==='open'&&inSafe(P);
     for(const e of enemies){
+      if(e.proxy){proxyMove(e,dt);continue;}
       const dx=P.x-e.x,dz=P.z-e.z,d=Math.hypot(dx,dz),toP=Math.atan2(dz,dx),want=e.kind==='boss'?20:e.big?18:14;
       if(e.mode==='convoy'||e.mode==='escort'){convoyAI(e,dt,d);continue;}
       if(MODE==='open'){
@@ -2306,9 +2397,10 @@ function update(dt){
     b.trail-=dt;if(b.trail<=0){b.trail=.05;spark(b.x,b.m.position.y,b.z,{tex:smokeTex,color:'#dcd8d0',op:.35,s:.5,life:.5,grow:1.5});}
     if(b.life<=0){splash(b.x,b.z);continue;}
     if(islands.some(r=>Math.hypot(b.x-r.x,b.z-r.z)<r.r*1.1)){b.life=0;boom(b.x,b.z,false);continue;}
-    if(b.owner==='p'){for(const e of enemies){if(Math.hypot(b.x-e.x,b.z-e.z)<e.r+.5){b.life=0;e.hp--;e.flash=.15;onEnemyHit(e);boom(b.x,b.z,false);noise(.15,1500,.2);break;}}
+    if(b.owner==='p'||b.owner==='p2'){for(const e of enemies){if(Math.hypot(b.x-e.x,b.z-e.z)<e.r+.5){b.life=0;if(e.proxy){boom(b.x,b.z,false);break;}e.hp--;e.flash=.15;onEnemyHit(e);boom(b.x,b.z,false);noise(.15,1500,.2);break;}}
       if(b.life>0&&kraken.on&&Math.hypot(b.x-kraken.x,b.z-kraken.z)<kraken.r+.6){b.life=0;krakenHurt(b);}
       if(b.life>0)for(const r of remoteShips()){if(!isMate(r.peer)&&Math.hypot(b.x-r.x,b.z-r.z)<1.7*(r.sc||1)+.5){b.life=0;boom(b.x,b.z,false);noise(.15,1500,.2);break;}}}
+    else if(b.owner==='h'){for(const e of enemies){if(Math.hypot(b.x-e.x,b.z-e.z)<e.r+.5){b.life=0;boom(b.x,b.z,false);break;}}}
     else if(b.owner==='r'){
       if(state==='play'&&MODE==='open'&&!isMate(b.from)&&Math.hypot(b.x-P.x,b.z-P.z)<P.r+.5){b.life=0;boom(b.x,b.z,false);if(!inSafe(P)){NET.lastHitBy=b.from;NET.lastHitT=clock;if(NET.fb&&NET.room&&NET.room.reportHit)NET.room.reportHit(b.from,b.sid|0,P.x,P.z,NET.room.serverNow());hurtPlayer();}}
       else{for(const r of remoteShips()){if(r.peer!==b.from&&Math.hypot(b.x-r.x,b.z-r.z)<1.7*(r.sc||1)+.5){b.life=0;boom(b.x,b.z,false);break;}}
@@ -2319,9 +2411,11 @@ function update(dt){
   balls=balls.filter(b=>{if(b.life<=0)scene.remove(b.m);return b.life>0});
 
   for(const e of enemies)if(e.hp<=0){
+    if(e.proxy)continue;
     if(e.silent){disposeGroup(e.g);scene.remove(e.bar);continue;}
     const boss=e.kind==='boss';
     boom(e.x,e.z,true,boss?3:1);noise(.8,260,.5);if(Math.hypot(e.x-P.x,e.z-P.z)<70)buzz('medium');shake=Math.max(shake,boss?1.4:.6);
+    if(coop&&coop.role==='host')coop.sunk.push([e.id,e.kind]);
     if(MODE==='story'){storyKill(e);if(e.kind==='merchant')convoySunk(e);}else{econKill(e.kind);if(e.kind==='merchant')convoySunk(e);}
     if(MODE==='open'&&(boss||(e.kind==='galleon'&&Math.random()<.3)))addPickup('map',e.x+rnd(-2,2),e.z+rnd(-2,2));
     const coins=boss?10:e.kind==='merchant'?14:e.big?4:2,val=boss?25:e.big?15:10,spread=boss?5:e.kind==='merchant'?4:2;
@@ -2331,7 +2425,8 @@ function update(dt){
     else if(Math.random()<(e.big?.35:.15))addPickup(randPU(),e.x,e.z);
     sinking.push({g:e.g,t:0});hideGround(e.g);scene.remove(e.bar);updHud();
   }
-  enemies=enemies.filter(e=>e.hp>0);
+  enemies=enemies.filter(e=>e.hp>0||e.proxy);
+  if(coop)coopTick(dt);
 
   for(const p of pickups){if(state==='play')p.life-=dt;const d=Math.hypot(P.x-p.x,P.z-p.z);
     if(state==='play'&&d<7){p.x+=(P.x-p.x)*dt*3;p.z+=(P.z-p.z)*dt*3}

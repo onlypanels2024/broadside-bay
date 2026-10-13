@@ -335,6 +335,39 @@
           }
         }
       }
+    },
+    "coopreq": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$from": {
+          ".write": "auth != null && ((auth.uid === $from && $from !== $uid) || auth.uid === $uid)",
+          ".validate": "newData.hasChildren(['n','t']) && newData.child('t').val() === now",
+          "n": {
+            ".validate": "newData.isString() && newData.val().length <= 16"
+          },
+          "t": {
+            ".validate": "newData.val() === now"
+          },
+          "ok": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "coop": {
+      "$host": {
+        ".read": "auth != null && (auth.uid === $host || auth.uid === data.child('gu').val())",
+        ".write": "auth != null && auth.uid === $host",
+        "gu": {
+          ".validate": "newData.isString() && newData.val().length <= 64"
+        },
+        "g": {
+          ".write": "auth != null && auth.uid === root.child('coop').child($host).child('gu').val()"
+        }
+      }
     }
   }
 }

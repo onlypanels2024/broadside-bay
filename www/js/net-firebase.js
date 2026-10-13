@@ -106,6 +106,12 @@
         duelWatch(cb) { const u = auth.currentUser; if (!u) return () => {}; const ref = db.ref('duelreq/' + u.uid), fn = s => cb(s.val() || {}); ref.on('value', fn); return () => ref.off('value', fn); },
         duelSend(uid, myName, ok) { const u = auth.currentUser; if (!u || uid === u.uid) return; const m = { n: myName, t: firebase.database.ServerValue.TIMESTAMP }; if (ok) m.ok = true; db.ref('duelreq/' + uid + '/' + u.uid).set(m).catch(() => {}); },
         duelClear(uid) { const u = auth.currentUser; if (!u) return; db.ref('duelreq/' + u.uid + '/' + uid).remove().catch(() => {}); },
+        // Co-op Wave battle: invites (same shape as duel challenges) and the shared battle under coop/<host>.
+        coopInboxWatch(cb) { const u = auth.currentUser; if (!u) return () => {}; const ref = db.ref('coopreq/' + u.uid), fn = s => cb(s.val() || {}); ref.on('value', fn); return () => ref.off('value', fn); },
+        coopInvite(uid, myName, ok) { const u = auth.currentUser; if (!u || uid === u.uid) return; const m = { n: myName, t: firebase.database.ServerValue.TIMESTAMP }; if (ok) m.ok = true; db.ref('coopreq/' + uid + '/' + u.uid).set(m).catch(() => {}); },
+        coopClear(uid) { const u = auth.currentUser; if (!u) return; db.ref('coopreq/' + u.uid + '/' + uid).remove().catch(() => {}); },
+        coopSet(path, v) { if (!/^coop\//.test(path)) return; (v === null ? db.ref(path).remove() : db.ref(path).set(v)).catch(() => {}); },
+        coopWatch(path, cb) { if (!/^coop\//.test(path)) return () => {}; const ref = db.ref(path), fn = s => cb(s.val()); ref.on('value', fn); return () => ref.off('value', fn); },
         // Report another captain's drawing to the referee.
         report(tg, dw) {
           const u = auth.currentUser; if (!u) return;

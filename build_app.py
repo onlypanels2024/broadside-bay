@@ -287,6 +287,11 @@ rep("sh:SHIPS.indexOf(SHIP()),fl:myFleetTag()||null,","sh:SHIPS.indexOf(SHIP()),
 rep("else Object.assign(p,{sh:null,fl:null,","else Object.assign(p,{sh:null,du:null,fl:null,")
 rep("  let reqN=-1;NET.friends=","  NET.unduel=FB.duelWatch(duelInbox);\n  let reqN=-1;NET.friends=")
 rep("if(NET.unfriends){NET.unfriends();NET.unfriends=null;}","if(NET.unfriends){NET.unfriends();NET.unfriends=null;}if(NET.unduel){NET.unduel();NET.unduel=null;}")
+# ---- co-op Wave battle
+rep("function coopOn(){return false;}","function coopOn(){return !!(FB&&NET.room);}")
+rep("function coopNet(){return null;}","function coopNet(){if(!FB||!NET.room)return null;return{me:NET.myId,invite:(uid,ok)=>FB.coopInvite(uid,FB.user().name,ok),clear:uid=>FB.coopClear(uid),set:(p,v)=>FB.coopSet(p,v),watch:(p,cb)=>FB.coopWatch(p,cb)};}")
+rep("  NET.unduel=FB.duelWatch(duelInbox);","  NET.unduel=FB.duelWatch(duelInbox);NET.uncoop=FB.coopInboxWatch(coopInbox);")
+rep("if(NET.unduel){NET.unduel();NET.unduel=null;}","if(NET.unduel){NET.unduel();NET.unduel=null;}if(NET.uncoop){NET.uncoop();NET.uncoop=null;}")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 
