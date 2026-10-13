@@ -317,6 +317,7 @@ details.how summary::-webkit-details-marker{display:none}
       <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
       <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
       <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
+      <button class="btn ghost" id="wxtog">Rain &amp; lightning: <span id="wxtogv">On</span></button>
       <button class="btn ghost" id="drawtog">Captains' drawings: <span id="drawtogv">Shown</span></button>
       <button class="btn ghost" id="menuleave">Main menu</button>
     </div>
@@ -472,16 +473,18 @@ const SUN=new THREE.Vector3(-.28,.62,-.73).normalize();
 const SKY={zen:L('#2f7fc6'),hor:L('#cdeaf3'),sun:new THREE.Color(1,.9,.72)};
 scene.fog=new THREE.Fog(SKY.hor.clone(),100,260);
 const cam=new THREE.PerspectiveCamera(50,1,1,1000);
-let W,H,camK=1;
+let W,H,camK=1;const FOGB={near:100,far:260};
 function resize(){W=innerWidth;H=innerHeight;R.setSize(W,H,false);cam.aspect=W/H;cam.updateProjectionMatrix();
-  camK=Math.min(1.75,Math.max(1,.9/cam.aspect));const D=40*camK;scene.fog.near=D*1.3;scene.fog.far=D*3.4;
+  camK=Math.min(1.75,Math.max(1,.9/cam.aspect));const D=40*camK;FOGB.near=D*1.3;FOGB.far=D*3.4;scene.fog.near=D*1.3;scene.fog.far=D*3.4;
   if(waterMat){waterMat.uniforms.uFogNear.value=scene.fog.near;waterMat.uniforms.uFogFar.value=scene.fog.far;}}
 let waterMat=null;
 
 const skyMat=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,fog:false,
-  uniforms:{zen:{value:SKY.zen},hor:{value:SKY.hor},sunDir:{value:SUN},sunCol:{value:SKY.sun}},
+  uniforms:{zen:{value:SKY.zen},hor:{value:SKY.hor},sunDir:{value:SUN},sunCol:{value:SKY.sun},night:{value:0},cloud:{value:0}},
   vertexShader:`varying vec3 vDir;void main(){vDir=normalize((modelMatrix*vec4(position,0.)).xyz);vec4 p=projectionMatrix*modelViewMatrix*vec4(position,1.);gl_Position=p.xyww;}`,
-  fragmentShader:`uniform vec3 zen,hor,sunDir,sunCol;varying vec3 vDir;void main(){vec3 d=normalize(vDir);float h=max(d.y,0.);vec3 c=mix(hor,zen,pow(h,.5));
+  fragmentShader:`uniform vec3 zen,hor,sunDir,sunCol;uniform float night,cloud;varying vec3 vDir;float hs(vec3 p){return fract(sin(dot(p,vec3(12.9898,78.233,45.164)))*43758.5453);}
+  void main(){vec3 d=normalize(vDir);float h=max(d.y,0.);vec3 c=mix(hor,zen,pow(h,.5));
+    if(night>0.&&d.y>0.){vec3 q=floor(d*260.);float st=step(.9975,hs(q))*night*(1.-cloud)*smoothstep(0.,.15,d.y);c+=vec3(st*(.6+.4*hs(q+1.)));}
     if(d.y<0.)c=mix(hor,hor*vec3(.55,.75,.8),min(1.,-d.y*3.));float s=max(dot(d,sunDir),0.);c+=sunCol*(pow(s,900.)*14.+pow(s,24.)*.35+pow(s,4.)*.08);
     gl_FragColor=vec4(c,1.);
     #include <tonemapping_fragment>
@@ -493,28 +496,29 @@ const sky=new THREE.Mesh(skyGeo,skyMat);sky.frustumCulled=false;scene.add(sky);
 {const envScene=new THREE.Scene();envScene.add(new THREE.Mesh(skyGeo,skyMat));const pm=new THREE.PMREMGenerator(R);scene.environment=pm.fromScene(envScene,.02).texture;pm.dispose();}
 
 scene.add(new THREE.HemisphereLight(0xdff4ff,0x0d5b6c,.35));
+const hemiL=scene.children[scene.children.length-1];
 const sunL=new THREE.DirectionalLight(0xfff0d8,1.9);
 sunL.castShadow=true;sunL.shadow.mapSize.set(2048,2048);
 Object.assign(sunL.shadow.camera,{left:-38,right:38,top:38,bottom:-38,near:1,far:160});sunL.shadow.bias=-.0004;sunL.shadow.normalBias=.03;
 scene.add(sunL);scene.add(sunL.target);
 
 /* ================= water ================= */
-const WAVE_GLSL=`float W(vec2 p,float t){return .32*sin(p.x*.22+t*1.3)+.22*sin(p.y*.27+t*1.05)+.13*sin((p.x+p.y)*.45+t*2.1);}`;
-const wh=(x,z,t)=>.32*Math.sin(x*.22+t*1.3)+.22*Math.sin(z*.27+t*1.05)+.13*Math.sin((x+z)*.45+t*2.1);
+const WAVE_GLSL=`uniform float uAmp;float W(vec2 p,float t){return uAmp*(.32*sin(p.x*.22+t*1.3)+.22*sin(p.y*.27+t*1.05)+.13*sin((p.x+p.y)*.45+t*2.1));}`;
+let WAMP=1;const wh=(x,z,t)=>WAMP*(.32*Math.sin(x*.22+t*1.3)+.22*Math.sin(z*.27+t*1.05)+.13*Math.sin((x+z)*.45+t*2.1));
 const ISL_MAX=10;
 waterMat=new THREE.ShaderMaterial({fog:false,
-  uniforms:{uTime:{value:0},uSun:{value:SUN},uSunCol:{value:SKY.sun},uZen:{value:SKY.zen},uHor:{value:SKY.hor},
+  uniforms:{uTime:{value:0},uAmp:{value:1},uSun:{value:SUN},uSunCol:{value:SKY.sun},uZen:{value:SKY.zen},uHor:{value:SKY.hor},
     uDeep:{value:L('#05506e')},uMid:{value:L('#0b8fae')},uShallow:{value:L('#2fd0c2')},uSand:{value:L('#b7ead6')},uFoam:{value:L('#f4fbfa')},
     uFogCol:{value:SKY.hor},uFogNear:{value:100},uFogFar:{value:260},
     uIsl:{value:Array.from({length:ISL_MAX},()=>new THREE.Vector3())},uN:{value:0}},
   vertexShader:`uniform float uTime;varying vec3 vW;varying float vH;${WAVE_GLSL}
-    void main(){vec4 w=modelMatrix*vec4(position,1.);float h=W(w.xz,uTime);w.y+=h;vH=h;vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
-  fragmentShader:`uniform float uTime,uFogNear,uFogFar;uniform vec3 uSun,uSunCol,uZen,uHor,uDeep,uMid,uShallow,uSand,uFoam,uFogCol;uniform vec3 uIsl[${ISL_MAX}];uniform int uN;
+    void main(){vec4 w=modelMatrix*vec4(position,1.);float h=W(w.xz,uTime);w.y+=h;vH=h/uAmp*(1.+.12*clamp(uAmp-1.,0.,1.));vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
+  fragmentShader:`uniform float uTime,uFogNear,uFogFar,uAmp;uniform vec3 uSun,uSunCol,uZen,uHor,uDeep,uMid,uShallow,uSand,uFoam,uFogCol;uniform vec3 uIsl[${ISL_MAX}];uniform int uN;
     varying vec3 vW;varying float vH;
     float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
     float noise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1.,0.)),u.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),u.x),u.y);}
     vec2 grad(vec2 p,float t){vec2 g=vec2(0.);float c3=cos((p.x+p.y)*.45+t*2.1);
-      g.x+=.32*.22*cos(p.x*.22+t*1.3)+.13*.45*c3;g.y+=.22*.27*cos(p.y*.27+t*1.05)+.13*.45*c3;
+      g.x+=.32*.22*cos(p.x*.22+t*1.3)+.13*.45*c3;g.y+=.22*.27*cos(p.y*.27+t*1.05)+.13*.45*c3;g*=uAmp;
       for(int i=0;i<12;i++){float fi=float(i);float a=fi*2.399+.3;vec2 d=vec2(cos(a),sin(a));float f=.8+fi*.62;float amp=.045/(1.+fi*.5);
         g+=d*amp*f*cos(dot(d,p)*f+t*(1.1+fi*.41));}
       return g;}
@@ -774,6 +778,7 @@ const G={
   castle:new THREE.BoxGeometry(1.25,.5,1),
 };
 const flagMats={};
+const lampGlowM=new THREE.SpriteMaterial({map:softTex,color:L('#ffb85a'),transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
 function makeShip(o){
   const g=new THREE.Group(),inner=new THREE.Group();g.add(inner);
   const hullM=std({map:woodTex,vertexColors:true,roughness:.72,side:THREE.DoubleSide});
@@ -813,7 +818,8 @@ function makeShip(o){
     add(G.port,M.port,x,yt-.32,sd*(w-.01));const gn=add(G.gun,M.iron,x,yt-.32,sd*(w+.22),guns);gn.rotation.y=0;
     if(o.decks>=2){add(G.port,M.port,x,yt-.62,sd*(w-.03));add(G.gun,M.iron,x,yt-.62,sd*(w+.2),guns);}});});
   guns.visible=!!o.guns;
-  [.55,-.55].forEach(z=>{const l=add(G.lamp,o.lamp?std({color:L(o.lamp),emissive:L(o.lamp),emissiveIntensity:2.4}):M.lamp,-LS-.05,edge(-LS).yt+.55,z);l.castShadow=false;});
+  [.55,-.55].forEach(z=>{const l=add(G.lamp,o.lamp?std({color:L(o.lamp),emissive:L(o.lamp),emissiveIntensity:2.4}):M.lamp,-LS-.05,edge(-LS).yt+.55,z);l.castShadow=false;
+    const gw=new THREE.Sprite(lampGlowM);gw.position.copy(l.position);gw.scale.setScalar(1.6);gw.renderOrder=5;inner.add(gw);});
   g.scale.setScalar(o.scale||1);
   const shadowM=new THREE.MeshBasicMaterial({map:softTex,color:L('#02303f'),transparent:true,opacity:.55,depthWrite:false});
   const collarM=new THREE.MeshBasicMaterial({map:collarTex,color:0xffffff,transparent:true,opacity:.75,depthWrite:false});
@@ -1474,6 +1480,8 @@ fb.addEventListener('pointerdown',e=>{audio();if(state==='play')firing=true;fb.c
 ['pointerup','pointercancel','pointerleave'].forEach(ev=>fb.addEventListener(ev,()=>{firing=false;fb.classList.remove('on')}));
 fb.addEventListener('contextmenu',e=>e.preventDefault());
 $('snd').onclick=()=>{audio();setMusic(!MUS.on);};
+function updWxTog(){$('wxtogv').textContent=WX.fx?'On':'Off';}
+$('wxtog').onclick=()=>{audio();WX.fx=!WX.fx;try{localStorage.setItem('bb-wxfx',WX.fx?'1':'0')}catch(e){}updWxTog();};
 function updDrawTog(){$('drawtogv').textContent=hideDraw?'Hidden':'Shown';}updDrawTog();
 /*DAILYDEF*/const DAILY_CHEST=[100,150,200,300,400,500,750];
 const QUESTS=[
@@ -2002,9 +2010,74 @@ function addPickup(k,x,z,v){
   scene.add(m);pickups.push({k,x,z,v,m,ring,life:k==='coin'?10:k==='barrel'?12:14});
 }
 
+/* ================= weather and day/night ================= */
+// Everyone online sees the same sky: it all follows the server clock. A day lasts 20 minutes
+// (about 12 of daylight); the weather changes every 5 minutes: clear, fog or storm.
+const WX={night:0,dusk:0,cloud:0,fog:0,rain:0,amp:1,flash:0,kind:'',dark:false,fx:true,envT:0,envKey:'',thunderT:8};
+try{WX.fx=localStorage.getItem('bb-wxfx')!=='0'}catch(e){}
+updWxTog();
+const DAY_MS=20*60000,WX_SLOT=5*60000;
+const WXC={dz:L('#2f7fc6'),dh:L('#cdeaf3'),ds:new THREE.Color(1,.9,.72),sz:L('#33467e'),sh:L('#f0a46a'),ss:new THREE.Color(1,.55,.28),
+  nz:L('#04091a'),nh:L('#16243c'),ns:new THREE.Color(.5,.58,.78),cz:L('#4d5a66'),ch:L('#a3adb3'),cnz:L('#0b0f16'),cnh:L('#252c34')};
+const WATER0={};['uDeep','uMid','uShallow','uSand','uFoam'].forEach(k=>WATER0[k]=waterMat.uniforms[k].value.clone());
+const sunDay=new THREE.Vector3(),moonDir=new THREE.Vector3(),tmpC=new THREE.Color(),tmpC2=new THREE.Color();
+const wxHash=n=>{let a=(n*2654435761)>>>0;a^=a>>>15;a=Math.imul(a,2246822519)>>>0;a^=a>>>13;return(a>>>0)/4294967296;};
+const wxKind=slot=>{const r=wxHash(slot+7);return r<.55?'clear':r<.75?'fog':'storm';};
+const WXT={clear:{cloud:0,fog:0,rain:0,amp:1},fog:{cloud:.45,fog:1,rain:0,amp:.9},storm:{cloud:.9,fog:.35,rain:1,amp:2.1}};
+const smooth=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
+// rain: streaks in a box that follows the camera
+const RAIN_N=1400,rainPos=new Float32Array(RAIN_N*6),rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute('position',new THREE.BufferAttribute(rainPos,3));
+const rainM=new THREE.LineBasicMaterial({color:L('#cfe0ea'),transparent:true,opacity:0,depthWrite:false});
+const rain=new THREE.LineSegments(rainGeo,rainM);rain.frustumCulled=false;rain.visible=false;scene.add(rain);
+const rainD=Array.from({length:RAIN_N},()=>({x:rnd(-45,45),y:rnd(0,32),z:rnd(-45,45),v:rnd(34,46)}));
+const nightL=new THREE.PointLight(0xffc27a,0,22,1.6);scene.add(nightL);
+function weatherAt(t){
+  const ph=(t%DAY_MS)/DAY_MS,a=ph*TAU,el=Math.sin(a)+.3;
+  const slot=Math.floor(t/WX_SLOT),k=wxKind(slot),kp=wxKind(slot-1),w=smooth(0,45000,t-slot*WX_SLOT),A=WXT[kp],B=WXT[k];
+  const mix=f=>A[f]+(B[f]-A[f])*w;
+  return{el,a,day:smooth(-.08,.28,el),dusk:Math.max(0,1-Math.abs(el-.08)/.28),kind:k,cloud:mix('cloud'),fog:mix('fog'),rain:mix('rain'),amp:mix('amp')};}
+function updWeather(dt){
+  const now=(typeof serverNowMs==='function'?serverNowMs():Date.now())+(window.__wxShift||0);
+  const w=weatherAt(now);WX.night=1-w.day;WX.dusk=w.dusk*(1-WX.night*.6);WX.cloud=w.cloud;WX.fog=w.fog;WX.rain=WX.fx?w.rain:0;WX.amp=w.amp;
+  // sun and moon
+  sunDay.set(Math.cos(w.a)*.9,Math.max(.05,w.el),-.6).normalize();moonDir.set(-Math.cos(w.a)*.6,.62,-.55).normalize();
+  SUN.copy(moonDir).lerp(sunDay,w.day).normalize();
+  // sky colours: day -> sunset -> night, greyed by cloud
+  SKY.zen.copy(WXC.dz).lerp(WXC.sz,WX.dusk*.8).lerp(WXC.nz,WX.night);SKY.hor.copy(WXC.dh).lerp(WXC.sh,WX.dusk).lerp(WXC.nh,WX.night);
+  tmpC.copy(WXC.cz).lerp(WXC.cnz,WX.night);tmpC2.copy(WXC.ch).lerp(WXC.cnh,WX.night);SKY.zen.lerp(tmpC,WX.cloud*.85);SKY.hor.lerp(tmpC2,WX.cloud*.8);
+  SKY.sun.copy(WXC.ds).lerp(WXC.ss,WX.dusk).lerp(WXC.ns,WX.night).multiplyScalar(1-WX.cloud*.9);
+  if(WX.flash>0){SKY.zen.lerp(tmpC.setRGB(.7,.75,.9),WX.flash*.6);SKY.hor.lerp(tmpC.setRGB(.8,.85,1),WX.flash*.5);WX.flash=Math.max(0,WX.flash-dt*3.5);}
+  scene.fog.color.copy(SKY.hor);skyMat.uniforms.night.value=WX.night;skyMat.uniforms.cloud.value=WX.cloud;
+  // lights
+  sunL.intensity=(1.9*w.day+.5*WX.night)*(1-WX.cloud*.6)+WX.flash*1.5;sunL.color.copy(SKY.sun).lerp(tmpC.setRGB(1,1,1),.3);
+  hemiL.intensity=.35*(1-WX.night*.45)+WX.cloud*.15+WX.flash*1.8;
+  R.toneMappingExposure=1-WX.night*.22-WX.cloud*.08;
+  const glow=Math.max(WX.night,WX.cloud*.5);lampGlowM.opacity=glow*.95;M.lamp.emissiveIntensity=2.2+glow*3;
+  nightL.intensity=WX.night*1.4;nightL.position.set(P.x,4,P.z);
+  // water darkens at night and in storms; waves grow in storms
+  const wd=(1-WX.night*.62)*(1-WX.cloud*.3);for(const k in WATER0)waterMat.uniforms[k].value.copy(WATER0[k]).multiplyScalar(k==='uFoam'?Math.max(.45,wd):wd);
+  WAMP=WX.amp;waterMat.uniforms.uAmp.value=WX.amp;
+  scene.fog.near=FOGB.near*(1-.55*WX.fog);scene.fog.far=FOGB.far*(1-.6*WX.fog);waterMat.uniforms.uFogNear.value=scene.fog.near;waterMat.uniforms.uFogFar.value=scene.fog.far;
+  // reflections follow the sky, refreshed now and then
+  WX.envT-=dt;const ek=Math.round(WX.night*8)+'|'+Math.round(WX.cloud*6)+'|'+Math.round(WX.dusk*5);
+  if(WX.envT<=0&&ek!==WX.envKey){WX.envT=3;WX.envKey=ek;const es=new THREE.Scene();es.add(new THREE.Mesh(skyGeo,skyMat));const pm=new THREE.PMREMGenerator(R);const old=scene.environment;scene.environment=pm.fromScene(es,.02).texture;pm.dispose();if(old)old.dispose();}
+  // rain and lightning
+  rain.visible=WX.rain>.03;rainM.opacity=WX.rain*.42;
+  if(rain.visible){const cx=look.x,cz=look.z;for(let i=0;i<RAIN_N;i++){const d=rainD[i];d.y-=d.v*dt;if(d.y<0){d.y=rnd(24,32);d.x=rnd(-45,45);d.z=rnd(-45,45);}
+    const o=i*6,x=cx+d.x,z=cz+d.z;rainPos[o]=x;rainPos[o+1]=d.y;rainPos[o+2]=z;rainPos[o+3]=x+.25;rainPos[o+4]=d.y+1.3;rainPos[o+5]=z+.12;}rainGeo.attributes.position.needsUpdate=true;}
+  if(WX.fx&&w.kind==='storm'&&w.rain>.6&&state!=='title'){WX.thunderT-=dt;if(WX.thunderT<=0){WX.thunderT=rnd(7,16);WX.flash=1;setTimeout(()=>{noise(1.6,90,.55);noise(.5,400,.25);},rnd(400,1500));}}
+  // tell the captain when the weather turns
+  const label=(w.day<.5?'n':'d')+w.kind;
+  if(WX.kind&&label!==WX.kind&&state==='play'){const was=WX.kind;
+    if(was[0]!==label[0])showBanner(label[0]==='n'?'Night falls':'Dawn breaks');
+    else if(label.slice(1)==='storm')showBanner('A storm is rolling in',true);else if(label.slice(1)==='fog')showBanner('Fog is coming down');else if(was.slice(1)!=='clear')showBanner('The skies are clearing');}
+  WX.kind=label;
+}
+
 /* ================= render ================= */
 const look=new THREE.Vector3(),camPos=new THREE.Vector3(0,40,40),EM_HIT=L('#7a1a0c'),EM_FAST=L('#0b2a40'),EM_NONE=new THREE.Color(0),EM_FLASH=new THREE.Color(.8,.8,.8);
 function render(dt){
+  updWeather(dt);
   waterMat.uniforms.uTime.value=clock;
   const step=WS/WN;water.position.x=Math.round(P.x/step)*step;water.position.z=Math.round(P.z/step)*step;
   if(state!=='over')poseShip(pship,P.x,P.z,P.a,clock,0,turnHeel);
