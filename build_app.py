@@ -77,8 +77,8 @@ rep("  const sv=fresh?null:loadOpen();","  if(sv===undefined)sv=fresh?null:loadO
 rep("  pw={speed:0,rapid:0,side:0};placeAtPort(p);updAim();updChips();","  pw={speed:0,rapid:0,side:0};NET.rs=(NET.rs|0)+1;placeAtPort(p);updAim();updChips();")
 
 # ---- start screen + join flow
-rep("function refreshStart(){waveNote();const sv=loadOpen();",
-"""function refreshStart(){waveNote();
+rep("function refreshStart(){waveNote();storyNote();const sv=loadOpen();",
+"""function refreshStart(){waveNote();storyNote();
   if(FB){$('savenote').hidden=true;$('newVoyage').hidden=true;$('goOpen').textContent='Open sea';
     const u=FB.user();if(u&&u.google){$('savenote').hidden=false;$('savenote').textContent='Signed in as '+u.name;
       FB.loadSave().then(sv=>{if(!sv)return;$('goOpen').textContent='Continue voyage';$('savenote').textContent=`Signed in as ${u.name} · ${RANKS[rankOf(sv.xp|0)].n} · ${shipById(sv.ship).name} · ${sv.gold|0} gold`;

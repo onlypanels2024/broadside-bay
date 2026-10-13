@@ -178,6 +178,10 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .chatlog b{color:var(--brass-hi)}
 .frow{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.04);text-align:left;font-size:15px}
 .frow small{display:block;font-size:12px;color:var(--muted)}.frow .on{color:#5be38f}
+.objective{align-self:flex-start;font:700 14px var(--body);color:var(--parch);background:var(--glass);border:1px solid var(--line);border-radius:8px;padding:6px 10px;max-width:calc(100vw - 168px);text-shadow:0 1px 2px #000}
+.chap{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;padding:10px;border-radius:9px;border:1px solid rgba(214,178,98,.3);background:rgba(255,255,255,.04);text-align:left}
+.chap b{font-family:var(--display);color:var(--parch);font-size:15px}.chap small{grid-column:1/-1;color:#b8ccd3;font-size:13px;line-height:1.35}
+.chap .stars{color:var(--brass-hi);letter-spacing:2px}.chap.locked{opacity:.5}
 .qreset{font-size:12px;color:var(--muted);margin-top:10px}
 .chip.online{color:#9ff0c0;border-color:rgba(120,230,170,.55);display:inline-flex;align-items:center;gap:6px}
 .chip.online i{width:7px;height:7px;border-radius:50%;background:#5be38f;box-shadow:0 0 8px #5be38f}
@@ -286,6 +290,7 @@ details.how summary::-webkit-details-marker{display:none}
   <div class="rankrow" id="rankrow" hidden><span class="rk" id="rkname">Deckhand</span><div class="xpbar"><div id="xpfill"></div></div></div>
   <div class="netrow"><span class="chip online off" id="online" hidden><i></i><span id="onlinetxt">Offline</span></span><button class="chip qchip" id="chatbtn" hidden aria-label="Quick chat">💬</button><button class="chip qchip" id="qchip" hidden><span id="qchiptxt">Quests</span><b class="dot" id="qdot" hidden></b></button></div>
   <div class="chips" id="chips"></div>
+  <div class="objective" id="objective" hidden></div>
   <div class="boss" id="boss" hidden><div class="name" id="bossname">The Iron Maw</div><div class="bossbar"><div class="bossfill" id="bossfill"></div></div></div>
 </div>
 <canvas id="map" hidden aria-label="Sea chart"></canvas>
@@ -309,6 +314,8 @@ details.how summary::-webkit-details-marker{display:none}
       <button class="btn ghost" id="goWaves">Wave battle</button>
       <div class="savenote" id="wavenote" hidden></div>
       <button class="linkbtn" id="newVoyage" hidden>Start a new voyage</button>
+      <button class="btn ghost" id="goStory">Story</button>
+      <div class="savenote" id="storynote" hidden></div>
       <button class="btn ghost dressbtn" id="goDress">Ship &amp; colours</button>
       <button class="linkbtn" id="goBoard" hidden>Leaderboards</button>
     </div>
@@ -442,6 +449,16 @@ details.how summary::-webkit-details-marker{display:none}
     <button class="btn ghost" id="friendclose">Back</button>
   </div>
 </div>
+<div class="overlay" id="storyov" hidden>
+  <div class="card">
+    <div class="eyebrow" id="storyeye">The tale of the Broadside</div>
+    <h2 id="storyh">Story</h2>
+    <p class="menunote" id="storytxt"></p>
+    <div class="fllist" id="storylist"></div>
+    <button class="btn" id="storygo" hidden>Set sail</button>
+    <div><button class="linkbtn" id="storyback">Back</button></div>
+  </div>
+</div>
 <div class="overlay" id="logov" hidden>
   <div class="card">
     <div class="eyebrow">Everything you've done at sea</div>
@@ -503,7 +520,7 @@ const $=id=>document.getElementById(id);
 const TAU=Math.PI*2, rnd=(a,b)=>a+Math.random()*(b-a);
 const angDiff=(t,a)=>((t-a+Math.PI*3)%TAU+TAU)%TAU-Math.PI;
 const ARENA=60,WORLD=280,SAFE_R=30;
-let MODE='waves';const BOUND=()=>MODE==='open'?WORLD:ARENA;
+let MODE='waves';const BOUND=()=>MODE==='open'||MODE==='story'?WORLD:ARENA;
 function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 const PORTS=[{name:'Port Solace',x:0,z:0},{name:'Coral Haven',x:175,z:-160},{name:'Blackrock Harbour',x:-165,z:175}];
 const L=c=>new THREE.Color(c).convertSRGBToLinear();
@@ -1655,6 +1672,73 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
   return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
 /*ENDACHDEF*/
 function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}
+/* ================= story: five missions, played alone ================= */
+// You command a frigate given by the governor. Gold from each first win goes into your Wave battle hold.
+const STORY=[
+  {t:'The Governor\'s Gold',intro:'The governor\'s merchant ship must reach Coral Haven with the island\'s taxes. Pirates are waiting. Keep her afloat until she docks.',goal:'Escort the merchant to Coral Haven',reward:300},
+  {t:'Black Sails',intro:'A pirate raid is heading for Port Solace. Sink eight raiders before any of them reach the harbour.',goal:'Sink 8 raiders before they reach port',reward:450},
+  {t:'The Lost Map',intro:'An old map points to treasure on a guarded island. Fight off the guards and dig it up.',goal:'Dig up the treasure',reward:600},
+  {t:'The Iron Maw',intro:'The pirate king\'s flagship has been seen with two galleons at her side. Send her to the bottom.',goal:'Sink the Iron Maw',reward:800},
+  {t:'Kraken\'s Lair',intro:'Something has been sinking ships near Blackrock Harbour. Find it, and finish it.',goal:'Slay the kraken',reward:1200},
+];
+const story={i:0,on:false,guard:null,kills:0,dug:false,kraken:null,t:0,spawnT:0,left:0};
+function storyProg(){try{return JSON.parse(localStorage.getItem('bb-story')||'{}')||{};}catch(e){return {};}}
+function storySave(p){try{localStorage.setItem('bb-story',JSON.stringify(p))}catch(e){}}
+function storyNote(){const p=storyProg(),n=STORY.filter((c,i)=>p[i]).length;$('storynote').hidden=!n;if(n)$('storynote').textContent=`${n} of ${STORY.length} missions won`;}
+function openStoryList(){audio();const p=storyProg(),L2=$('storylist');L2.innerHTML='';$('storyeye').textContent='The tale of the Broadside';$('storyh').textContent='Story';
+  $('storytxt').textContent='Five missions, played alone in your own sea. Gold from each first win goes into your Wave battle hold.';$('storygo').hidden=true;
+  STORY.forEach((c,i)=>{const open=i===0||p[i-1],st=p[i]|0;const r=document.createElement('button');r.className='chap'+(open?'':' locked');r.id='chap-'+i;r.disabled=!open;
+    r.innerHTML=`<b></b><span class="stars">${'★'.repeat(st)+'☆'.repeat(3-st)}</span><small></small>`;r.querySelector('b').textContent=(i+1)+'. '+c.t;r.querySelector('small').textContent=open?c.goal:'Win the mission before to unlock';
+    r.onclick=()=>briefStory(i);L2.appendChild(r);});
+  $('start').hidden=true;$('storyov').hidden=false;}
+function briefStory(i){audio();const c=STORY[i];$('storyeye').textContent='Mission '+(i+1);$('storyh').textContent=c.t;$('storytxt').textContent=c.intro;$('storylist').innerHTML='';
+  const g=$('storygo');g.hidden=false;g.textContent='Set sail';g.onclick=()=>{$('storyov').hidden=true;startStory(i);};}
+$('goStory').onclick=openStoryList;
+$('storyback').onclick=()=>{audio();$('storyov').hidden=true;if(state==='title'){$('start').hidden=false;refreshStart();}else toMenu();};
+function storyFoe(kind,x,z,tg){spawnShip(kind,x,z);const e=enemies[enemies.length-1];e.mode='attack';if(tg)e.tg=tg;return e;}
+function startStory(i){
+  clearWorld();MODE='story';buildOpenWorld();Object.assign(story,{i,on:true,guard:null,kills:0,dug:false,kraken:null,t:0,spawnT:4,left:0,won:false,arrived:false});
+  treasure=null;convoy=null;kraken.dead=false;kraken.announced=0;
+  up={hull:2,sails:1,reload:2,triple:1,broadside:1};pw={speed:0,rapid:0,side:0};gold=0;earned=0;sunk=0;wave=0;
+  owned=Object.assign({},owned,{frigate:true});setShip('frigate');placeAtPort(PORTS[0]);P.hp=maxHp();setAim('front');
+  const c=STORY[i];
+  if(i===0){const sp={x:PORTS[0].x+30,z:PORTS[0].z-10};spawnShip('merchant',sp.x,sp.z);const m=enemies[enemies.length-1];Object.assign(m,{mode:'convoy',hp:10,max:10,r:2.6,speed:3.8,big:true,convoy:true});
+    convoy={m,esc:[],dest:PORTS[1],hostile:false,near:0,total:0,story:true};story.guard=m;story.left=4;}
+  if(i===1){story.left=8;}
+  if(i===2){const isl=islands.filter(x=>!x.port).sort((a,b)=>Math.hypot(a.x-60,a.z-60)-Math.hypot(b.x-60,b.z-60))[0];treasure={isl,t:99999,dig:0};
+    for(let k=0;k<4;k++)storyFoe(k<3?'sloop':'galleon',isl.x+Math.cos(k*1.6)*16,isl.z+Math.sin(k*1.6)*16);}
+  if(i===3){const sp={x:120,z:40};storyFoe('boss',sp.x,sp.z);$('bossname').textContent='The Iron Maw';storyFoe('galleon',sp.x-10,sp.z+10);storyFoe('galleon',sp.x-10,sp.z-10);}
+  if(i===4){const b=PORTS[2];story.kraken={x:b.x+70,z:b.z-40,hp:45};KR.hp=45;kraken.slot=0;placeAtPort(PORTS[2]);}else KR.hp=60;
+  $('wavelbl').textContent='Sunk';$('boss').hidden=true;$('boss').classList.add('left');$('map').hidden=false;$('rankrow').hidden=true;$('dock').hidden=true;
+  $('objective').hidden=false;$('start').hidden=true;$('hint').hidden=false;setIslandUniforms();updHud();musPlay();state='play';showBanner(c.t,true);storyObjective();}
+function storyObjective(){const c=STORY[story.i];let t=c.goal;
+  if(story.i===0&&story.guard)t+=` · her hull ${Math.max(0,story.guard.hp)}/${story.guard.max}`;
+  if(story.i===1)t=`Raiders left to sink: ${Math.max(0,story.left-story.kills)}`;
+  $('objective').textContent='★ '+t;}
+function storyTick(dt){if(!story.on||state!=='play')return;story.t+=dt;const i=story.i;seaEventsTick(dt);
+  if(i===0){const m=story.guard;if(story.arrived){storyEnd(true,'The taxes reached Coral Haven safely.');return;}if(!m||m.hp<=0){storyEnd(false,'The merchant was sunk.');return;}
+    story.spawnT-=dt;if(story.spawnT<=0&&story.left>0){story.spawnT=14;story.left--;const a=Math.atan2(m.z-P.z,m.x-P.x)+rnd(-.6,.6),x=m.x+Math.cos(a)*55,z=m.z+Math.sin(a)*55;storyFoe(Math.random()<.3?'galleon':'sloop',x,z,Math.random()<.6?m:null);showBanner('Pirates closing in!');}
+  }
+  if(i===1){story.spawnT-=dt;const alive=enemies.length;
+    if(story.spawnT<=0&&story.kills+alive<story.left){story.spawnT=9;const a=rnd(-1,1)+Math.PI*.25,x=PORTS[0].x+Math.cos(a)*120,z=PORTS[0].z+Math.sin(a)*120;
+      const e=storyFoe(Math.random()<.25?'galleon':'sloop',x,z,{x:PORTS[0].x,z:PORTS[0].z,hp:1});e.speed*=.8;}
+    for(const e of enemies)if(Math.hypot(e.x-PORTS[0].x,e.z-PORTS[0].z)<SAFE_R){storyEnd(false,'A raider reached Port Solace.');return;}
+    if(story.kills>=story.left){storyEnd(true,'Port Solace is safe.');return;}}
+  if(i===2&&story.dug){storyEnd(true,'The treasure is yours.');return;}
+  if(i===3&&!enemies.some(e=>e.kind==='boss')&&story.t>3){storyEnd(true,'The Iron Maw is at the bottom of the sea.');return;}
+  if(i===4&&kraken.dead&&story.t>3){storyEnd(true,'The kraken will trouble no one again.');return;}
+  storyObjective();}
+function storyKill(e){if(MODE==='story')story.kills++;}
+function storyEnd(won,why){if(!story.on)return;story.on=false;$('objective').hidden=true;firing=false;joy=null;
+  const i=story.i,c=STORY[i],p=storyProg(),frac=P.hp/maxHp(),stars=won?(frac>=.7?3:frac>=.35?2:1):0,first=won&&!p[i];
+  if(won){p[i]=Math.max(p[i]|0,stars);storySave(p);if(first){try{const w=loadWaves()||{gold:0,xp:0,ships:{brig:true},ship:'brig'};w.gold=(w.gold|0)+c.reward;localStorage.setItem(WAVE_KEY,JSON.stringify(w));}catch(e){}}
+    chime(true);setTimeout(()=>chime(true),180);state='paused';}
+  else if(state==='play')state='paused';
+  $('storyeye').textContent=won?'Mission complete':'Mission failed';$('storyh').textContent=c.t;
+  $('storytxt').textContent=won?`${why} ${'★'.repeat(stars)}${'☆'.repeat(3-stars)}`+(first?` · ${c.reward} gold added to your Wave battle hold.`:'')+(stars<3?' Finish with more hull left for more stars.':''):why;
+  $('storylist').innerHTML='';const g=$('storygo');g.hidden=false;
+  if(won&&i+1<STORY.length){g.textContent='Next mission';g.onclick=()=>briefStory(i+1);}else{g.textContent=won?'Back to the story':'Try again';g.onclick=()=>{if(won)openStoryList();else{$('storyov').hidden=true;startStory(i);}};}
+  $('over').hidden=true;$('storyov').hidden=false;}
 /* ---- port battles: last week's top fleet near a port holds it this week ---- */
 function portData(){return econServer()?NET.ports||null:null;}
 async function loadPorts(){if(!NET.room)return;const wk=weekOf(serverNowMs()),out={hold:[null,null,null],race:[[],[],[]]};
@@ -1885,7 +1969,7 @@ $('aim').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation
 $('aim').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleAim();}});
 $('sndv').textContent=MUS.on?'On':'Off';
 function waveNote(){const w=loadWaves();$('wavenote').hidden=!w;if(w)$('wavenote').textContent=`${RANKS[rankOf(w.xp|0)].n} · ${shipById(w.ship).name} · ${w.gold|0} gold`;}
-function refreshStart(){waveNote();
+function refreshStart(){waveNote();storyNote();
   if(FB){$('goBoard').hidden=false;$('savenote').hidden=true;$('newVoyage').hidden=true;$('goOpen').textContent='Open sea';
     const u=FB.user();if(u&&u.google){$('savenote').hidden=false;$('savenote').textContent='Signed in as '+u.name;
       FB.loadSave().then(sv=>{if(!sv)return;cacheSave(sv);$('goOpen').textContent='Continue voyage';$('savenote').textContent=`Signed in as ${u.name} · ${RANKS[rankOf(sv.xp|0)].n} · ${shipById(sv.ship).name} · ${sv.gold|0} gold`;
@@ -1897,7 +1981,7 @@ let newArm=false;
 $('newVoyage').onclick=()=>{if(!newArm){newArm=true;$('newVoyage').textContent='Tap again to erase your saved voyage';$('newVoyage').classList.add('warn');return;}
   if(FB){FB.request({k:'reset'});$('newVoyage').textContent='Starting a new voyage…';setTimeout(refreshStart,2500);return;}
   try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshStart();};
-function toMenu(){if(MODE==='open'&&state!=='over')saveOpen();if(MODE==='waves')saveWaves();$('rankrow').hidden=true;state='title';firing=false;joy=null;
+function toMenu(){$('objective').hidden=true;story.on=false;$('storyov').hidden=true;if(MODE==='open'&&state!=='over')saveOpen();if(MODE==='waves')saveWaves();$('rankrow').hidden=true;state='title';firing=false;joy=null;
   ['over','shopov','dock','boss','hint','map','menuov'].forEach(id=>$(id).hidden=true);refreshStart();$('start').hidden=false;}
 function launchOpen(sv){const b=$('goOpen');b.disabled=true;b.textContent='Charting the sea…';
   [2500,6000].forEach(ms=>setTimeout(()=>{if(!daily.auto&&state==='play'&&dailyOn()&&dailyState().canChest&&$('menuov').hidden){daily.auto=true;openDaily('sea');}},ms));
@@ -1925,7 +2009,7 @@ $('joinguest').onclick=async()=>{audio();const n=FB.cleanName($('guestname').val
   b.disabled=false;b.textContent='Sail as guest';};
 $('joinout').onclick=async()=>{closeOnline();await FB.signOut();refreshStart();showJoin();};
 $('goWaves').onclick=()=>{audio();musPlay();$('start').hidden=true;$('hint').hidden=false;reset();state='play'};
-$('again').onclick=()=>{audio();$('over').hidden=true;if(MODE==='open')respawn();else{musPlay();reset();state='play';}};
+$('again').onclick=()=>{audio();$('over').hidden=true;if(MODE==='open')respawn();else if(MODE==='story')startStory(story.i);else{musPlay();reset();state='play';}};
 $('overmenu').onclick=()=>{audio();toMenu();};$('shopmenu').onclick=()=>{audio();toMenu();};
 const stick=document.createElement('div'),knob=document.createElement('div');
 stick.style.cssText='position:fixed;width:116px;height:116px;margin:-58px 0 0 -58px;border-radius:50%;border:1px solid rgba(214,178,98,.6);background:rgba(6,22,32,.25);pointer-events:none;z-index:2';
@@ -1954,6 +2038,7 @@ function gameOver(){
     const lost=Math.floor(gold/2);gold-=lost;updHud();saveOpen();
     setTimeout(()=>{if(state!=='over')return;$('overeyebrow').textContent='Lost at sea';$('overtxt').textContent=(killerName?`Sunk by ${killerName}. `:'')+(lost?`You lost ${lost} gold from your hold. Your upgrades are safe.`:'Your upgrades are safe.');
       $('overlbl').textContent='Ships sunk so far';$('os').textContent=sunk;$('ob').textContent='';$('again').textContent='Return to port';$('over').hidden=false},1400);return;}
+  if(MODE==='story'){setTimeout(()=>{if(state!=='over')return;storyEnd(false,'Your ship went down.');},1400);return;}
   saveWaves();
   if(earned>best){best=earned;try{localStorage.setItem('bb-best',best)}catch(e){}}
   setTimeout(()=>{if(state!=='over')return;$('overtxt').textContent=`She went down on wave ${wave}.`;$('overlbl').textContent='Gold plundered';$('again').textContent='Sail again';
@@ -2122,6 +2207,7 @@ function update(dt){
 
     puTimer-=dt;if(puTimer<=0){puTimer=rnd(16,24);const s=freeSpot(P,10,20);if(s)addPickup(randPU(),s.x,s.z);}
     if(MODE==='open')openWorldTick(dt);
+    else if(MODE==='story')storyTick(dt);
     else if(waveTimer>0){waveTimer-=dt;if(waveTimer<=0)spawnWave();}
     else if(enemies.length===0){addGold(wave*20);addXP(wave*10);updHud();openShop();}
 
@@ -2142,17 +2228,18 @@ function update(dt){
           continue;}
         if(e.kind==='boss'){const sh=d<80;if($('boss').hidden===sh)$('boss').hidden=!sh;}
       }
-      const t=steer(e,d>want?toP:toP+e.orbit*Math.PI/2,e.kind==='boss'?.8:e.big?1.1:1.8,dt);e.turn+=(-t*.05-e.turn)*Math.min(1,dt*3);
+      let D=d,TP=toP;if(e.tg&&e.tg.hp>0){D=Math.hypot(e.tg.x-e.x,e.tg.z-e.z);TP=Math.atan2(e.tg.z-e.z,e.tg.x-e.x);}
+      const t=steer(e,D>want?TP:TP+e.orbit*Math.PI/2,e.kind==='boss'?.8:e.big?1.1:1.8,dt);e.turn+=(-t*.05-e.turn)*Math.min(1,dt*3);
       e.v+=(e.speed-e.v)*dt;e.x+=Math.cos(e.a)*e.v*dt;e.z+=Math.sin(e.a)*e.v*dt;
       {const B=BOUND()+(MODE==='open'?0:5);e.x=Math.max(-B,Math.min(B,e.x));e.z=Math.max(-B,Math.min(B,e.z));}
       collideIslands(e);e.cool-=dt;e.flash-=dt;
       if(e.kind==='boss'){
-        if(e.cool<=0&&d<40){e.atk++;const angry=e.hp<e.max/2;e.cool=angry?1.7:2.4;
-          if(e.atk%3===0){for(let k=-2;k<=2;k++)shoot(e,toP+k*.13,22,'b',k!==0);}
+        if(e.cool<=0&&D<40){e.atk++;const angry=e.hp<e.max/2;e.cool=angry?1.7:2.4;
+          if(e.atk%3===0){for(let k=-2;k<=2;k++)shoot(e,TP+k*.13,22,'b',k!==0);}
           else{[1,-1].forEach(s=>[-2.6,-.9,.9,2.6].forEach(o=>shoot(e,e.a+s*Math.PI/2+rnd(-.05,.05),21,'b',true,o)));noise(.5,500,.4);}
           if(angry&&e.atk%4===0){for(let k=0;k<10;k++)shoot(e,k/10*TAU,18,'b',true);}}
         $('bossfill').style.width=(Math.max(0,e.hp)/e.max*100)+'%';
-      }else if(e.cool<=0&&d<32){e.cool=e.big?rnd(2.2,3):Math.max(1,rnd(1.6,2.6)-(MODE==='open'?threat()*.1:wave*.05));const lead=toP+rnd(-.1,.1);
+      }else if(e.cool<=0&&D<32){e.cool=e.big?rnd(2.2,3):Math.max(1,rnd(1.6,2.6)-(MODE==='open'?threat()*.1:wave*.05));const lead=TP+rnd(-.1,.1);
         if(e.big){shoot(e,lead-.11,23,'e');shoot(e,lead+.11,23,'e',true)}else shoot(e,lead,24,'e');}
       if(d<e.r+P.r){const k=(e.r+P.r-d)/(d||1),pf=e.kind==='boss'?1:.5;P.x+=dx*k*pf;P.z+=dz*k*pf;e.x-=dx*k*(1-pf);e.z-=dz*k*(1-pf);P.v*=.85;e.v*=.85;if(clock-(P.bump||0)>.6){P.bump=clock;noise(.3,180,.25);}}
       if(doWake&&e.v>2.5&&Math.random()<.6)wake(e,e.g.scale.x);
@@ -2173,6 +2260,7 @@ function update(dt){
       if(state==='play'&&MODE==='open'&&!isMate(b.from)&&Math.hypot(b.x-P.x,b.z-P.z)<P.r+.5){b.life=0;boom(b.x,b.z,false);if(!inSafe(P)){NET.lastHitBy=b.from;NET.lastHitT=clock;if(NET.fb&&NET.room&&NET.room.reportHit)NET.room.reportHit(b.from,b.sid|0,P.x,P.z,NET.room.serverNow());hurtPlayer();}}
       else{for(const r of remoteShips()){if(r.peer!==b.from&&Math.hypot(b.x-r.x,b.z-r.z)<1.7*(r.sc||1)+.5){b.life=0;boom(b.x,b.z,false);break;}}
         if(b.life>0)for(const e of enemies){if(Math.hypot(b.x-e.x,b.z-e.z)<e.r+.5){b.life=0;boom(b.x,b.z,false);break;}}}}
+    else if(story.guard&&story.guard.hp>0&&Math.hypot(b.x-story.guard.x,b.z-story.guard.z)<story.guard.r+.5){b.life=0;boom(b.x,b.z,false);story.guard.hp--;story.guard.flash=.15;}
     else if(state==='play'&&Math.hypot(b.x-P.x,b.z-P.z)<P.r+.5){b.life=0;boom(b.x,b.z,false);NET.lastHitBy=null;hurtPlayer();}
   }
   balls=balls.filter(b=>{if(b.life<=0)scene.remove(b.m);return b.life>0});
@@ -2181,7 +2269,7 @@ function update(dt){
     if(e.silent){disposeGroup(e.g);scene.remove(e.bar);continue;}
     const boss=e.kind==='boss';
     boom(e.x,e.z,true,boss?3:1);noise(.8,260,.5);if(Math.hypot(e.x-P.x,e.z-P.z)<70)buzz('medium');shake=Math.max(shake,boss?1.4:.6);
-    econKill(e.kind);if(e.kind==='merchant')convoySunk(e);
+    if(MODE==='story'){storyKill(e);if(e.kind==='merchant')convoySunk(e);}else{econKill(e.kind);if(e.kind==='merchant')convoySunk(e);}
     if(MODE==='open'&&(boss||(e.kind==='galleon'&&Math.random()<.3)))addPickup('map',e.x+rnd(-2,2),e.z+rnd(-2,2));
     const coins=boss?10:e.kind==='merchant'?14:e.big?4:2,val=boss?25:e.big?15:10,spread=boss?5:e.kind==='merchant'?4:2;
     for(let i=0;i<coins;i++)addPickup('coin',e.x+rnd(-spread,spread),e.z+rnd(-spread,spread),val);
@@ -2248,6 +2336,7 @@ function convoyAI(e,dt,d){
   const t=steer(e,dd>1.5?Math.atan2(wz-e.z,wx-e.x):m.a,1.2,dt);e.turn+=(-t*.04-e.turn)*Math.min(1,dt*3);
   e.v+=((dd>3?m.speed*1.5:m.v)-e.v)*dt;e.x+=Math.cos(e.a)*e.v*dt;e.z+=Math.sin(e.a)*e.v*dt;collideIslands(e);e.flash-=dt;}
 function convoyArrived(){const c=convoy;convoy=null;
+  if(c.story){story.arrived=true;c.m.hp=-99;c.m.silent=true;return;}
   const escorted=!c.hostile&&c.total>20&&c.near/c.total>.65;
   for(const e of [c.m,...c.esc])if(e.hp>0){e.hp=-99;e.silent=true;}
   if(escorted&&state==='play'){econKill('escort');chime(true);showBanner('Convoy delivered safely: escort reward');updHud();}
@@ -2275,9 +2364,10 @@ function buildKraken(){const g=new THREE.Group();
   scene.add(g);return{g,tent,ring};}
 function krakenNow(){return (typeof serverNowMs==='function'?serverNowMs():Date.now())+(window.__wxShift||0);}
 function krakenTick(dt){
-  const now=krakenNow(),slot=Math.floor(now/KR.slot),age=now-slot*KR.slot,alive=age<KR.life&&MODE==='open';
+  const sto=MODE==='story'&&story.kraken,now=krakenNow(),slot=sto?-7:Math.floor(now/KR.slot),age=sto?0:now-slot*KR.slot,alive=sto||(age<KR.life&&MODE==='open');
   if(slot!==kraken.slot){if(krakenOff){krakenOff();krakenOff=null;}Object.assign(kraken,{slot,hp:KR.hp,mine:0,dead:false});const sp=krakenSpot(slot);kraken.x=sp.x;kraken.z=sp.z;
-    if(MODE==='open')krakenOff=krakenWatch(slot,v=>{if(typeof v==='number'&&v<kraken.hp)kraken.hp=v;});}
+    if(MODE==='open')krakenOff=krakenWatch(slot,v=>{if(typeof v==='number'&&v<kraken.hp)kraken.hp=v;});
+    if(sto){kraken.x=story.kraken.x;kraken.z=story.kraken.z;kraken.hp=story.kraken.hp;}}
   const show=alive&&!kraken.dead;
   if(show&&!kraken.g){const k=buildKraken();kraken.g=k.g;kraken.tent=k.tent;kraken.warn=k.ring;kraken.rise=0;}
   if(!show&&kraken.g){kraken.rise-=dt*.5;if(kraken.rise<=0||MODE!=='open'){scene.remove(kraken.g);scene.remove(kraken.warn);kraken.g=null;kraken.tent=[];}}
@@ -2289,7 +2379,7 @@ function krakenTick(dt){
   // health from everyone's hits; when it reaches 0 the kraken sinks
   if(show&&kraken.hp<=0){kraken.dead=true;boom(kraken.x,kraken.z,true,3.5);noise(1.4,120,.6);shake=Math.max(shake,1.2);
     if(d<120&&state==='play'){showBanner('The kraken is slain!',true);
-      if(kraken.mine>=3&&kraken.claimed!==slot){kraken.claimed=slot;econKill('kraken',String(slot));chime(true);setTimeout(()=>chime(true),180);updHud();
+      if(MODE==='open'&&kraken.mine>=3&&kraken.claimed!==slot){kraken.claimed=slot;econKill('kraken',String(slot));chime(true);setTimeout(()=>chime(true),180);updHud();
         for(let i=0;i<12;i++)addPickup('coin',kraken.x+rnd(-6,6),kraken.z+rnd(-6,6),20);}}}
   const g=kraken.g,y=wh(kraken.x,kraken.z,clock)*.6-6*(1-kraken.rise);g.position.set(kraken.x,y,kraken.z);g.rotation.y=-Math.atan2(P.z-kraken.z,P.x-kraken.x);
   kraken.flash=Math.max(0,kraken.flash-dt);KM.body.emissive.setRGB(kraken.flash*.8,kraken.flash*.2,kraken.flash*.2);
@@ -2297,7 +2387,7 @@ function krakenTick(dt){
     const slamA=t.slam>0?Math.sin((1-t.slam/.7)*Math.PI)*1.25:0;
     t.pivot.rotation.z=-.25-sw*.15-slamA;t.segs.forEach((sg,k)=>{if(k){sg.rotation.z=-(.16+sw*.07)-slamA*.12;sg.rotation.x=Math.sin(clock*2+t.ph+k*.6)*.12;}});}
   // attacks: a red ring warns where a tentacle will strike
-  if(show&&state==='play'&&d<30&&!inSafe(P)){kraken.atkT-=dt;
+  if(show&&state==='play'&&d<30&&(MODE==='story'||!inSafe(P))){kraken.atkT-=dt*(MODE==='story'?1.3:1);
     if(kraken.atkT<=0&&!kraken.warnT){kraken.warnT=1.1;kraken.wx=P.x+Math.cos(P.a)*P.v*.9;kraken.wz=P.z+Math.sin(P.a)*P.v*.9;}}
   if(kraken.warnT){kraken.warnT-=dt;kraken.warn.position.set(kraken.wx,wh(kraken.wx,kraken.wz,clock)+.25,kraken.wz);KM.warn.opacity=.35+.35*Math.sin(clock*18);
     if(kraken.warnT<=0){kraken.warnT=0;KM.warn.opacity=0;kraken.atkT=rnd(2.2,3.2);
@@ -2312,7 +2402,7 @@ function krakenTick(dt){
     if(near!==kraken.bar){kraken.bar=near;$('boss').hidden=!near&&!enemies.some(e=>e.kind==='boss'&&Math.hypot(e.x-P.x,e.z-P.z)<80);}}
   else if(kraken.bar){kraken.bar=false;$('boss').hidden=true;}
 }
-function krakenHurt(b){boom(b.x,b.z,false);noise(.15,900,.25);kraken.flash=.25;kraken.mine++;kraken.hp=Math.max(0,kraken.hp-1);krakenHitShared(kraken.slot);}
+function krakenHurt(b){boom(b.x,b.z,false);noise(.15,900,.25);kraken.flash=.25;kraken.mine++;kraken.hp=Math.max(0,kraken.hp-1);if(MODE==='open')krakenHitShared(kraken.slot);}
 function seaEventsTick(dt){
   // treasure
   if(treasure){treasure.t-=dt;const I=treasure.isl,d=Math.hypot(P.x-I.x,P.z-I.z),near=d<I.r*1.3+8;
@@ -2320,15 +2410,16 @@ function seaEventsTick(dt){
     else{if($('dig').hidden===near)$('dig').hidden=!near;
       if(treasure.dig>0){if(!near){treasure.dig=0;$('diglbl').textContent='Dig for treasure';}
         else{treasure.dig+=dt;$('diglbl').textContent='Digging… '+Math.max(1,Math.ceil(3-treasure.dig));if(Math.random()<dt*8)spark(I.x+rnd(-2,2),1,I.z+rnd(-2,2),{tex:smokeTex,color:'#d9c49a',op:.6,s:1.2,life:.6,grow:1.5});
-          if(treasure.dig>=3){econKill('treasure');treasure=null;$('dig').hidden=true;$('diglbl').textContent='Dig for treasure';chime(true);setTimeout(()=>chime(true),160);
+          if(treasure.dig>=3){if(MODE==='story')story.dug=true;else econKill('treasure');treasure=null;$('dig').hidden=true;$('diglbl').textContent='Dig for treasure';chime(true);setTimeout(()=>chime(true),160);
             showBanner('Treasure! A chest of gold');updHud();for(let i=0;i<8;i++)spark(I.x+rnd(-2,2),1.5,I.z+rnd(-2,2),{color:'#ffd65a',add:true,s:2,life:.6,grow:1.3});}}}}}
   else if(!$('dig').hidden)$('dig').hidden=true;
   // convoys
-  if(!convoy){convoyT-=dt;if(convoyT<=0){convoyT=360;spawnConvoy();}}
+  if(!convoy){if(MODE==='open'){convoyT-=dt;if(convoyT<=0){convoyT=360;spawnConvoy();}}}
   else if(!convoy.m||convoy.m.hp<=0||!enemies.includes(convoy.m)){convoy=null;}
   else if(Math.hypot(convoy.m.x-P.x,convoy.m.z-P.z)>260){for(const e of [convoy.m,...convoy.esc])if(e.hp>0){e.hp=-99;e.silent=true;}convoy=null;}
   krakenTick(dt);
 }
+
 function seaEventsMap(g,tx,tz,S,edge){
   if(treasure){const x=tx(treasure.isl.x),y=tz(treasure.isl.z);g.strokeStyle='#ffd36a';g.lineWidth=2.2;g.beginPath();g.moveTo(x-4,y-4);g.lineTo(x+4,y+4);g.moveTo(x+4,y-4);g.lineTo(x-4,y+4);g.stroke();edge(treasure.isl.x,treasure.isl.z,'#ffd36a',3);}
   if(convoy&&convoy.m){const x=tx(convoy.m.x),y=tz(convoy.m.z);g.fillStyle='#ffd36a';g.beginPath();g.moveTo(x,y-4.5);g.lineTo(x+4.5,y);g.lineTo(x,y+4.5);g.lineTo(x-4.5,y);g.closePath();g.fill();g.strokeStyle='#5a3d0a';g.lineWidth=1;g.stroke();edge(convoy.m.x,convoy.m.z,'#ffd36a',2.6);}
@@ -2426,7 +2517,7 @@ function render(dt){
 const mapC=$('map'),mctx=mapC.getContext('2d'),mapDpr=Math.min(2,window.devicePixelRatio||1);mapC.width=mapC.height=Math.round(116*mapDpr);
 const PU_COL={speed:'#7fd3ff',rapid:'#ff9a4a',side:'#b88cff',barrel:'#c8a070',map:'#ffd36a'};
 function drawMap(){
-  if(MODE!=='open'||mapC.hidden)return;
+  if((MODE!=='open'&&MODE!=='story')||mapC.hidden)return;
   const S=116,R2=S/2,sc=R2/110,g=mctx;g.setTransform(mapDpr,0,0,mapDpr,0,0);g.clearRect(0,0,S,S);
   g.save();g.beginPath();g.arc(R2,R2,R2-.5,0,TAU);g.clip();
   const bgG=g.createRadialGradient(R2,R2,0,R2,R2,R2);bgG.addColorStop(0,'rgba(18,110,135,.78)');bgG.addColorStop(1,'rgba(6,40,58,.85)');g.fillStyle=bgG;g.fillRect(0,0,S,S);
