@@ -272,6 +272,13 @@ rep("function onlineSet(){return typeof NET!=='undefined'&&NET.onlineIds?NET.onl
 rep("  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});",
     "  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});\n  let reqN=-1;NET.friends={list:{},reqs:{}};NET.unfriends=FB.watchFriends(fd=>{NET.friends={list:fd.list,reqs:fd.reqs};const n=Object.keys(fd.reqs).length;if(reqN>=0&&n>reqN&&state==='play')showBanner('New friend request (Menu → Friends)');reqN=n;renderFriends();});")
 rep("if(NET.unfleets){NET.unfleets();NET.unfleets=null;}","if(NET.unfleets){NET.unfleets();NET.unfleets=null;}if(NET.unfriends){NET.unfriends();NET.unfriends=null;}NET.friends=null;")
+# ---- port battles
+rep("function portData(){return null;}","""function portData(){return econServer()?NET.ports||null:null;}
+async function loadPorts(){if(!NET.room)return;const wk=weekOf(serverNowMs()),out={hold:[null,null,null],race:[[],[],[]]};
+  await Promise.all(PORTS.map(async(p,i)=>{const a=await FB.board('board/p'+(wk-1)+'/'+i,'s',1),b=await FB.board('board/p'+wk+'/'+i,'s',3);if(a&&a[0])out.hold[i]=a[0].uid;if(b)out.race[i]=b;}));
+  NET.ports=out;renderFleet();}
+setInterval(()=>{if(NET.room&&MODE==='open'&&state!=='title')loadPorts();},30000);""")
+rep("  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});","  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});setTimeout(loadPorts,1500);")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

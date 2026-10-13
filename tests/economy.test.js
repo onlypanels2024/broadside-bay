@@ -276,3 +276,9 @@ test("the game's achievements are the referee's, word for word", () => {
   const grab = t => t.slice(t.indexOf('/*ACHDEF*/'), t.indexOf('/*ENDACHDEF*/'));
   assert.ok(grab(eco).length > 500); assert.strictEqual(grab(src), grab(eco));
 });
+
+test('port battles: points only near a port; the holding fleet earns 25% more gold there', () => {
+  assert.strictEqual(E.portNear(50, 0), 0); assert.strictEqual(E.portNear(175, -100), 1); assert.strictEqual(E.portNear(0, 150), -1);
+  const r = E.processRequest(null, { k: 'kill', e: 'sloop' }, { ...atSea, x: 50, z: 0 }, NOW, { goldMul: E.PORT_BONUS });
+  assert.strictEqual(r.save.gold, Math.round(70 * 1.25));
+});

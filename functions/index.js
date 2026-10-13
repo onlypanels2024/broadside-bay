@@ -39,6 +39,21 @@ async function boardAdd(db, uid, name, add, save) {
   if (save && name && await isGoogle(uid)) await db.ref(`board/all/${uid}`).set({ n: cleanName(name), xp: save.xp | 0, s: save.sunk | 0 });
 }
 
+// ---- port battles: board/p<week>/<port>/<fleet> = {n, tag, s}
+const holderCache = new Map();
+async function portHolder(db, port, week) {
+  const key = week + ':' + port, c = holderCache.get(key);
+  if (c && Date.now() - c.at < 300000) return c.fid;
+  let fid = null;
+  try { const snap = await db.ref(`board/p${week}/${port}`).orderByChild('s').limitToLast(1).get(); snap.forEach(x => { fid = x.key; }); } catch (e) {}
+  holderCache.set(key, { fid, at: Date.now() }); return fid;
+}
+async function portScore(db, fid, port, pts) {
+  if (!fid || port < 0 || !pts) return;
+  const f = (await db.ref(`fleets/${fid}`).get()).val(); if (!f) return;
+  await db.ref(`board/p${E.weekOf(Date.now())}/${port}/${fid}`).transaction(r => ({ n: f.n, tag: f.tag, s: ((r && r.s) | 0) + pts }));
+}
+
 async function strike(db, uid, reason) {
   const res = await db.ref(`ref/strikes/${uid}`).transaction(n => (n || 0) + 1);
   const count = res.snapshot.val();
@@ -89,7 +104,9 @@ exports.refereeDeath = onValueCreated('/deaths/{id}', async (event) => {
   if (!verdict) return;
   const name = ((await db.ref(`players/${death.v}/n`).get()).val()) || 'a captain';
   const kres = await db.ref(`saves/${verdict.killer}`).transaction(s => E.applyPvpKill(s, Date.now()));
-  const kname = (await db.ref(`players/${verdict.killer}/n`).get()).val();
+  const kp = (await db.ref(`players/${verdict.killer}`).get()).val() || {};
+  const kname = kp.n;
+  await portScore(db, kres.snapshot.val() && kres.snapshot.val().fleet, E.portNear(kp.x, kp.z), E.PORT_PTS.captain);
   await boardAdd(db, verdict.killer, kname, { s: 1, g: E.PVP.g, c: 1 }, kres.snapshot.val());
   // the reward itself is already in the killer's save; this just tells their phone to show a banner
   await db.ref(`rewards/${verdict.killer}`).push({ g: E.PVP.g, n: String(name).slice(0, 16), t: Date.now() });
@@ -147,15 +164,23 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
     if (!fresh || !kr || kr.hp > 0 || !kr.hits || (kr.hits[uid] | 0) < E.KRAKEN.minHits) pre = 'kraken not earned';
     if (fresh) await db.ref(`kraken/${sl - 3}`).remove();
   }
+  // sinking near a port your fleet holds pays more
+  let opts = null, port = -1, myFleet = null;
+  if (req.k === 'kill' && player) {
+    port = E.portNear(player.x, player.z);
+    myFleet = (await db.ref(`saves/${uid}/fleet`).get()).val();
+    if (port >= 0 && myFleet && (await portHolder(db, port, E.weekOf(Date.now()) - 1)) === myFleet) opts = { goldMul: E.PORT_BONUS };
+  }
   let verdict = null;
   const res = await db.ref(`saves/${uid}`).transaction(save => {
-    verdict = pre ? { save: E.norm(save), ok: false, reason: pre } : E.processRequest(save, req, player, Date.now());
+    verdict = pre ? { save: E.norm(save), ok: false, reason: pre } : E.processRequest(save, req, player, Date.now(), opts);
     const out = verdict.save;
     // tells the phone which of its requests have been dealt with
     out.last = save && typeof save.last === 'string' && save.last > rid ? save.last : rid;
     return out;
   });
   if (verdict && !verdict.ok) logger.info('request refused', { uid, k: req.k, reason: verdict.reason });
+  if (verdict && verdict.ok && req.k === 'kill') await portScore(db, myFleet, port, E.PORT_PTS[req.e] || 0);
   if (verdict && verdict.ok && req.k === 'kill') await boardAdd(db, uid, player && player.n, { s: ['sloop', 'galleon', 'boss', 'merchant', 'kraken'].includes(req.e) ? 1 : 0, g: E.KILL[req.e].g }, res.snapshot.val());
   else if (verdict && verdict.ok && (req.k === 'daily' || req.k === 'quest') && await isGoogle(uid)) await boardAdd(db, uid, player && player.n, {}, res.snapshot.val());
   if (verdict && verdict.strike) await strike(db, uid, 'claims: ' + verdict.reason);

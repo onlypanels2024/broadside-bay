@@ -170,7 +170,7 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
 
   // req = {k:'kill'|'up'|'repair'|'ship'|'look'|'reset', e?, id?, lk?, dw?}; player = this captain's /players record (or null)
   // Returns {save, ok, reason, strike}
-  function processRequest(saveIn, req, player, now) {
+  function processRequest(saveIn, req, player, now, opts) {
     const s = norm(saveIn);
     const no = (reason, strike) => ({ save: s, ok: false, reason, strike: !!strike });
     if (!req || typeof req.k !== 'string') return no('malformed');
@@ -197,8 +197,9 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
         rl.rj = 0; s.rl = rl;
         const ship = ['sloop', 'galleon', 'boss', 'merchant', 'kraken'].includes(req.e);
         s.ks = { ...(s.ks || {}), [req.e]: ((s.ks && s.ks[req.e]) | 0) + 1 };
-        s.gold += K.g; s.earned += K.g; s.xp += K.xp; if (ship) s.sunk += 1;
-        questEvent(s, req.e, 1, now); if (ship) questEvent(s, 'ship', 1, now); questEvent(s, 'gold', K.g, now);
+        const g = Math.round(K.g * (opts && opts.goldMul || 1));
+        s.gold += g; s.earned += g; s.xp += K.xp; if (ship) s.sunk += 1;
+        questEvent(s, req.e, 1, now); if (ship) questEvent(s, 'ship', 1, now); questEvent(s, 'gold', g, now);
         return { save: s, ok: true };
       }
       case 'up': {
@@ -323,8 +324,12 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
     if (s.gold < FLEET.price) return { save: s, ok: false, why: 'founding a fleet costs ' + FLEET.price + ' gold' };
     s.gold -= FLEET.price; return { save: s, ok: true };
   }
+  // Port battles: fleets earn points for their port by sinking ships within PORT_R of it. Last week's winner holds
+  // the port this week, and its captains get PORT_BONUS more gold for sinkings near it.
+  const PORT_R = 70, PORT_BONUS = 1.25, PORT_PTS = { sloop: 1, galleon: 2, boss: 5, merchant: 3, kraken: 5, captain: 3 };
+  const portNear = (x, z) => num(x) && num(z) ? PORTS.findIndex(([px, pz]) => Math.hypot(x - px, z - pz) < PORT_R) : -1;
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

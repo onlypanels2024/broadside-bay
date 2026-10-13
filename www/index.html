@@ -1301,7 +1301,7 @@ function openWorldTick(dt){
   if(!enemies.some(e=>e.kind==='boss')){bossT-=dt;if(bossT<=0){const sp=spawnSpot(100,125);if(sp){bossCount++;spawnShip('boss',sp.x,sp.z);showBanner('Boss ship sighted',true);bossT=240;}}}
   const [p,pd]=nearestPort(P.x,P.z),near=pd<SAFE_R-3;
   if($('dock').hidden===near)$('dock').hidden=!near;
-  if(near&&lastPortName!==p.name){lastPortName=p.name;$('docklbl').textContent='Dock at '+p.name;showBanner(p.name);}else if(!near)lastPortName='';
+  if(near&&lastPortName!==p.name){lastPortName=p.name;$('docklbl').textContent='Dock at '+p.name;showBanner(p.name+portSuffix(PORTS.indexOf(p)));}else if(!near)lastPortName='';
   edgeT-=dt;const B=BOUND();if((Math.abs(P.x)>=B-.5||Math.abs(P.z)>=B-.5)&&edgeT<=0){edgeT=4;showBanner('Edge of the known sea');}
   saveT-=dt;if(saveT<=0){saveT=10;saveOpen();}
   seaEventsTick(dt);
@@ -1657,6 +1657,19 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
   return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
 /*ENDACHDEF*/
 function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}
+/* ---- port battles: last week's top fleet near a port holds it this week ---- */
+function portData(){return econServer()?NET.ports||null:null;}
+async function loadPorts(){if(!NET.room)return;const wk=weekOf(serverNowMs()),out={hold:[null,null,null],race:[[],[],[]]};
+  await Promise.all(PORTS.map(async(p,i)=>{const a=await FB.board('board/p'+(wk-1)+'/'+i,'s',1),b=await FB.board('board/p'+wk+'/'+i,'s',3);if(a&&a[0])out.hold[i]=a[0].uid;if(b)out.race[i]=b;}));
+  NET.ports=out;renderFleet();}
+setInterval(()=>{if(NET.room&&MODE==='open'&&state!=='title')loadPorts();},30000);   // the app: {hold:[fleetId|null x3], race:[[{uid,n,tag,s}] x3]}
+function portHolderFleet(i){const d=portData();if(!d||!d.hold[i])return null;const f=fleetsAll()[d.hold[i]];return f||null;}
+function portSuffix(i){const f=portHolderFleet(i);if(!f)return '';const mine=myFleetId()&&portData().hold[i]===myFleetId();return mine?' · yours! +25% gold here':' · held by ['+f.tag+']';}
+function portSection(body){const d=portData();if(!d)return;const h=document.createElement('div');h.className='lbl';h.style.margin='16px 0 6px';h.textContent='Port battles this week';body.appendChild(h);
+  const p0=document.createElement('p');p0.className='menunote';p0.textContent='Sink ships near a port to win it for your fleet. Whoever has most points on Sunday night holds it all next week: its captains get 25% more gold for sinkings near it.';body.appendChild(p0);
+  PORTS.forEach((p,i)=>{const r=document.createElement('div');r.className='flmem';r.style.marginTop='6px';const hf=portHolderFleet(i);
+    const l=document.createElement('div');l.innerHTML='<b></b><small style="display:block;color:var(--muted);font-size:12px"></small>';l.querySelector('b').textContent=p.name+(hf?' · ['+hf.tag+']':' · unclaimed');
+    const race=(d.race[i]||[]);l.querySelector('small').textContent=race.length?'This week: '+race.map((x,k)=>(k+1)+'. ['+x.tag+'] '+x.s).join('   '):'No fleet has fought here this week';r.appendChild(l);r.appendChild(document.createElement('span'));body.appendChild(r);});}
 /* ---- quick chat: a few set phrases, shown above your ship for other captains ---- */
 const CHAT=['Truce?','Follow me!','Well fought','Help!','Attack!','Nice shot!','Sorry!','Good luck!'];
 let chatSeq=0,chatLast=-9,myChat=null;
@@ -1760,7 +1773,7 @@ function renderFleet(){if($('fleetov').hidden)return;const body=$('fleetbody');b
       list.appendChild(r);}
     body.appendChild(list);
     const lv=document.createElement('button');lv.className='linkbtn'+(fleet.leaveArm?' warn':'');lv.textContent=fleet.leaveArm?'Tap again to leave '+mine.n:'Leave this fleet';lv.disabled=busy;
-    lv.onclick=()=>{if(!fleet.leaveArm){fleet.leaveArm=true;renderFleet();return;}fleet.leaveArm=false;fleetAsk({op:'leave'},'Leaving the fleet…');};body.appendChild(lv);return;}
+    lv.onclick=()=>{if(!fleet.leaveArm){fleet.leaveArm=true;renderFleet();return;}fleet.leaveArm=false;fleetAsk({op:'leave'},'Leaving the fleet…');};body.appendChild(lv);portSection(body);return;}
   $('fleeth').textContent='Fleets';
   const ids=Object.keys(all).filter(id=>all[id]&&all[id].tag).sort((a,b)=>Object.keys(all[b].m||{}).length-Object.keys(all[a].m||{}).length);
   if(!fleetGoogle()){const g=document.createElement('p');g.className='menunote';g.style.color='var(--brass-hi)';g.textContent='Fleets are for captains signed in with Google, so your fleet is still there next time. Sign in from the main menu to join one.';body.appendChild(g);}
@@ -1769,7 +1782,7 @@ function renderFleet(){if($('fleetov').hidden)return;const body=$('fleetbody');b
   for(const id of ids.slice(0,30)){const f=all[id],n=Object.keys(f.m||{}).length;const r=document.createElement('div');r.className='flrow';r.appendChild(flagCanvas(f));
     const tx=document.createElement('div');tx.innerHTML='<b></b><small></small>';tx.querySelector('b').textContent='['+f.tag+'] '+f.n;tx.querySelector('small').textContent=n+' of 20 captains';r.appendChild(tx);
     const b=document.createElement('button');b.className='shipbtn';b.id='fjoin-'+f.tag;b.textContent=n>=20?'Full':'Join';b.disabled=n>=20||busy;b.onclick=()=>fleetAsk({op:'join',fid:id},'Joining '+f.n+'…');r.appendChild(b);list.appendChild(r);}
-  body.appendChild(list);
+  body.appendChild(list);portSection(body);
   // found a fleet
   const F=fleet.form,form=document.createElement('div');form.className='flform';
   form.innerHTML=`<div class="rule"></div><div class="lbl">Found your own fleet · ${500} gold · Bosun or above</div>
@@ -1967,7 +1980,7 @@ function goOnline(){if(!FB||NET.room||NET.banned)return;const u=FB.user();if(!u)
   R.onConnection(c=>{NET.ok=c;netUiKey='';});
   R.onReward(r=>{NET.kills++;showBanner('You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
   NET.pending=new Map();NET.srv=null;NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();fleetChanged();achNotice();});
-  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});
+  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});setTimeout(loadPorts,1500);
   let reqN=-1;NET.friends={list:{},reqs:{}};NET.unfriends=FB.watchFriends(fd=>{NET.friends={list:fd.list,reqs:fd.reqs};const n=Object.keys(fd.reqs).length;if(reqN>=0&&n>reqN&&state==='play')showBanner('New friend request (Menu → Friends)');reqN=n;renderFriends();});
   R.onBanned(()=>{NET.banned=true;closeOnline();saveMode='none';showBanner('Removed from online play by the referee');});}
 // my fleet or any fleet's details changed: redraw my flag, other ships' tags, and the fleet screen
@@ -2422,7 +2435,7 @@ function drawMap(){
   const tx=x=>R2+(x-P.x)*sc,tz=z=>R2+(z-P.z)*sc;
   g.strokeStyle='rgba(255,120,100,.6)';g.setLineDash([3,3]);g.strokeRect(tx(-WORLD),tz(-WORLD),WORLD*2*sc,WORLD*2*sc);g.setLineDash([]);
   g.strokeStyle='rgba(241,216,151,.35)';
-  for(const p of PORTS){g.beginPath();g.arc(tx(p.x),tz(p.z),SAFE_R*sc,0,TAU);g.stroke();}
+  PORTS.forEach((p,i)=>{const hf=portHolderFleet(i);g.strokeStyle=hf?PAINT.f[hf.col|0]:'rgba(241,216,151,.35)';g.lineWidth=hf?2:1;g.beginPath();g.arc(tx(p.x),tz(p.z),SAFE_R*sc,0,TAU);g.stroke();});g.lineWidth=1;
   for(const i of islands){const x=tx(i.x),y=tz(i.z);if(x<-8||x>S+8||y<-8||y>S+8)continue;const ir=Math.max(2,i.r*1.35*sc);g.fillStyle=i.port?'#f1d897':'#3fbf4f';g.beginPath();g.arc(x,y,ir,0,TAU);g.fill();g.strokeStyle=i.port?'#7a5a1a':'#1e6b2a';g.lineWidth=1;g.stroke();}
   for(const p of pickups){if(p.k==='coin')continue;g.fillStyle=PU_COL[p.k];g.fillRect(tx(p.x)-1.5,tz(p.z)-1.5,3,3);}
   for(const e of enemies){const x=tx(e.x),y=tz(e.z),r=e.kind==='boss'?6:3.6;if(x<-10||x>S+10||y<-10||y>S+10)continue;

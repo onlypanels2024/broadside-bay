@@ -44,9 +44,12 @@
         if(req.k==='check'){await txn('saves/'+uid,sv=>{const o=E.norm(sv);o.last=sv&&typeof sv.last==='string'&&sv.last>rid?sv.last:rid;return o;});continue;}
         const player=(await db.ref('players/'+uid).get()).val();let verdict;
         if(req.k==='kill'&&req.e==='kraken'){const kr=(await db.ref('kraken/'+req.id).get()).val();if(!kr||kr.hp>0||!kr.hits||(kr.hits[uid]|0)<3){window.__refLog.push(['req','kill','kraken',false,'kraken not earned']);await txn('saves/'+uid,sv=>{const o=E.norm(sv);o.last=sv&&sv.last>rid?sv.last:rid;return o;});continue;}}
-        await txn('saves/'+uid,sv=>{verdict=E.processRequest(sv,req,player,Date.now());const out=verdict.save;
+        let opts=null,port=-1,myF=null;if(req.k==='kill'&&player){port=E.portNear(player.x,player.z);myF=(await db.ref('saves/'+uid+'/fleet').get()).val();
+          if(port>=0&&myF){const wk=E.weekOf(Date.now());const hb=(await db.ref('board/p'+(wk-1)+'/'+port).get()).val()||{};const top=Object.entries(hb).sort((a,b)=>b[1].s-a[1].s)[0];if(top&&top[0]===myF)opts={goldMul:E.PORT_BONUS};}}
+        await txn('saves/'+uid,sv=>{verdict=E.processRequest(sv,req,player,Date.now(),opts);const out=verdict.save;
           out.last=sv&&typeof sv.last==='string'&&sv.last>rid?sv.last:rid;return out;});
         window.__refLog.push(['req',req.k,req.e||req.id||'',verdict.ok,verdict.reason||'']);
+        if(verdict.ok&&req.k==='kill'&&myF&&port>=0&&E.PORT_PTS[req.e]){const f=(await db.ref('fleets/'+myF).get()).val();if(f)await txn('board/p'+E.weekOf(Date.now())+'/'+port+'/'+myF,r=>({n:f.n,tag:f.tag,s:((r&&r.s)|0)+E.PORT_PTS[req.e]}));}
         if(verdict.ok&&req.k==='kill'){const wk=E.weekOf(Date.now());await txn('board/w'+wk+'/'+uid,r=>{const o=r||{s:0,g:0,c:0};o.n=(player&&player.n)||o.n||'Captain';o.s++;o.g+=E.KILL[req.e].g;return o;});
           if(uid.startsWith('google_')){const sv=(await db.ref('saves/'+uid).get()).val();await db.ref('board/all/'+uid).set({n:(player&&player.n)||'Captain',xp:sv.xp|0,s:sv.sunk|0});}}}
     }while(again);}finally{busy=false;}}
