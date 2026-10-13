@@ -459,6 +459,15 @@ details.how summary::-webkit-details-marker{display:none}
     <div><button class="linkbtn" id="storyback">Back</button></div>
   </div>
 </div>
+<div class="overlay" id="duelov" hidden>
+  <div class="card">
+    <div class="eyebrow">A challenge</div>
+    <h2 id="duelh">Duel!</h2>
+    <p class="menunote" id="dueltxt"></p>
+    <button class="btn" id="duelyes">Accept</button>
+    <div><button class="linkbtn" id="duelno">Decline</button></div>
+  </div>
+</div>
 <div class="overlay" id="logov" hidden>
   <div class="card">
     <div class="eyebrow">Everything you've done at sea</div>
@@ -522,6 +531,7 @@ const angDiff=(t,a)=>((t-a+Math.PI*3)%TAU+TAU)%TAU-Math.PI;
 const ARENA=60,WORLD=280,SAFE_R=30;
 let MODE='waves';const BOUND=()=>MODE==='open'||MODE==='story'?WORLD:ARENA;
 function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const ARENA_D={x:-195,z:-200,r:70};let arenaG=null;
 const PORTS=[{name:'Port Solace',x:0,z:0},{name:'Coral Haven',x:175,z:-160},{name:'Blackrock Harbour',x:-165,z:175}];
 const L=c=>new THREE.Color(c).convertSRGBToLinear();
 let best=0;try{best=+localStorage.getItem('bb-best')||0}catch(e){}
@@ -1259,7 +1269,7 @@ function clearActors(){
 }
 function clearWorld(){
   clearActors();openBuilt=false;
-  islands.forEach(i=>{scene.remove(i.g);i.g.userData.ownGeo.forEach(x=>x.dispose())});islands.length=0;
+  islands.forEach(i=>{scene.remove(i.g);i.g.userData.ownGeo.forEach(x=>x.dispose())});islands.length=0;if(arenaG){scene.remove(arenaG);arenaG=null;}
 }
 function placeIslands(n,minFromCenter){
   for(let i=0;i<n;i++){for(let k=0;k<40;k++){const r=rnd(2.6,4.4),x=rnd(-ARENA+8,ARENA-8),z=rnd(-ARENA+8,ARENA-8);
@@ -1274,8 +1284,12 @@ function buildOpenWorld(){
   for(const p of PORTS){const g=makeIsland(6,true);g.position.set(p.x,0,p.z);islands.push({g,x:p.x,z:p.z,r:6,port:p});}
   let tries=0;
   while(islands.length<55&&tries<5000){tries++;const r=2.6+rng()*2.4,x=(rng()*2-1)*(WORLD-14),z=(rng()*2-1)*(WORLD-14);
-    if(islands.every(o=>Math.hypot(o.x-x,o.z-z)>o.r+r+(o.port?28:14))){const g=makeIsland(r);g.position.set(x,0,z);g.rotation.y=rng()*TAU;islands.push({g,x,z,r});}}
+    if(Math.hypot(x-ARENA_D.x,z-ARENA_D.z)>ARENA_D.r+20&&islands.every(o=>Math.hypot(o.x-x,o.z-z)>o.r+r+(o.port?28:14))){const g=makeIsland(r);g.position.set(x,0,z);g.rotation.y=rng()*TAU;islands.push({g,x,z,r});}}
   openBuilt=true;
+  // the duel arena: a ring of red and white buoys
+  const ag=new THREE.Group();ag.position.set(ARENA_D.x,0,ARENA_D.z);const bw=std({color:L('#f2efe6'),roughness:.6}),br=std({color:L('#c4372b'),roughness:.6});
+  for(let i=0;i<32;i++){const a=i/32*TAU,m=new THREE.Mesh(new THREE.CylinderGeometry(.55,.7,1.6,10),i%2?bw:br);m.position.set(Math.cos(a)*ARENA_D.r,.3,Math.sin(a)*ARENA_D.r);m.castShadow=true;ag.add(m);}
+  scene.add(ag);arenaG=ag;
 }
 const SAVE_KEY='bb-open-v1';
 let saveMode='local';
@@ -1306,6 +1320,7 @@ function respawn(){
 function spawnSpot(minD,maxD){for(let k=0;k<30;k++){const a=rnd(0,TAU),d=rnd(minD,maxD),x=P.x+Math.cos(a)*d,z=P.z+Math.sin(a)*d,B=BOUND()-6;
   if(Math.abs(x)>B||Math.abs(z)>B)continue;if(PORTS.some(p=>Math.hypot(x-p.x,z-p.z)<SAFE_R+12))continue;if(islands.some(r=>Math.hypot(x-r.x,z-r.z)<r.r*1.5+3))continue;return{x,z};}return null;}
 function openWorldTick(dt){
+  if(duel){duelTick(dt);return;}
   popT-=dt;
   if(popT<=0){popT=1;
     for(const e of enemies)if(e.kind!=='boss'&&!e.convoy&&Math.hypot(e.x-P.x,e.z-P.z)>175){disposeGroup(e.g);scene.remove(e.bar);e.gone=true;}
@@ -1657,6 +1672,7 @@ const ACH=[
   {id:'admiral',n:'Admiral of the Fleet',d:'Reach the rank of Admiral',st:'xp',need:9000,ti:'Admiral of the Fleet'},
   {id:'sotl',n:'Ship of the Line',d:'Own a Man-o\'-War',st:'ship.manowar',need:1,ti:'Ship of the Line'},
   {id:'fleet',n:'Fleet Sailor',d:'Join a fleet',st:'fleet',need:1,ti:'Fleet Sailor'},
+  {id:'duelist',n:'Duelist',d:'Win 5 duels',st:'ks.duel',need:5,ti:'the Duelist'},
 ];
 // Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (or nothing).
 const COS={
@@ -1672,6 +1688,40 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
   return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
 /*ENDACHDEF*/
 function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}
+/* ---- duels: a fair 1-on-1 in the arena (both in a brig with side cannons, no other upgrades) ---- */
+function duelOn(){return econServer()&&!!NET.srv;}
+function duelSend(uid,ok){FB.duelSend(uid,FB.user().name,ok);}            // the app: write a challenge (or, ok=true, an acceptance) to that captain
+function duelClear(uid){FB.duelClear(uid);}              // the app: remove their message from my inbox
+let duel=null;const duelAsked=new Map();
+function askDuel(uid,name){if(duel)return;duelAsked.set(uid,{name,t:clock});duelSend(uid,false);$('friendmsg').textContent='Challenge sent to '+name+'. If they accept, you both sail to the duel arena.';}
+let duelOffer=null;
+function duelInbox(box){for(const [uid,m] of Object.entries(box||{})){if(!m)continue;const fresh=(serverNowMs()-(m.t||0))<60000;
+    if(m.ok){duelClear(uid);if(fresh&&duelAsked.has(uid)&&!duel){duelAsked.delete(uid);startDuel(uid,m.n||'Captain',0);}continue;}
+    if(!fresh||duel||state!=='play'||MODE!=='open'){duelClear(uid);continue;}
+    if(!duelOffer){duelOffer={uid,name:m.n||'Captain'};$('duelh').textContent='Duel!';$('dueltxt').textContent=`${duelOffer.name} challenges you to a duel in the arena. Both sail an identical brig with side cannons, so it's pure skill. No gold is lost; the winner gets 100 gold.`;
+      $('duelov').hidden=false;chime(true);buzz('medium');}}}
+$('duelyes').onclick=()=>{audio();const o=duelOffer;duelOffer=null;$('duelov').hidden=true;if(!o)return;duelClear(o.uid);duelSend(o.uid,true);startDuel(o.uid,o.name,1);};
+$('duelno').onclick=()=>{audio();const o=duelOffer;duelOffer=null;$('duelov').hidden=true;if(o)duelClear(o.uid);};
+function startDuel(uid,name,side){if(MODE!=='open')return;
+  duel={opp:uid,name,side,t:0,start:3.5,gone:0,prevShip:shipId,prevUp:{...up},over:false};
+  ['menuov','friendov','shopov','dailyov','logov','fleetov','boardov'].forEach(id=>$(id).hidden=true);if(state!=='over')state='play';$('over').hidden=true;
+  enemies.forEach(e=>{disposeGroup(e.g);scene.remove(e.bar);});enemies=[];balls.forEach(b=>scene.remove(b.m));balls=[];if(convoy)convoy=null;
+  setShip('brig');up={hull:0,sails:0,reload:1,triple:0,broadside:1};pw={speed:0,rapid:0,side:0};
+  const sx=ARENA_D.x+(side?28:-28);if(typeof NET!=='undefined')NET.rs=(NET.rs|0)+1;
+  Object.assign(P,{x:sx,z:ARENA_D.z,a:side?Math.PI:0,v:0,hp:maxHp(),cool:0,side:0,inv:3.5});pship.visible=true;pship.userData.ground.forEach(m=>m.visible=true);
+  sinking=sinking.filter(q=>q.g!==pship);camPos.set(P.x,27*camK,P.z+25*camK);updHud();updAim();setAim('side');
+  showBanner('Duel with '+name+'!',true);noise(1,90,.4);}
+function duelTick(dt){const d=duel;d.t+=dt;
+  if(d.t<d.start){firing=false;const n=Math.ceil(d.start-d.t);if(n!==d.cd){d.cd=n;showBanner(String(n),true);chime(n===1);}}
+  else if(!d.fired){d.fired=true;showBanner('Fire!',true);buzz('heavy');}
+  // stay inside the buoys
+  const dx=P.x-ARENA_D.x,dz=P.z-ARENA_D.z,dd=Math.hypot(dx,dz);if(dd>ARENA_D.r-3){P.x=ARENA_D.x+dx/dd*(ARENA_D.r-3);P.z=ARENA_D.z+dz/dd*(ARENA_D.r-3);P.v*=.6;if(clock-(d.warn||0)>3){d.warn=clock;showBanner('Stay inside the arena');}}
+  // the other captain left?
+  const r=NET.peers.get(d.opp);if(!r||!r.pr||r.pr.m!=='open'){d.gone+=dt;if(d.gone>12&&!d.over){showBanner(d.name+' left the duel');d.over=true;setTimeout(endDuel,2500);}}else d.gone=0;}
+function duelOver(won){const d=duel;if(!d||d.over)return;d.over=true;
+  if(won){showBanner('You won the duel!',true);chime(true);setTimeout(()=>chime(true),180);buzz('heavy');setTimeout(endDuel,3500);}}
+function endDuel(){const d=duel;if(!d)return;duel=null;up=d.prevUp;setShip(d.prevShip);if(state==='over'){$('over').hidden=true;state='play';}
+  if(typeof NET!=='undefined')NET.rs=(NET.rs|0)+1;placeAtPort(PORTS[0]);pw={speed:0,rapid:0,side:0};updAim();updHud();showBanner(PORTS[0].name);}
 /* ================= story: five missions, played alone ================= */
 // You command a frigate given by the governor. Gold from each first win goes into your Wave battle hold.
 const STORY=[
@@ -1780,10 +1830,10 @@ function renderFriends(){if($('friendov').hidden)return;const body=$('friendbody
   const reqs=Object.entries(fd.reqs||{});if(reqs.length){sec('Friend requests');for(const [uid,r] of reqs)row(r.n||'Captain','wants to be shipmates',[['Accept',()=>{friendAccept(uid,r.n||'Captain');$('friendmsg').textContent='You and '+(r.n||'Captain')+' are now friends.';}]],false);}
   const list=Object.entries(fd.list||{});sec('Your friends ('+list.length+')');
   if(!list.length){const p=document.createElement('p');p.className='menunote';p.textContent='No friends yet. Add captains you meet at sea from the list below.';body.appendChild(p);}
-  for(const [uid,name] of list){const atSea=typeof NET!=='undefined'&&NET.peers.has(uid);row(name,atSea?'● at sea, shown in blue on your chart':on.has(uid)?'● online':'offline',[['Remove',()=>{friendRemove(uid);$('friendmsg').textContent=name+' removed.';},true]],atSea||on.has(uid));}
+  for(const [uid,name] of list){const atSea=typeof NET!=='undefined'&&NET.peers.has(uid);row(name,atSea?'● at sea, shown in blue on your chart':on.has(uid)?'● online':'offline',(atSea&&duelOn()?[['Duel',()=>askDuel(uid,name)]]:[]).concat([['Remove',()=>{friendRemove(uid);$('friendmsg').textContent=name+' removed.';},true]]),atSea||on.has(uid));}
   if(typeof NET!=='undefined'){const near=[...NET.peers.values()].filter(r=>r.pr&&r.pr.m==='open'&&!fd.list[r.by||r.peer]&&(r.by||r.peer)!==me);
     if(near.length){sec('Captains at sea now');for(const r of near){const uid=r.by||r.peer,nm=remoteName(r),asked=friend.asked.has(uid);
-      row(nm,'',[[asked?'Asked ✓':'Add friend',()=>{if(asked)return;friend.asked.add(uid);friendAsk(uid,nm);$('friendmsg').textContent='Request sent to '+nm+'.';renderFriends();}]],false);}}}}
+      row(nm,'',(duelOn()?[['Duel',()=>askDuel(uid,nm),true]]:[]).concat([[asked?'Asked ✓':'Add friend',()=>{if(asked)return;friend.asked.add(uid);friendAsk(uid,nm);$('friendmsg').textContent='Request sent to '+nm+'.';renderFriends();}]]),false);}}}}
 const friend={asked:new Set()};
 function openFriends(){if(!friendsOn())return;audio();$('menuov').hidden=true;$('friendmsg').textContent='';$('friendov').hidden=false;renderFriends();}
 $('menufriends').onclick=openFriends;$('friendclose').onclick=()=>{audio();$('friendov').hidden=true;$('menuov').hidden=false;};
@@ -1833,7 +1883,7 @@ function myFleetId(){return (NET.srv&&NET.srv.fleet)||null;}
 function fleetMsg(){return NET.srv&&NET.srv.fmsg||null;}           // the referee's last answer {ok, why, t}
 const fleetByTag=tag=>{if(!tag)return null;const all=fleetsAll();for(const id in all)if(all[id]&&all[id].tag===tag)return all[id];return null;};
 function myFleetTag(){const f=fleetsAll()[myFleetId()];return f?f.tag:null;}
-function isMate(peer){const t=myFleetTag();if(!t||typeof NET==='undefined')return false;const r=NET.peers.get(peer);return !!(r&&r.pr&&r.pr.fl===t);}
+function isMate(peer){if(duel&&peer===duel.opp)return false;const t=myFleetTag();if(!t||typeof NET==='undefined')return false;const r=NET.peers.get(peer);return !!(r&&r.pr&&r.pr.fl===t);}
 function fleetFlag(tag){const f=fleetByTag(tag);if(!f)return{};const col=PAINT.f[f.col|0]||PAINT.f[0];return{fflag:col,fem:EMBLEMS[f.em|0]||'star',fecol:lum(col)>.45?'#161616':'#ece8dc'};}
 function flagCanvas(f){const c=document.createElement('canvas');c.width=128;c.height=72;const g=c.getContext('2d');const col=PAINT.f[f.col|0]||PAINT.f[0];
   g.fillStyle=col;g.fillRect(0,0,128,72);g.save();g.translate(64,36);g.scale(.5,.5);g.translate(-64,-64);drawEmblem(g,EMBLEMS[f.em|0]||'star',lum(col)>.45?'#161616':'#ece8dc',col,'');g.restore();return c;}
@@ -1931,7 +1981,7 @@ function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.cl
   menuPaused=!onlineAtSea();if(menuPaused)state='paused';
   $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
   $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
-  $('menureport').hidden=!onlineAtSea();$('menufriends').hidden=!friendsOn();$('menulog').hidden=!logOn();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
+  $('menureport').hidden=!onlineAtSea();$('menufriends').textContent=duelOn()?'Friends & duels':'Friends';$('menufriends').hidden=!friendsOn();$('menulog').hidden=!logOn();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
   $('menuleave').textContent=MODE==='open'?'Main menu':'Leave battle';
   $('menuleavenote').textContent=MODE==='open'?'Your voyage is saved when you leave.':'';
   $('menuov').hidden=false;}
@@ -1947,6 +1997,7 @@ function handleBack(){
   if(!$('fleetov').hidden){$('fleetclose').click();return true;}
   if(!$('logov').hidden){$('logclose').click();return true;}
   if(!$('friendov').hidden){$('friendclose').click();return true;}
+  if(!$('duelov').hidden){$('duelno').click();return true;}
   if(!$('chatbox').hidden){$('chatbox').hidden=true;return true;}
   if(!$('menuov').hidden){closeMenu();return true;}
   const jo=$('joinov');if(jo&&!jo.hidden){$('joinback').click();return true;}
@@ -2009,7 +2060,7 @@ $('joinguest').onclick=async()=>{audio();const n=FB.cleanName($('guestname').val
   b.disabled=false;b.textContent='Sail as guest';};
 $('joinout').onclick=async()=>{closeOnline();await FB.signOut();refreshStart();showJoin();};
 $('goWaves').onclick=()=>{audio();musPlay();$('start').hidden=true;$('hint').hidden=false;reset();state='play'};
-$('again').onclick=()=>{audio();$('over').hidden=true;if(MODE==='open')respawn();else if(MODE==='story')startStory(story.i);else{musPlay();reset();state='play';}};
+$('again').onclick=()=>{audio();$('over').hidden=true;if(MODE==='open'&&duel){endDuel();return;}if(MODE==='open')respawn();else if(MODE==='story')startStory(story.i);else{musPlay();reset();state='play';}};
 $('overmenu').onclick=()=>{audio();toMenu();};$('shopmenu').onclick=()=>{audio();toMenu();};
 const stick=document.createElement('div'),knob=document.createElement('div');
 stick.style.cssText='position:fixed;width:116px;height:116px;margin:-58px 0 0 -58px;border-radius:50%;border:1px solid rgba(214,178,98,.6);background:rgba(6,22,32,.25);pointer-events:none;z-index:2';
@@ -2035,6 +2086,7 @@ function gameOver(){
   state='over';musLament();firing=false;joy=null;boom(P.x,P.z,true);sinking.push({g:pship,t:0,keep:true});hideGround(pship);$('boss').hidden=true;$('dock').hidden=true;pw.speed=pw.rapid=pw.side=0;updAim();updChips();
   if(MODE==='open'){NET.deaths++;if(NET.fb&&NET.room&&NET.room.reportDeath)NET.room.reportDeath();NET.killer=(NET.lastHitBy&&clock-NET.lastHitT<6)?NET.lastHitBy:null;
     const kr=NET.killer&&NET.peers.get(NET.killer),killerName=kr?remoteName(kr):null;
+    if(duel){const d=duel;d.over=true;setTimeout(()=>{if(state!=='over')return;$('overeyebrow').textContent='Duel lost';$('overtxt').textContent=`${d.name} won this one. No gold was lost.`;$('overlbl').textContent='Duels are pure skill';$('os').textContent='';$('ob').textContent='';$('again').textContent='Return to port';$('over').hidden=false;},1400);return;}
     const lost=Math.floor(gold/2);gold-=lost;updHud();saveOpen();
     setTimeout(()=>{if(state!=='over')return;$('overeyebrow').textContent='Lost at sea';$('overtxt').textContent=(killerName?`Sunk by ${killerName}. `:'')+(lost?`You lost ${lost} gold from your hold. Your upgrades are safe.`:'Your upgrades are safe.');
       $('overlbl').textContent='Ships sunk so far';$('os').textContent=sunk;$('ob').textContent='';$('again').textContent='Return to port';$('over').hidden=false},1400);return;}
@@ -2061,9 +2113,10 @@ NET.fb=!!FB;NET.rs=0;
 function goOnline(){if(!FB||NET.room||NET.banned)return;const u=FB.user();if(!u)return;
   const R=FB.openRoom();NET.room=R;NET.ok=true;NET.myId=R.uid;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;
   R.onConnection(c=>{NET.ok=c;netUiKey='';});
-  R.onReward(r=>{NET.kills++;showBanner('You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
+  R.onReward(r=>{NET.kills++;showBanner(r.d?'Duel won: +100 gold':'You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
   NET.pending=new Map();NET.srv=null;NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();fleetChanged();achNotice();});
   NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});setTimeout(loadPorts,1500);
+  NET.unduel=FB.duelWatch(duelInbox);
   let reqN=-1;NET.friends={list:{},reqs:{}};NET.unfriends=FB.watchFriends(fd=>{NET.friends={list:fd.list,reqs:fd.reqs};const n=Object.keys(fd.reqs).length;if(reqN>=0&&n>reqN&&state==='play')showBanner('New friend request (Menu → Friends)');reqN=n;renderFriends();});
   R.onBanned(()=>{NET.banned=true;closeOnline();saveMode='none';showBanner('Removed from online play by the referee');});}
 // my fleet or any fleet's details changed: redraw my flag, other ships' tags, and the fleet screen
@@ -2071,7 +2124,7 @@ let fleetKey='';
 function fleetChanged(){const f=fleetsAll()[myFleetId()],k=f?f.tag+f.col+f.em:'';if(k!==fleetKey){const had=fleetKey;fleetKey=k;if(state!=='title')setShip(shipId);if(had!==''||k!=='')NET.last=null;
     if(k&&!had&&state==='play')showBanner('You sail with ['+f.tag+'] '+f.n);}
   NET.last=null;renderFleet();}
-function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.unfleets){NET.unfleets();NET.unfleets=null;}if(NET.unfriends){NET.unfriends();NET.unfriends=null;}NET.friends=null;NET.fleets={};fleetKey='';if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
+function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.unfleets){NET.unfleets();NET.unfleets=null;}if(NET.unfriends){NET.unfriends();NET.unfriends=null;}if(NET.unduel){NET.unduel();NET.unduel=null;}NET.friends=null;NET.fleets={};fleetKey='';if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
 refreshStart();
 if(FB)FB.ready.then(()=>{const u=FB.user();if(u&&!u.google){FB.signOut();}else if(u)goOnline();refreshStart();});
 function netShot(x,z,vx,vz){if(!NET.room)return;const st=NET.room.serverNow?NET.room.serverNow():Date.now();NET.shots.push({d:[++NET.shotSeq,+x.toFixed(1),+z.toFixed(1),+vx.toFixed(1),+vz.toFixed(1),st],t:clock});if(NET.shots.length>30)NET.shots.shift();}
@@ -2080,9 +2133,9 @@ function netSend(){
   NET.shots=NET.shots.filter(s=>clock-s.t<1.6);
   const atSea=MODE==='open'&&(state==='play'||state==='over'||state==='shop');
   const p={m:atSea?'open':'menu',c:NET.color};
-  if(atSea){Object.assign(p,{al:state==='over'?0:1,x:+P.x.toFixed(1),z:+P.z.toFixed(1),a:+(((P.a%TAU)+TAU)%TAU).toFixed(2),rs:NET.rs|0,v:+Math.max(-9,Math.min(33,P.v)).toFixed(1),hp:Math.max(0,Math.min(maxHp(),P.hp)),mx:maxHp(),sh:SHIPS.indexOf(SHIP()),fl:myFleetTag()||null,ti:(NET.srv&&NET.srv.title)||null,cx:(NET.srv&&NET.srv.cx)||null,qc:myChat,lk:netPaint().lk||null,dw:netPaint().dw||null,sg:canSide()?1:0,
+  if(atSea){Object.assign(p,{al:state==='over'?0:1,x:+P.x.toFixed(1),z:+P.z.toFixed(1),a:+(((P.a%TAU)+TAU)%TAU).toFixed(2),rs:NET.rs|0,v:+Math.max(-9,Math.min(33,P.v)).toFixed(1),hp:Math.max(0,Math.min(maxHp(),P.hp)),mx:maxHp(),sh:SHIPS.indexOf(SHIP()),du:duel?duel.opp:null,fl:myFleetTag()||null,ti:(NET.srv&&NET.srv.title)||null,cx:(NET.srv&&NET.srv.cx)||null,qc:myChat,lk:netPaint().lk||null,dw:netPaint().dw||null,sg:canSide()?1:0,
     s:NET.shots.map(s=>s.d),dn:NET.deaths,kb:NET.killer,k:NET.kills,dk:state==='shop'?1:0});}
-  else Object.assign(p,{sh:null,fl:null,ti:null,cx:null,qc:null,lk:null,dw:null,rs:null,al:null,x:null,z:null,a:null,v:null,hp:null,mx:null,sg:null,s:null,dn:null,kb:null,k:null,dk:null});
+  else Object.assign(p,{sh:null,du:null,fl:null,ti:null,cx:null,qc:null,lk:null,dw:null,rs:null,al:null,x:null,z:null,a:null,v:null,hp:null,mx:null,sg:null,s:null,dn:null,kb:null,k:null,dk:null});
   R.presence(p).catch(()=>{});
 }
 function remoteName(r){if(r.pr&&typeof r.pr.n==='string'){const n=FB?FB.cleanName(r.pr.n):r.pr.n;if(n.length>=2)return n;}const key=r.by||(r.pr&&r.pr.id);if(key&&NET.names[key])return NET.names[key];
@@ -2119,7 +2172,7 @@ function netProcess(list){
     if(r.ship&&((pr.sh|0)!==r.shi||remoteLookKey(pr)!==r.lkKey))dropRemoteShip(r);
     if(pr.al){ensureRemoteShip(r);r.ship.visible=true;}
     // their death: did I sink them?
-    if((pr.dn|0)>r.dn){r.dn=pr.dn|0;if(r.ship){boom(r.x,r.z,true);r.ship.visible=false;}
+    if((pr.dn|0)>r.dn){r.dn=pr.dn|0;if(r.ship){boom(r.x,r.z,true);r.ship.visible=false;}if(duel&&(r.by||r.peer)===duel.opp)duelOver(true);
       if(!NET.fb&&pr.kb&&pr.kb===NET.myPeer){NET.kills++;addGold(150);addXP(XP_FOR.player);updHud();saveOpen();showBanner('You sank '+remoteName(r));chime(true);}}
     if(!pr.al&&r.ship)r.ship.visible=false;
     // their new cannon shots
@@ -2347,7 +2400,7 @@ const KR={slot:480000,life:240000,hp:60};
 const kraken={on:false,slot:-1,x:0,z:0,r:5,hp:KR.hp,mine:0,g:null,tent:[],atkT:3,warn:null,dead:false,claimed:-1,announced:-1,rise:0,flash:0};
 function krakenSpot(slot){let a=(slot*2654435761)>>>0;const R=()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
   for(let k=0;k<60;k++){const x=(R()*2-1)*(WORLD-40),z=(R()*2-1)*(WORLD-40);
-    if(PORTS.some(p=>Math.hypot(x-p.x,z-p.z)<SAFE_R+40))continue;if(islands.some(i=>Math.hypot(x-i.x,z-i.z)<i.r+14))continue;return{x,z};}return{x:120,z:120};}
+    if(PORTS.some(p=>Math.hypot(x-p.x,z-p.z)<SAFE_R+40)||Math.hypot(x-ARENA_D.x,z-ARENA_D.z)<ARENA_D.r+30)continue;if(islands.some(i=>Math.hypot(x-i.x,z-i.z)<i.r+14))continue;return{x,z};}return{x:120,z:120};}
 // online: the app shares the kraken's health through the database
 function krakenWatch(slot,cb){return FB&&NET.room?FB.krakenWatch(slot,cb):()=>{};}
 function krakenHitShared(slot){if(FB&&NET.room)FB.krakenHit(slot);}
@@ -2537,6 +2590,7 @@ function drawMap(){
   g.restore();
   const edge=(x,z,col,r)=>{const dx=x-P.x,dz=z-P.z;if(Math.hypot(dx,dz)*sc<R2-7)return;const a=Math.atan2(dz,dx),ex=R2+Math.cos(a)*(R2-7),ey=R2+Math.sin(a)*(R2-7);
     g.fillStyle=col;g.beginPath();g.arc(ex,ey,r,0,TAU);g.fill();g.strokeStyle='rgba(0,0,0,.5)';g.lineWidth=1;g.stroke();};
+  if(MODE==='open'){g.strokeStyle='rgba(255,255,255,.55)';g.setLineDash([2,3]);g.beginPath();g.arc(tx(ARENA_D.x),tz(ARENA_D.z),ARENA_D.r*sc,0,TAU);g.stroke();g.setLineDash([]);}
   seaEventsMap(g,tx,tz,S,edge);
   PORTS.forEach(p=>edge(p.x,p.z,'#f1d897',3.2));enemies.forEach(e=>{if(e.kind==='boss')edge(e.x,e.z,'#ff2d1a',4);});
   g.save();g.translate(R2,R2);g.rotate(P.a);g.fillStyle='#ffffff';g.strokeStyle='rgba(0,0,0,.6)';g.lineWidth=1;g.beginPath();g.moveTo(7,0);g.lineTo(-4.5,4);g.lineTo(-2,0);g.lineTo(-4.5,-4);g.closePath();g.fill();g.stroke();g.restore();

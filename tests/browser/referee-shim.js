@@ -5,13 +5,15 @@
   const txn=async(path,fn)=>{const cur=(await db.ref(path).get()).val();const next=fn(cur);await db.ref(path).set(next);return next;};
   db.ref('hits').on('child_added',async s=>{const hit=s.val();await s.ref.remove();if(!hit)return;
     const shooter=(await db.ref('players/'+hit.s).get()).val(),victim=(await db.ref('players/'+hit.v).get()).val();
-    const fs=(await db.ref('saves/'+hit.s+'/fleet').get()).val(),fv=(await db.ref('saves/'+hit.v+'/fleet').get()).val();if(fs&&fs===fv){window.__refLog.push(['hit',false,'same fleet']);return;}
+    const fs=(await db.ref('saves/'+hit.s+'/fleet').get()).val(),fv=(await db.ref('saves/'+hit.v+'/fleet').get()).val();if(fs&&fs===fv&&!(shooter&&victim&&shooter.du===hit.v&&victim.du===hit.s)){window.__refLog.push(['hit',false,'same fleet']);return;}
     const v=R.judgeHit(hit,shooter,victim,Date.now());window.__refLog.push(['hit',v.ok,v.reason||'']);
     if(!v.ok)return;await txn('ref/lives/'+hit.v,life=>R.addHit(life,hit));});
   db.ref('deaths').on('child_added',async s=>{const d=s.val();await s.ref.remove();if(!d)return;
     const life=(await db.ref('ref/lives/'+d.v).get()).val();await db.ref('ref/lives/'+d.v).remove();
-    await txn('saves/'+d.v,sv=>E.applyDeath(sv));
-    const v=R.judgeDeath(d,life,Date.now());window.__refLog.push(['death',!!v]);if(!v)return;
+    const vp=(await db.ref('players/'+d.v).get()).val()||{};const v=R.judgeDeath(d,life,Date.now());const kp=v?(await db.ref('players/'+v.killer).get()).val()||{}:{};
+    const duel=!!v&&vp.du===v.killer&&kp.du===d.v;if(!duel)await txn('saves/'+d.v,sv=>E.applyDeath(sv));
+    window.__refLog.push(['death',!!v,duel?'duel':'']);if(!v)return;
+    if(duel){await txn('saves/'+v.killer,sv=>E.applyDuelWin(sv));await db.ref('rewards/'+v.killer).push({g:E.DUEL.g,n:vp.n||'x',t:Date.now(),d:1});return;}
     const name=(await db.ref('players/'+d.v+'/n').get()).val()||'a captain';
     await txn('saves/'+v.killer,sv=>E.applyPvpKill(sv));
     await db.ref('rewards/'+v.killer).push({g:E.PVP.g,n:name,t:Date.now()});});

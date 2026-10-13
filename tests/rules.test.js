@@ -220,3 +220,16 @@ test('friends: ask anyone, only the asked captain can accept, and nobody can edi
   assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { qc: 31 }), T0).allowed, true);
   assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { qc: 'hello rude words' }), T0).allowed, false, 'chat is only numbers');
 });
+
+test('duels: a respawn may jump to the duel arena; challenges only as yourself', () => {
+  const db = writeAs(empty(), 'A', '/players/A', ship(21, 0), T0).newDatabase;
+  assert.strictEqual(writeAs(db, 'A', '/players/A', ship(-195 + 20, -200, { rs: 1, du: 'B' }), T0 + 100).allowed, true);
+  assert.strictEqual(writeAs(db, 'A', '/players/A', ship(-100, -200, { rs: 1 }), T0 + 100).allowed, false);
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { du: 'A' }), T0).allowed, false, 'not yourself');
+  let d = targaryen.database(rules, {}, T0);
+  let w = d.as({ uid: 'A' }).write('/duelreq/B/A', { n: 'Gary', t: TS }, { now: T0 }); assert.strictEqual(w.allowed, true); d = w.newDatabase;
+  assert.strictEqual(d.as({ uid: 'C' }).write('/duelreq/B/A', { n: 'Fake', t: TS }, { now: T0 }).allowed, false);
+  assert.strictEqual(d.as({ uid: 'B' }).write('/duelreq/A/B', { n: 'Maria', t: TS, ok: true }, { now: T0 }).allowed, true, 'B accepts by answering in A\'s inbox');
+  assert.strictEqual(d.as({ uid: 'C' }).write('/duelreq/A/B', { n: 'Maria', t: TS, ok: true }, { now: T0 }).allowed, false, 'nobody else can accept for B');
+  assert.strictEqual(d.as({ uid: 'B' }).write('/duelreq/B/A', null, { now: T0 }).allowed, true, 'B clears its inbox');
+});

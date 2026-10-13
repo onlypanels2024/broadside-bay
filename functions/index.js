@@ -75,7 +75,8 @@ exports.refereeHit = onValueCreated('/hits/{id}', async (event) => {
   const shooter = s.val(), victim = v.val();
   if (typeof hit.s === 'string' && typeof hit.v === 'string') {
     const [fs, fv] = await Promise.all([db.ref(`saves/${hit.s}/fleet`).get(), db.ref(`saves/${hit.v}/fleet`).get()]);
-    if (fs.val() && fs.val() === fv.val()) return;   // same fleet: no damage, no kill credit
+    const inDuel = shooter && victim && shooter.du === hit.v && victim.du === hit.s;
+    if (fs.val() && fs.val() === fv.val() && !inDuel) return;   // same fleet: no damage, no kill credit (unless they agreed to duel)
   }
   const verdict = R.judgeHit(hit, shooter, victim, Date.now());
   if (!verdict.ok) {
@@ -98,13 +99,22 @@ exports.refereeDeath = onValueCreated('/deaths/{id}', async (event) => {
   const life = (await lifeRef.get()).val();
   await lifeRef.remove();
   await db.ref(`stats/${death.v}/deaths`).transaction(n => (n || 0) + 1);
-  // the captain who sank loses half the gold in their hold
-  await db.ref(`saves/${death.v}`).transaction(s => E.applyDeath(s));
+  const vp = (await db.ref(`players/${death.v}`).get()).val() || {};
   const verdict = R.judgeDeath(death, life, Date.now());
+  const kp = verdict ? (await db.ref(`players/${verdict.killer}`).get()).val() || {} : {};
+  // a duel both captains agreed to: no gold lost, the winner gets the duel prize instead
+  const duel = !!verdict && vp.du === verdict.killer && kp.du === death.v;
+  // otherwise the captain who sank loses half the gold in their hold
+  if (!duel) await db.ref(`saves/${death.v}`).transaction(s => E.applyDeath(s));
+  else await db.ref(`saves/${death.v}`).transaction(s => { const o = E.norm(s); o.dn = (o.dn | 0) + 1; return o; });
   if (!verdict) return;
-  const name = ((await db.ref(`players/${death.v}/n`).get()).val()) || 'a captain';
+  const name = vp.n || 'a captain';
+  if (duel) {
+    await db.ref(`saves/${verdict.killer}`).transaction(s => E.applyDuelWin(s));
+    await db.ref(`rewards/${verdict.killer}`).push({ g: E.DUEL.g, n: String(name).slice(0, 16), t: Date.now(), d: 1 });
+    return;
+  }
   const kres = await db.ref(`saves/${verdict.killer}`).transaction(s => E.applyPvpKill(s, Date.now()));
-  const kp = (await db.ref(`players/${verdict.killer}`).get()).val() || {};
   const kname = kp.n;
   await portScore(db, kres.snapshot.val() && kres.snapshot.val().fleet, E.portNear(kp.x, kp.z), E.PORT_PTS.captain);
   await boardAdd(db, verdict.killer, kname, { s: 1, g: E.PVP.g, c: 1 }, kres.snapshot.val());

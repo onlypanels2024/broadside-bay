@@ -4,7 +4,7 @@
 //    plus referee calls: reportHit, reportDeath, onReward, onBanned, serverNow.
 (function () {
   'use strict';
-  const PLAYER_KEYS = ['x', 'z', 'a', 'v', 'hp', 'mx', 'sh', 'lk', 'dw', 'fl', 'ti', 'cx', 'qc', 'rs', 'al', 'c', 'sg', 'dk', 'k', 'dn', 'kb', 's', 'm'];
+  const PLAYER_KEYS = ['x', 'z', 'a', 'v', 'hp', 'mx', 'sh', 'lk', 'dw', 'fl', 'ti', 'cx', 'qc', 'du', 'rs', 'al', 'c', 'sg', 'dk', 'k', 'dn', 'kb', 's', 'm'];
   const cleanName = n => String(n || '').replace(/[^\p{L}\p{N} '_-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 16);
 
   function nativeAuth() {
@@ -102,6 +102,10 @@
         async friendAccept(uid, name, myName) { const u = auth.currentUser; if (!u) return;
           try { await db.ref('friends/' + u.uid + '/' + uid).set(String(name).slice(0, 16) || 'Captain'); await db.ref('friends/' + uid + '/' + u.uid).set(myName); await db.ref('friendreq/' + u.uid + '/' + uid).remove(); } catch (e) {} },
         async friendRemove(uid) { const u = auth.currentUser; if (!u) return; try { await db.ref('friends/' + u.uid + '/' + uid).remove(); await db.ref('friends/' + uid + '/' + u.uid).remove(); } catch (e) {} },
+        // Duels: my inbox of challenges/acceptances; send one; clear one.
+        duelWatch(cb) { const u = auth.currentUser; if (!u) return () => {}; const ref = db.ref('duelreq/' + u.uid), fn = s => cb(s.val() || {}); ref.on('value', fn); return () => ref.off('value', fn); },
+        duelSend(uid, myName, ok) { const u = auth.currentUser; if (!u || uid === u.uid) return; const m = { n: myName, t: firebase.database.ServerValue.TIMESTAMP }; if (ok) m.ok = true; db.ref('duelreq/' + uid + '/' + u.uid).set(m).catch(() => {}); },
+        duelClear(uid) { const u = auth.currentUser; if (!u) return; db.ref('duelreq/' + u.uid + '/' + uid).remove().catch(() => {}); },
         // Report another captain's drawing to the referee.
         report(tg, dw) {
           const u = auth.currentUser; if (!u) return;

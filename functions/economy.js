@@ -37,6 +37,7 @@
   // and at most one boss every 2 minutes (bosses appear every 4).
   const RATE = { cap: 12, perMin: 8, bossGapMs: 120000, maxRejects: 12, freshMs: 15000 };
   const PVP = { g: 150, xp: 120 };
+  const DUEL = { g: 100, xp: 60 };
   // The kraken: everyone online sees the same one. A new one can rise every 8 minutes and stays 4 minutes.
   const KRAKEN = { slot: 480000, life: 240000, hp: 60, minHits: 3 };
   // Ship paint. A 7-letter code (hull, trim, sails, stripe, emblem colour, flag, emblem), each a base-36 index,
@@ -73,7 +74,7 @@
     if (s.ck && typeof s.ck === 'object' && num(s.ck.n) && num(s.ck.t)) o.ck = { n: s.ck.n, t: s.ck.t }; else delete o.ck;
     // daily chest {d: last day claimed, st: streak} and today's quests {d: day, p: [progress x3], c: [claimed x3]}
     // lifetime counts for the captain's log and achievements
-    o.ks = {}; for (const k of ['sloop', 'galleon', 'boss', 'merchant', 'kraken', 'treasure', 'escort', 'captain']) { const v = s.ks && s.ks[k]; if (num(v) && v > 0) o.ks[k] = Math.floor(v); }
+    o.ks = {}; for (const k of ['sloop', 'galleon', 'boss', 'merchant', 'kraken', 'treasure', 'escort', 'captain', 'duel']) { const v = s.ks && s.ks[k]; if (num(v) && v > 0) o.ks[k] = Math.floor(v); }
     if (!Object.keys(o.ks).length) delete o.ks;
     for (const k of ['dn', 'bs']) { if (num(s[k]) && s[k] > 0) o[k] = Math.floor(s[k]); else delete o[k]; }
     if (typeof s.title === 'string' && ACH.some(a => a.id === s.title)) o.title = s.title; else delete o.title;
@@ -151,6 +152,7 @@ const ACH=[
   {id:'admiral',n:'Admiral of the Fleet',d:'Reach the rank of Admiral',st:'xp',need:9000,ti:'Admiral of the Fleet'},
   {id:'sotl',n:'Ship of the Line',d:'Own a Man-o\'-War',st:'ship.manowar',need:1,ti:'Ship of the Line'},
   {id:'fleet',n:'Fleet Sailor',d:'Join a fleet',st:'fleet',need:1,ti:'Fleet Sailor'},
+  {id:'duelist',n:'Duelist',d:'Win 5 duels',st:'ks.duel',need:5,ti:'the Duelist'},
 ];
 // Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (or nothing).
 const COS={
@@ -299,6 +301,8 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
   }
   // A captain sank: they lose half the gold in their hold.
   function applyDeath(saveIn) { const s = norm(saveIn); s.gold -= Math.floor(s.gold / 2); s.dn = (s.dn | 0) + 1; return s; }
+  // Won a duel both captains agreed to.
+  function applyDuelWin(saveIn) { const s = norm(saveIn); s.gold += DUEL.g; s.earned += DUEL.g; s.xp += DUEL.xp; s.ks = { ...(s.ks || {}), duel: ((s.ks && s.ks.duel) | 0) + 1 }; return s; }
   // A captain sank another captain (already confirmed by the hit referee).
   function applyPvpKill(saveIn, now) { const s = norm(saveIn); s.gold += PVP.g; s.earned += PVP.g; s.xp += PVP.xp; s.sunk += 1; s.ks = { ...(s.ks || {}), captain: ((s.ks && s.ks.captain) | 0) + 1 };
     if (num(now)) { questEvent(s, 'captain', 1, now); questEvent(s, 'ship', 1, now); questEvent(s, 'gold', PVP.g, now); } return s; }
@@ -330,6 +334,6 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
   const portNear = (x, z) => num(x) && num(z) ? PORTS.findIndex(([px, pz]) => Math.hypot(x - px, z - pz) < PORT_R) : -1;
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

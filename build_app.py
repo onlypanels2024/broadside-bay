@@ -129,7 +129,7 @@ rep("""(async()=>{
 function goOnline(){if(!FB||NET.room||NET.banned)return;const u=FB.user();if(!u)return;
   const R=FB.openRoom();NET.room=R;NET.ok=true;NET.myId=R.uid;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;
   R.onConnection(c=>{NET.ok=c;netUiKey='';});
-  R.onReward(r=>{NET.kills++;showBanner('You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
+  R.onReward(r=>{NET.kills++;showBanner(r.d?'Duel won: +100 gold':'You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
   NET.pending=new Map();NET.srv=null;NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;econSync();});
   R.onBanned(()=>{NET.banned=true;closeOnline();saveMode='none';showBanner('Removed from online play by the referee');});}
 function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
@@ -279,6 +279,14 @@ async function loadPorts(){if(!NET.room)return;const wk=weekOf(serverNowMs()),ou
   NET.ports=out;renderFleet();}
 setInterval(()=>{if(NET.room&&MODE==='open'&&state!=='title')loadPorts();},30000);""")
 rep("  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});","  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});setTimeout(loadPorts,1500);")
+# ---- duels
+rep("function duelOn(){return false;}","function duelOn(){return econServer()&&!!NET.srv;}")
+rep("function duelSend(uid,ok){}","function duelSend(uid,ok){FB.duelSend(uid,FB.user().name,ok);}")
+rep("function duelClear(uid){}","function duelClear(uid){FB.duelClear(uid);}")
+rep("sh:SHIPS.indexOf(SHIP()),fl:myFleetTag()||null,","sh:SHIPS.indexOf(SHIP()),du:duel?duel.opp:null,fl:myFleetTag()||null,")
+rep("else Object.assign(p,{sh:null,fl:null,","else Object.assign(p,{sh:null,du:null,fl:null,")
+rep("  let reqN=-1;NET.friends=","  NET.unduel=FB.duelWatch(duelInbox);\n  let reqN=-1;NET.friends=")
+rep("if(NET.unfriends){NET.unfriends();NET.unfriends=null;}","if(NET.unfriends){NET.unfriends();NET.unfriends=null;}if(NET.unduel){NET.unduel();NET.unduel=null;}")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

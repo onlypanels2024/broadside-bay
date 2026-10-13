@@ -13,7 +13,7 @@
       ".read": "auth != null",
       "$uid": {
         ".write": "auth != null && auth.uid === $uid && !root.child('banned').child($uid).exists()",
-        ".validate": "newData.hasChildren(['n','x','z','a','t','hp','mx','rs','al']) && newData.child('t').val() === now && (!data.exists() ? (((newData.child('x').val() - (0))*(newData.child('x').val() - (0)) + (newData.child('z').val() - (0))*(newData.child('z').val() - (0)) <= 1600) || ((newData.child('x').val() - (175))*(newData.child('x').val() - (175)) + (newData.child('z').val() - (-160))*(newData.child('z').val() - (-160)) <= 1600) || ((newData.child('x').val() - (-165))*(newData.child('x').val() - (-165)) + (newData.child('z').val() - (175))*(newData.child('z').val() - (175)) <= 1600)) : (newData.child('rs').val() === data.child('rs').val() ? (((newData.child('x').val() - data.child('x').val()))*((newData.child('x').val() - data.child('x').val())) + ((newData.child('z').val() - data.child('z').val()))*((newData.child('z').val() - data.child('z').val())) <= ((now - data.child('t').val()) / 1000 * 34 + 6) * ((now - data.child('t').val()) / 1000 * 34 + 6)) : (newData.child('rs').val() === data.child('rs').val() + 1 && (((newData.child('x').val() - (0))*(newData.child('x').val() - (0)) + (newData.child('z').val() - (0))*(newData.child('z').val() - (0)) <= 1600) || ((newData.child('x').val() - (175))*(newData.child('x').val() - (175)) + (newData.child('z').val() - (-160))*(newData.child('z').val() - (-160)) <= 1600) || ((newData.child('x').val() - (-165))*(newData.child('x').val() - (-165)) + (newData.child('z').val() - (175))*(newData.child('z').val() - (175)) <= 1600)))))",
+        ".validate": "newData.hasChildren(['n','x','z','a','t','hp','mx','rs','al']) && newData.child('t').val() === now && (!data.exists() ? (((newData.child('x').val() - (0))*(newData.child('x').val() - (0)) + (newData.child('z').val() - (0))*(newData.child('z').val() - (0)) <= 1600) || ((newData.child('x').val() - (175))*(newData.child('x').val() - (175)) + (newData.child('z').val() - (-160))*(newData.child('z').val() - (-160)) <= 1600) || ((newData.child('x').val() - (-165))*(newData.child('x').val() - (-165)) + (newData.child('z').val() - (175))*(newData.child('z').val() - (175)) <= 1600) || ((newData.child('x').val() - (-195))*(newData.child('x').val() - (-195)) + (newData.child('z').val() - (-200))*(newData.child('z').val() - (-200)) <= 1600)) : (newData.child('rs').val() === data.child('rs').val() ? (((newData.child('x').val() - data.child('x').val()))*((newData.child('x').val() - data.child('x').val())) + ((newData.child('z').val() - data.child('z').val()))*((newData.child('z').val() - data.child('z').val())) <= ((now - data.child('t').val()) / 1000 * 34 + 6) * ((now - data.child('t').val()) / 1000 * 34 + 6)) : (newData.child('rs').val() === data.child('rs').val() + 1 && (((newData.child('x').val() - (0))*(newData.child('x').val() - (0)) + (newData.child('z').val() - (0))*(newData.child('z').val() - (0)) <= 1600) || ((newData.child('x').val() - (175))*(newData.child('x').val() - (175)) + (newData.child('z').val() - (-160))*(newData.child('z').val() - (-160)) <= 1600) || ((newData.child('x').val() - (-165))*(newData.child('x').val() - (-165)) + (newData.child('z').val() - (175))*(newData.child('z').val() - (175)) <= 1600) || ((newData.child('x').val() - (-195))*(newData.child('x').val() - (-195)) + (newData.child('z').val() - (-200))*(newData.child('z').val() - (-200)) <= 1600)))))",
         "n": {
           ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 16"
         },
@@ -96,6 +96,9 @@
         },
         "qc": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 10000"
+        },
+        "du": {
+          ".validate": "newData.isString() && newData.val().length <= 64 && newData.val() !== $uid"
         }
       }
     },
@@ -305,6 +308,27 @@
           },
           "t": {
             ".validate": "newData.val() === now"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "duelreq": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$from": {
+          ".write": "auth != null && ((auth.uid === $from && $from !== $uid) || auth.uid === $uid)",
+          ".validate": "newData.hasChildren(['n','t']) && newData.child('t').val() === now",
+          "n": {
+            ".validate": "newData.isString() && newData.val().length <= 16"
+          },
+          "t": {
+            ".validate": "newData.val() === now"
+          },
+          "ok": {
+            ".validate": "newData.isBoolean()"
           },
           "$other": {
             ".validate": false

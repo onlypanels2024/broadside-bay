@@ -282,3 +282,8 @@ test('port battles: points only near a port; the holding fleet earns 25% more go
   const r = E.processRequest(null, { k: 'kill', e: 'sloop' }, { ...atSea, x: 50, z: 0 }, NOW, { goldMul: E.PORT_BONUS });
   assert.strictEqual(r.save.gold, Math.round(70 * 1.25));
 });
+
+test('a duel win pays the duel prize and counts towards Duelist', () => {
+  const s = E.applyDuelWin(E.fresh());
+  assert.deepStrictEqual([s.gold, s.xp, s.ks.duel], [100, 60, 1]);
+});
