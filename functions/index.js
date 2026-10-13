@@ -18,12 +18,13 @@ setGlobalOptions({ region: 'europe-west1', maxInstances: 10, memory: '256MiB' })
 // board/w<week>/<uid> = {n: name, s: ships sunk, g: gold earned, c: captains sunk} for this week (Monday to Sunday, UTC)
 // board/all/<uid> = {n, xp, s} for Google captains (guests start over each time, so they only appear weekly)
 const googleCache = new Map();
-async function isGoogle(uid) {
+async function googleUser(uid) {
   if (googleCache.has(uid)) return googleCache.get(uid);
-  let g = false;
-  try { const u = await admin.auth().getUser(uid); g = u.providerData.some(p => p.providerId === 'google.com'); } catch (e) {}
+  let g = null;
+  try { const u = await admin.auth().getUser(uid); if (u.providerData.some(p => p.providerId === 'google.com')) g = { name: (u.displayName || '').split(' ')[0] }; } catch (e) {}
   googleCache.set(uid, g); return g;
 }
+const isGoogle = async uid => !!(await googleUser(uid));
 const cleanName = n => String(n || '').replace(/[^\p{L}\p{N} '_-]/gu, '').trim().slice(0, 16) || 'Captain';
 async function boardAdd(db, uid, name, add, save) {
   const wk = E.weekOf(Date.now());
@@ -31,6 +32,10 @@ async function boardAdd(db, uid, name, add, save) {
     const o = r || { s: 0, g: 0, c: 0 };
     o.n = name ? cleanName(name) : (o.n || 'Captain'); o.s = (o.s | 0) + (add.s | 0); o.g = (o.g | 0) + (add.g | 0); o.c = (o.c | 0) + (add.c | 0); return o;
   });
+  if (save && save.fleet && add.s) {
+    const f = (await db.ref(`fleets/${save.fleet}`).get()).val();
+    if (f) await db.ref(`board/f${wk}/${save.fleet}`).transaction(r => ({ n: f.n, tag: f.tag, s: ((r && r.s) | 0) + add.s }));
+  }
   if (save && name && await isGoogle(uid)) await db.ref(`board/all/${uid}`).set({ n: cleanName(name), xp: save.xp | 0, s: save.sunk | 0 });
 }
 
@@ -53,6 +58,10 @@ exports.refereeHit = onValueCreated('/hits/{id}', async (event) => {
   if (!hit) return;
   const [s, v] = await Promise.all([db.ref(`players/${hit.s}`).get(), db.ref(`players/${hit.v}`).get()]);
   const shooter = s.val(), victim = v.val();
+  if (typeof hit.s === 'string' && typeof hit.v === 'string') {
+    const [fs, fv] = await Promise.all([db.ref(`saves/${hit.s}/fleet`).get(), db.ref(`saves/${hit.v}/fleet`).get()]);
+    if (fs.val() && fs.val() === fv.val()) return;   // same fleet: no damage, no kill credit
+  }
   const verdict = R.judgeHit(hit, shooter, victim, Date.now());
   if (!verdict.ok) {
     if (verdict.strike) await strike(db, verdict.strike, verdict.reason);
@@ -124,6 +133,7 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
   if ((await db.ref(`banned/${uid}`).get()).val()) return;
   const dw = typeof req.dw === 'string' && /^[0-9a-f]{64}$/.test(req.dw) ? req.dw : null;
   if (dw && (req.k === 'check' || (req.k === 'look' && typeof req.lk === 'string' && req.lk[6] === 'z'))) await checkFirst(db, uid, rid, dw);
+  if (req.k === 'fleet') { await fleetRequest(db, uid, rid, req); return; }
   if (req.k === 'check') {
     await db.ref(`saves/${uid}`).transaction(save => { const out = E.norm(save); out.last = save && typeof save.last === 'string' && save.last > rid ? save.last : rid; return out; });
     return;
@@ -167,3 +177,69 @@ exports.refereeReport = onValueCreated({ ref: '/reports/{uid}/{rid}', timeoutSec
   logger.warn('drawing removed', { target: rep.tg, dw, why });
   await strike(db, rep.tg, 'rude drawing: ' + why);
 });
+
+// ---- fleets: fleets/<id> = {n, tag, col, em, own, m: {uid: name}, at}; fleettags/<TAG> = id; saves/<uid>/fleet = id
+async function fleetRequest(db, uid, rid, req) {
+  let msg = { ok: false, why: 'unknown fleet request' };
+  try { msg = await fleetDo(db, uid, req); } catch (e) { logger.error('fleet request failed', { uid, err: String(e && e.message || e) }); msg = { ok: false, why: 'something went wrong, try again' }; }
+  await db.ref(`saves/${uid}`).transaction(save => {
+    const out = E.norm(save); out.fmsg = { ok: !!msg.ok, why: String(msg.why || ''), t: Date.now() };
+    out.last = save && typeof save.last === 'string' && save.last > rid ? save.last : rid; return out;
+  });
+}
+async function fleetDo(db, uid, req) {
+  const g = await googleUser(uid);
+  if (!g) return { ok: false, why: 'sign in with Google to join a fleet' };
+  const player = (await db.ref(`players/${uid}/n`).get()).val();
+  const name = cleanName(player || g.name);
+  const save = E.norm((await db.ref(`saves/${uid}`).get()).val());
+  if (req.op === 'create') {
+    const f = E.fleetForm(req); if (!f.ok) return f;
+    const pre = E.fleetPay(save); if (!pre.ok) return pre;
+    for (const t of [f.n, f.tag]) { let ai; try { ai = await D.aiCheckText('fleet name', t); } catch (e) { return { ok: false, why: 'the name checker is offline, try again later' }; }
+      if (ai.rude) return { ok: false, why: 'that name is not allowed (' + ai.what + ')' }; }
+    const fid = db.ref('fleets').push().key;
+    const claim = await db.ref(`fleettags/${f.tag}`).transaction(cur => (cur ? undefined : fid));
+    if (!claim.committed) return { ok: false, why: 'the tag ' + f.tag + ' is taken' };
+    let paid = false;
+    await db.ref(`saves/${uid}`).transaction(sv => { const r = E.fleetPay(sv); paid = r.ok; if (!r.ok) return undefined; r.save.fleet = fid; return r.save; });
+    if (!paid) { await db.ref(`fleettags/${f.tag}`).remove(); return { ok: false, why: 'not enough gold' }; }
+    await db.ref(`fleets/${fid}`).set({ n: f.n, tag: f.tag, col: f.col, em: f.em, own: uid, m: { [uid]: name }, at: Date.now() });
+    return { ok: true, why: 'fleet founded' };
+  }
+  if (req.op === 'join') {
+    if (save.fleet) return { ok: false, why: 'leave your fleet first' };
+    const fid = String(req.fid || ''); if (!/^[A-Za-z0-9_-]{1,30}$/.test(fid)) return { ok: false, why: 'unknown fleet' };
+    let full = false, gone = false;
+    const res = await db.ref(`fleets/${fid}`).transaction(f => { gone = false; full = false; if (!f) { gone = true; return f; } const m = f.m || {}; if (Object.keys(m).length >= E.FLEET.max) { full = true; return undefined; } m[uid] = name; f.m = m; return f; });
+    if (gone || !res.snapshot.val()) return { ok: false, why: 'that fleet no longer exists' };
+    if (full) return { ok: false, why: 'that fleet is full' };
+    await db.ref(`saves/${uid}/fleet`).set(fid);
+    return { ok: true, why: 'joined ' + res.snapshot.val().n };
+  }
+  if (req.op === 'leave') {
+    if (!save.fleet) return { ok: true, why: 'not in a fleet' };
+    await leaveFleet(db, save.fleet, uid);
+    return { ok: true, why: 'left the fleet' };
+  }
+  if (req.op === 'kick') {
+    const who = String(req.who || ''); const f = save.fleet && (await db.ref(`fleets/${save.fleet}`).get()).val();
+    if (!f || f.own !== uid) return { ok: false, why: 'only the fleet\'s founder can do that' };
+    if (who === uid || !(f.m || {})[who]) return { ok: false, why: 'not in your fleet' };
+    await leaveFleet(db, save.fleet, who);
+    return { ok: true, why: 'captain removed' };
+  }
+  return { ok: false, why: 'unknown fleet request' };
+}
+async function leaveFleet(db, fid, uid) {
+  const res = await db.ref(`fleets/${fid}`).transaction(f => {
+    if (!f) return f; const m = f.m || {}; delete m[uid];
+    if (!Object.keys(m).length) return null;
+    f.m = m; if (f.own === uid) f.own = Object.keys(m)[0]; return f;
+  });
+  await db.ref(`saves/${uid}/fleet`).remove();
+  if (!res.snapshot.exists()) {   // last captain left: the fleet and its tag are gone
+    const tags = (await db.ref('fleettags').orderByValue().equalTo(fid).get()).val() || {};
+    await Promise.all(Object.keys(tags).map(t => db.ref(`fleettags/${t}`).remove()));
+  }
+}

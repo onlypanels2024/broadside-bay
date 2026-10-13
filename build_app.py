@@ -154,7 +154,7 @@ rep("""      const [_,x,z,vx,vz]=sh;if(typeof x!=='number'||Math.hypot(x-P.x,z-P
       // real-time: the ball has already been flying while it travelled to us, so start it where it is now
       const age=(NET.room&&NET.room.serverNow&&typeof st==='number')?Math.max(0,Math.min(.6,(NET.room.serverNow()-st)/1000)):0;
       // if the ball's path while it was on its way already crossed my ship, it has hit me
-      if(age>0&&state==='play'&&MODE==='open'){const dx=vx*age,dz=vz*age,L2=dx*dx+dz*dz;let k=L2>0?((P.x-x)*dx+(P.z-z)*dz)/L2:0;k=Math.max(0,Math.min(1,k));
+      if(age>0&&state==='play'&&MODE==='open'&&!isMate(p.peer)){const dx=vx*age,dz=vz*age,L2=dx*dx+dz*dz;let k=L2>0?((P.x-x)*dx+(P.z-z)*dz)/L2:0;k=Math.max(0,Math.min(1,k));
         const cx=x+dx*k,cz=z+dz*k;if(Math.hypot(P.x-cx,P.z-cz)<P.r+.5){spark(x,1.3,z,{color:'#ffd99a',add:true,s:1.8,life:.1});boom(cx,cz,false);
           if(!inSafe(P)){NET.lastHitBy=p.peer;NET.lastHitT=clock;if(NET.room.reportHit)NET.room.reportHit(p.peer,id,P.x,P.z,st+age*k*1000);hurtPlayer();}continue;}}
       const m=new THREE.Mesh(BALL,M.ball);m.castShadow=true;scene.add(m);balls.push({m,x:x+vx*age,z:z+vz*age,vx,vz,life:1.1-age,max:1.1,owner:'r',from:p.peer,sid:id,trail:0});""".replace("!!==","!=="))
@@ -237,6 +237,23 @@ rep("function boardLoad(path,field){return Promise.resolve(null);}","async funct
 rep("function boardMine(path){return Promise.resolve(null);}","function boardMine(path){return FB.boardMine(path);}")
 rep("function myUid(){return null;}","function myUid(){const u=FB&&FB.user();return u?u.uid:null;}")
 rep("  if(FB){$('savenote').hidden=true;","  if(FB){$('goBoard').hidden=false;$('savenote').hidden=true;")
+# ---- fleets
+rep("function fleetOn(){return false;}","function fleetOn(){return econServer()&&!!NET.srv;}")
+rep("function fleetGoogle(){return true;}","function fleetGoogle(){const u=FB&&FB.user();return !!(u&&u.google);}")
+rep("function fleetsAll(){return {};}","function fleetsAll(){return NET.fleets||{};}")
+rep("function myFleetId(){return null;}","function myFleetId(){return (NET.srv&&NET.srv.fleet)||null;}")
+rep("function fleetMsg(){return null;}","function fleetMsg(){return NET.srv&&NET.srv.fmsg||null;}")
+rep("sh:SHIPS.indexOf(SHIP()),lk:netPaint().lk||null,","sh:SHIPS.indexOf(SHIP()),fl:myFleetTag()||null,lk:netPaint().lk||null,")
+rep("else Object.assign(p,{sh:null,lk:null,dw:null,rs:null,","else Object.assign(p,{sh:null,fl:null,lk:null,dw:null,rs:null,")
+rep("NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();});",
+    "NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();fleetChanged();});\n  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});")
+rep("function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}",
+    """// my fleet or any fleet's details changed: redraw my flag, other ships' tags, and the fleet screen
+let fleetKey='';
+function fleetChanged(){const f=fleetsAll()[myFleetId()],k=f?f.tag+f.col+f.em:'';if(k!==fleetKey){const had=fleetKey;fleetKey=k;if(state!=='title')setShip(shipId);if(had!==''||k!=='')NET.last=null;
+    if(k&&!had&&state==='play')showBanner('You sail with ['+f.tag+'] '+f.n);}
+  NET.last=null;renderFleet();}
+function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.unfleets){NET.unfleets();NET.unfleets=null;}NET.fleets={};fleetKey='';""")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

@@ -184,3 +184,13 @@ test('leaderboards: everyone signed in can read them, nobody can write them', ()
   assert.strictEqual(db.as({ uid: 'A' }).write('/board/all/A', { n: 'Gary', xp: 999999 }, { now: T0 }).allowed, false);
   assert.strictEqual(db.as({ uid: 'A' }).write('/board/w1000/A/s', 500, { now: T0 }).allowed, false);
 });
+
+test('fleet tag at sea must be your fleet\'s real tag', () => {
+  const db = targaryen.database(rules, { saves: { A: { fleet: 'f1', ships: { brig: true } } }, fleets: { f1: { tag: 'WOLF', n: 'Sea Wolves' } } }, T0);
+  assert.strictEqual(writeAs(db, 'A', '/players/A', ship(21, 0, { fl: 'WOLF' }), T0).allowed, true);
+  assert.strictEqual(writeAs(db, 'A', '/players/A', ship(21, 0, { fl: 'KING' }), T0).allowed, false);
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { fl: 'WOLF' }), T0).allowed, false, 'not in a fleet');
+  assert.strictEqual(db.as({ uid: 'A' }).write('/fleets/f1/tag', 'X', { now: T0 }).allowed, false);
+  assert.strictEqual(writeAs(empty(), 'A', '/requests/A/r1', { k: 'fleet', op: 'create', n: 'Sea Wolves', tag: 'WOLF', col: 1, em: 2, t: TS }, T0).allowed, true);
+  assert.strictEqual(writeAs(empty(), 'A', '/requests/A/r1', { k: 'fleet', op: 'nuke', t: TS }, T0).allowed, false);
+});

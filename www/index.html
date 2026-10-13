@@ -142,6 +142,18 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .brow .bnm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .brow.me{background:rgba(120,200,140,.14);border:1px solid rgba(120,200,140,.5)}
 .bgap{text-align:center;color:var(--muted);font-size:12px;line-height:1}
+.flrow{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center;padding:8px;border-radius:9px;border:1px solid rgba(214,178,98,.3);background:rgba(255,255,255,.04);text-align:left}
+.flrow canvas,.flbig canvas{position:static;inset:auto;width:48px;height:27px;border-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.flrow b{font-family:var(--display);color:var(--parch);font-size:15px}.flrow small{display:block;color:var(--muted);font-size:12px}
+.fllist{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.flbig{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:8px}
+.flbig canvas{width:120px;height:68px}
+.flbig b{font-family:var(--display);font-size:20px;color:var(--parch)}
+.flmem{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.04);text-align:left;font-size:15px}
+.flmem .sea{color:#5be38f;font-size:12px;margin-left:6px}
+.flform{text-align:left;margin-top:12px}
+.flform .lbl{display:block;margin:10px 0 4px}
+.flform .btn{display:block;margin:16px auto 0}
 .qreset{font-size:12px;color:var(--muted);margin-top:10px}
 .chip.online{color:#9ff0c0;border-color:rgba(120,230,170,.55);display:inline-flex;align-items:center;gap:6px}
 .chip.online i{width:7px;height:7px;border-radius:50%;background:#5be38f;box-shadow:0 0 8px #5be38f}
@@ -297,6 +309,7 @@ details.how summary::-webkit-details-marker{display:none}
     <div class="menulist">
       <button class="btn" id="menuresume">Resume</button>
       <button class="btn ghost" id="snd" aria-label="Music on or off">Music: <span id="sndv">On</span></button>
+      <button class="btn ghost" id="menufleet" hidden>Fleet</button>
       <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
       <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
       <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
@@ -380,10 +393,19 @@ details.how summary::-webkit-details-marker{display:none}
     <div class="eyebrow">The most feared captains</div>
     <h2>Leaderboards</h2>
     <div class="modeseg" id="bwhen"><button id="bWeek" class="on">This week</button><button id="bAll">All time</button></div>
-    <div class="modeseg" id="bwhat"><button id="bS" class="on">Ships sunk</button><button id="bG">Gold</button><button id="bC">Captains</button></div>
+    <div class="modeseg" id="bwhat"><button id="bS" class="on">Ships sunk</button><button id="bG">Gold</button><button id="bC">Captains</button><button id="bF">Fleets</button></div>
     <div class="blist" id="blist"></div>
     <div class="qreset" id="bnote"></div>
     <button class="btn ghost" id="boardclose">Back</button>
+  </div>
+</div>
+<div class="overlay" id="fleetov" hidden>
+  <div class="card">
+    <div class="eyebrow">Sail together</div>
+    <h2 id="fleeth">Fleets</h2>
+    <div id="fleetbody"></div>
+    <p class="dressmsg" id="fleetmsg" aria-live="polite"></p>
+    <button class="btn ghost" id="fleetclose">Back</button>
   </div>
 </div>
 <div class="overlay" id="dailyov" hidden>
@@ -753,7 +775,7 @@ function makeShip(o){
   const hullM=std({map:woodTex,vertexColors:true,roughness:.72,side:THREE.DoubleSide});
   const deckM=std({map:woodTex,color:L(o.deck),roughness:.85,side:THREE.DoubleSide});
   const castleM=std({map:woodTex,color:L(o.side),roughness:.75});
-  const sTex=sailTex(o.sail,o.stripe,o.emblem,o.ecol,o.dw,o.own),fTex=flagTex(o.flag,o.emblem,o.ecol,o.dw,o.own);
+  const sTex=sailTex(o.sail,o.stripe,o.emblem,o.ecol,o.dw,o.own),fTex=o.fflag?flagTex(o.fflag,o.fem,o.fecol,'',o.own):flagTex(o.flag,o.emblem,o.ecol,o.dw,o.own);
   const sailM=std({map:sTex,side:THREE.DoubleSide,roughness:.95});
   const flagM=o.own?std({map:fTex,side:THREE.DoubleSide,roughness:.9}):(flagMats[o.flag+o.emblem]||(flagMats[o.flag+o.emblem]=std({map:fTex,side:THREE.DoubleSide,roughness:.9})));
   const add=(geo,m,x,y,z,parent=inner)=>{const me=new THREE.Mesh(geo,m);me.position.set(x,y,z);me.castShadow=true;me.receiveShadow=true;parent.add(me);return me;};
@@ -1084,7 +1106,7 @@ function setShip(id){
   const old=pship,frac=Math.max(0,Math.min(1,P.hp/Math.max(1,maxHp())));
   shipId=shipById(id).id;owned[shipId]=true;
   sinking=sinking.filter(s=>s.g!==old);disposeGroup(old);
-  pship=makeShip(lookFor(shipId,paintLook(paint)));P.r=1.7*SHIP().scale;
+  pship=makeShip(lookFor(shipId,Object.assign(paintLook(paint),fleetFlag(myFleetTag()))));P.r=1.7*SHIP().scale;
   P.hp=Math.max(1,Math.round(maxHp()*frac));if(typeof updAim==='function')updAim();
 }
 function careerFrom(sv){xp=sv?(sv.xp|0):0;owned=Object.assign({brig:true},(sv&&sv.ships&&typeof sv.ships==='object')?sv.ships:{});
@@ -1496,6 +1518,65 @@ function dailyNotice(){if(!dailyOn())return;const st=dailyState(),k=st.day+':'+s
   if(lastQuestDone&&lastQuestDone.slice(0,lastQuestDone.indexOf(':'))===String(st.day)){st.quests.forEach((q,i)=>{if(q.done&&!q.claimed&&lastQuestDone.split(':')[1][i]==='0')setTimeout(()=>{showBanner('Quest done: '+questText(q.Q));chime(true);},400);});}
   lastQuestDone=k;daily.lastKey='';}
 function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}
+/* ---- fleets (the app: online Open sea, Google captains; the referee runs them) ---- */
+function fleetOn(){return econServer()&&!!NET.srv;}
+function fleetGoogle(){const u=FB&&FB.user();return !!(u&&u.google);}
+function fleetsAll(){return NET.fleets||{};}            // id -> {n, tag, col, em, own, m:{uid:name}}
+function myFleetId(){return (NET.srv&&NET.srv.fleet)||null;}
+function fleetMsg(){return NET.srv&&NET.srv.fmsg||null;}           // the referee's last answer {ok, why, t}
+const fleetByTag=tag=>{if(!tag)return null;const all=fleetsAll();for(const id in all)if(all[id]&&all[id].tag===tag)return all[id];return null;};
+function myFleetTag(){const f=fleetsAll()[myFleetId()];return f?f.tag:null;}
+function isMate(peer){const t=myFleetTag();if(!t||typeof NET==='undefined')return false;const r=NET.peers.get(peer);return !!(r&&r.pr&&r.pr.fl===t);}
+function fleetFlag(tag){const f=fleetByTag(tag);if(!f)return{};const col=PAINT.f[f.col|0]||PAINT.f[0];return{fflag:col,fem:EMBLEMS[f.em|0]||'star',fecol:lum(col)>.45?'#161616':'#ece8dc'};}
+function flagCanvas(f){const c=document.createElement('canvas');c.width=128;c.height=72;const g=c.getContext('2d');const col=PAINT.f[f.col|0]||PAINT.f[0];
+  g.fillStyle=col;g.fillRect(0,0,128,72);g.save();g.translate(64,36);g.scale(.5,.5);g.translate(-64,-64);drawEmblem(g,EMBLEMS[f.em|0]||'star',lum(col)>.45?'#161616':'#ece8dc',col,'');g.restore();return c;}
+const fleet={from:'menu',form:{n:'',tag:'',col:2,em:2},wait:0,leaveArm:false,shownMsg:0};
+function openFleet(from){if(!fleetOn())return;audio();fleet.from=from;fleet.leaveArm=false;$('menuov').hidden=true;$('fleetmsg').textContent='';$('fleetov').hidden=false;renderFleet();}
+$('fleetclose').onclick=()=>{audio();$('fleetov').hidden=true;if(fleet.from==='menu')$('menuov').hidden=false;};
+$('menufleet').onclick=()=>openFleet('menu');
+function fleetAsk(obj,say){fleet.wait=Date.now();$('fleetmsg').textContent=say;econRequest(Object.assign({k:'fleet'},obj));renderFleet();}
+function renderFleet(){if($('fleetov').hidden)return;const body=$('fleetbody');body.innerHTML='';const all=fleetsAll(),mine=all[myFleetId()],me=myUid();
+  const m=fleetMsg();if(m&&m.t&&m.t>=fleet.wait-2000&&fleet.wait&&m.t!==fleet.shownMsg){fleet.shownMsg=m.t;fleet.wait=0;$('fleetmsg').textContent=(m.ok?'':'Not done: ')+m.why.charAt(0).toUpperCase()+m.why.slice(1)+'.';}
+  const busy=!!fleet.wait&&Date.now()-fleet.wait<20000;
+  if(mine){$('fleeth').textContent=mine.n;
+    const big=document.createElement('div');big.className='flbig';big.appendChild(flagCanvas(mine));const t=document.createElement('b');t.textContent='['+mine.tag+']';big.appendChild(t);body.appendChild(big);
+    const mem=Object.entries(mine.m||{});const p=document.createElement('p');p.className='menunote';p.textContent=`${mem.length} of 20 captains. Fleetmates can't hurt each other, show green on your chart, and every ship you sink counts for the fleet.`;body.appendChild(p);
+    const list=document.createElement('div');list.className='fllist';
+    for(const [uid,nm] of mem){const r=document.createElement('div');r.className='flmem';const at=typeof NET!=='undefined'&&NET.peers.has(uid);
+      const l=document.createElement('span');l.textContent=(uid===mine.own?'⚓ ':'')+nm+(uid===me?' (you)':'');if(at){const s2=document.createElement('span');s2.className='sea';s2.textContent='● at sea';l.appendChild(s2);}r.appendChild(l);
+      if(me===mine.own&&uid!==me){const b=document.createElement('button');b.className='shipbtn ghost';b.textContent='Remove';b.disabled=busy;b.onclick=()=>fleetAsk({op:'kick',who:uid},'Removing '+nm+'…');r.appendChild(b);}else r.appendChild(document.createElement('span'));
+      list.appendChild(r);}
+    body.appendChild(list);
+    const lv=document.createElement('button');lv.className='linkbtn'+(fleet.leaveArm?' warn':'');lv.textContent=fleet.leaveArm?'Tap again to leave '+mine.n:'Leave this fleet';lv.disabled=busy;
+    lv.onclick=()=>{if(!fleet.leaveArm){fleet.leaveArm=true;renderFleet();return;}fleet.leaveArm=false;fleetAsk({op:'leave'},'Leaving the fleet…');};body.appendChild(lv);return;}
+  $('fleeth').textContent='Fleets';
+  const ids=Object.keys(all).filter(id=>all[id]&&all[id].tag).sort((a,b)=>Object.keys(all[b].m||{}).length-Object.keys(all[a].m||{}).length);
+  if(!fleetGoogle()){const g=document.createElement('p');g.className='menunote';g.style.color='var(--brass-hi)';g.textContent='Fleets are for captains signed in with Google, so your fleet is still there next time. Sign in from the main menu to join one.';body.appendChild(g);}
+  const intro=document.createElement('p');intro.className='menunote';intro.textContent=ids.length?'Join a fleet to sail with friends. Fleetmates can\'t hurt each other.':'No fleets yet. Found the first one!';body.appendChild(intro);
+  const list=document.createElement('div');list.className='fllist';
+  for(const id of ids.slice(0,30)){const f=all[id],n=Object.keys(f.m||{}).length;const r=document.createElement('div');r.className='flrow';r.appendChild(flagCanvas(f));
+    const tx=document.createElement('div');tx.innerHTML='<b></b><small></small>';tx.querySelector('b').textContent='['+f.tag+'] '+f.n;tx.querySelector('small').textContent=n+' of 20 captains';r.appendChild(tx);
+    const b=document.createElement('button');b.className='shipbtn';b.id='fjoin-'+f.tag;b.textContent=n>=20?'Full':'Join';b.disabled=n>=20||busy;b.onclick=()=>fleetAsk({op:'join',fid:id},'Joining '+f.n+'…');r.appendChild(b);list.appendChild(r);}
+  body.appendChild(list);
+  // found a fleet
+  const F=fleet.form,form=document.createElement('div');form.className='flform';
+  form.innerHTML=`<div class="rule"></div><div class="lbl">Found your own fleet · ${500} gold · Bosun or above</div>
+    <label class="lbl" for="flname">Fleet name</label><input id="flname" class="namein" maxlength="20" autocomplete="off" placeholder="e.g. The Black Tide">
+    <label class="lbl" for="fltag">Tag (2 to 4 letters, shown before names)</label><input id="fltag" class="namein" maxlength="4" autocomplete="off" placeholder="e.g. TIDE" style="text-transform:uppercase">
+    <div class="lbl">Flag colour</div><div class="swrow" id="flcols"></div><div class="lbl">Flag emblem</div><div class="emgrid" id="flems"></div>
+    <div class="flbig" id="flprev"></div><button class="btn" id="flcreate">Found fleet</button>`;
+  body.appendChild(form);
+  const nmI=form.querySelector('#flname'),tgI=form.querySelector('#fltag');nmI.value=F.n;tgI.value=F.tag;
+  nmI.oninput=()=>{F.n=nmI.value;};tgI.oninput=()=>{F.tag=tgI.value.toUpperCase().replace(/[^A-Z0-9]/g,'');tgI.value=F.tag;};
+  const prev=()=>{const p=form.querySelector('#flprev');p.innerHTML='';p.appendChild(flagCanvas(F));};
+  PAINT.f.forEach((c,i)=>{const b=document.createElement('button');b.className='sw'+(F.col===i?' on':'');b.style.background=c;b.setAttribute('aria-label','Flag colour '+PAINT_NAMES.f[i]);b.onclick=()=>{F.col=i;renderFleet();};form.querySelector('#flcols').appendChild(b);});
+  EMBLEMS.forEach((e,i)=>{if(!i)return;const b=document.createElement('button');b.className='emt'+(F.em===i?' on':'');b.setAttribute('aria-label',EMBLEM_NAMES[i]);
+    const col=PAINT.f[F.col];b.appendChild(emblemTile(e,'',col,lum(col)>.45?'#161616':'#ece8dc'));b.onclick=()=>{F.em=i;renderFleet();};form.querySelector('#flems').appendChild(b);});
+  prev();const cb=form.querySelector('#flcreate');cb.disabled=busy;
+  cb.onclick=()=>{const n=F.n.trim();if(n.length<3){$('fleetmsg').textContent='Give your fleet a name of at least 3 letters.';return;}if(!/^[A-Z0-9]{2,4}$/.test(F.tag)){$('fleetmsg').textContent='The tag needs 2 to 4 letters or numbers.';return;}
+    if(rankOf(xp)+1<2){$('fleetmsg').textContent='Founding a fleet needs the rank of Bosun.';return;}if(gold<500){$('fleetmsg').textContent='Founding a fleet costs 500 gold.';return;}
+    fleetAsk({op:'create',n,tag:F.tag,col:F.col,em:F.em},'The referee is checking your fleet name…');};
+}
 /* ---- leaderboards (the app reads the referee's boards) ---- */
 function boardOn(){return !!FB;}
 async function boardLoad(path,field){try{await FB.ensureUser();}catch(e){return null;}return FB.board(path,field,25);}
@@ -1506,24 +1587,24 @@ const board={when:'w',what:'s',from:'menu',seq:0};
 const BOARD_UNIT={s:'ships',g:'gold',c:'captains',xp:'XP'};
 async function renderBoard(){const seq=++board.seq,list=$('blist');list.innerHTML='<p class="menunote">Loading…</p>';
   $('bWeek').classList.toggle('on',board.when==='w');$('bAll').classList.toggle('on',board.when==='all');$('bwhat').hidden=board.when!=='w';
-  ['s','g','c'].forEach(k=>$('b'+k.toUpperCase()).classList.toggle('on',board.what===k));
-  const path=board.when==='w'?'board/w'+weekOf(serverNowMs()):'board/all',field=board.when==='w'?board.what:'xp';
-  const [rows,mine]=await Promise.all([boardLoad(path,field),boardMine(path)]);if(seq!==board.seq)return;
+  ['s','g','c','f'].forEach(k=>$('b'+k.toUpperCase()).classList.toggle('on',board.what===k));
+  const fl=board.when==='w'&&board.what==='f',path=board.when==='w'?'board/'+(fl?'f':'w')+weekOf(serverNowMs()):'board/all',field=board.when==='w'?(fl?'s':board.what):'xp';
+  const [rows,mine]=await Promise.all([boardLoad(path,field),fl?Promise.resolve(null):boardMine(path)]);if(seq!==board.seq)return;
   list.innerHTML='';
   if(!rows){list.innerHTML='<p class="menunote">Could not load the leaderboard. Check your connection.</p>';return;}
   if(!rows.length){list.innerHTML='<p class="menunote">Nobody on this board yet. Sink some ships to be first!</p>';}
   const me=myUid();let shownMe=false;
   const row=(i,r)=>{const el=document.createElement('div');el.className='brow'+(r.uid===me?' me':'');
     const v=field==='xp'?RANKS[rankOf(r.xp|0)].n:(r[field]|0).toLocaleString();
-    el.innerHTML=`<span class="bn">${i}</span><span class="bnm"></span><span class="bv">${v}</span>`;el.querySelector('.bnm').textContent=(r.n||'Captain')+(r.uid===me?' (you)':'');return el;};
+    el.innerHTML=`<span class="bn">${i}</span><span class="bnm"></span><span class="bv">${v}</span>`;el.querySelector('.bnm').textContent=fl?'['+(r.tag||'?')+'] '+(r.n||'Fleet')+(r.uid===myFleetId()?' (yours)':''):(r.n||'Captain')+(r.uid===me?' (you)':'');if(fl&&r.uid===myFleetId())el.classList.add('me');return el;};
   rows.forEach((r,i)=>{if(r.uid===me)shownMe=true;list.appendChild(row(i+1,r));});
   if(!shownMe&&mine&&(mine[field]|0)>0){const g=document.createElement('div');g.className='bgap';g.textContent='⋯';list.appendChild(g);list.appendChild(row('–',{...mine,uid:me}));}
-  $('bnote').textContent=board.when==='w'?'This week runs Monday to Sunday (UTC). Only sinkings the referee approved count.':'Ranked by experience. Sign in with Google to appear here.';}
+  $('bnote').textContent=fl?'Every ship a fleet\'s captains sink this week counts for the fleet.':board.when==='w'?'This week runs Monday to Sunday (UTC). Only sinkings the referee approved count.':'Ranked by experience. Sign in with Google to appear here.';}
 function openBoard(from){if(!boardOn())return;audio();board.from=from;$('menuov').hidden=true;$('start').hidden=true;$('boardov').hidden=false;renderBoard();}
 $('boardclose').onclick=()=>{audio();$('boardov').hidden=true;if(board.from==='menu')$('menuov').hidden=false;else{$('start').hidden=false;}};
 $('menuboard').onclick=()=>openBoard('menu');$('goBoard').onclick=()=>openBoard('start');
 $('bWeek').onclick=()=>{board.when='w';renderBoard();};$('bAll').onclick=()=>{board.when='all';renderBoard();};
-['s','g','c'].forEach(k=>$('b'+k.toUpperCase()).onclick=()=>{board.what=k;renderBoard();});
+['s','g','c','f'].forEach(k=>$('b'+k.toUpperCase()).onclick=()=>{board.what=k;renderBoard();});
 function openReport(){const box=$('replist');box.innerHTML='';let n=0;
   if(typeof NET!=='undefined')for(const r of NET.peers.values()){const pr=r.pr||{};if(pr.m!=='open'||!DW_RE.test(pr.dw||'')||!decodeLk(pr.lk)||decodeLk(pr.lk).e!==DRAW_E)continue;n++;
     const row=document.createElement('div');row.className='reprow';row.appendChild(emblemTile('draw',pr.dw,'#efe4c8','#161616'));
@@ -1543,7 +1624,7 @@ function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.cl
   menuPaused=!onlineAtSea();if(menuPaused)state='paused';
   $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
   $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
-  $('menureport').hidden=!onlineAtSea();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
+  $('menureport').hidden=!onlineAtSea();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
   $('menuleave').textContent=MODE==='open'?'Main menu':'Leave battle';
   $('menuleavenote').textContent=MODE==='open'?'Your voyage is saved when you leave.':'';
   $('menuov').hidden=false;}
@@ -1556,6 +1637,7 @@ function handleBack(){
   if(!$('reportov').hidden){$('repdone').click();return true;}
   if(!$('dailyov').hidden){$('dailyclose').click();return true;}
   if(!$('boardov').hidden){$('boardclose').click();return true;}
+  if(!$('fleetov').hidden){$('fleetclose').click();return true;}
   if(!$('menuov').hidden){closeMenu();return true;}
   const jo=$('joinov');if(jo&&!jo.hidden){$('joinback').click();return true;}
   if(state==='play'){openMenu();return true;}
@@ -1669,9 +1751,15 @@ function goOnline(){if(!FB||NET.room||NET.banned)return;const u=FB.user();if(!u)
   const R=FB.openRoom();NET.room=R;NET.ok=true;NET.myId=R.uid;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;
   R.onConnection(c=>{NET.ok=c;netUiKey='';});
   R.onReward(r=>{NET.kills++;showBanner('You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
-  NET.pending=new Map();NET.srv=null;NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();});
+  NET.pending=new Map();NET.srv=null;NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();fleetChanged();});
+  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});
   R.onBanned(()=>{NET.banned=true;closeOnline();saveMode='none';showBanner('Removed from online play by the referee');});}
-function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
+// my fleet or any fleet's details changed: redraw my flag, other ships' tags, and the fleet screen
+let fleetKey='';
+function fleetChanged(){const f=fleetsAll()[myFleetId()],k=f?f.tag+f.col+f.em:'';if(k!==fleetKey){const had=fleetKey;fleetKey=k;if(state!=='title')setShip(shipId);if(had!==''||k!=='')NET.last=null;
+    if(k&&!had&&state==='play')showBanner('You sail with ['+f.tag+'] '+f.n);}
+  NET.last=null;renderFleet();}
+function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.unfleets){NET.unfleets();NET.unfleets=null;}NET.fleets={};fleetKey='';if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
 refreshStart();
 if(FB)FB.ready.then(()=>{const u=FB.user();if(u&&!u.google){FB.signOut();}else if(u)goOnline();refreshStart();});
 function netShot(x,z,vx,vz){if(!NET.room)return;const st=NET.room.serverNow?NET.room.serverNow():Date.now();NET.shots.push({d:[++NET.shotSeq,+x.toFixed(1),+z.toFixed(1),+vx.toFixed(1),+vz.toFixed(1),st],t:clock});if(NET.shots.length>30)NET.shots.shift();}
@@ -1680,16 +1768,16 @@ function netSend(){
   NET.shots=NET.shots.filter(s=>clock-s.t<1.6);
   const atSea=MODE==='open'&&(state==='play'||state==='over'||state==='shop');
   const p={m:atSea?'open':'menu',c:NET.color};
-  if(atSea){Object.assign(p,{al:state==='over'?0:1,x:+P.x.toFixed(1),z:+P.z.toFixed(1),a:+(((P.a%TAU)+TAU)%TAU).toFixed(2),rs:NET.rs|0,v:+Math.max(-9,Math.min(33,P.v)).toFixed(1),hp:Math.max(0,Math.min(maxHp(),P.hp)),mx:maxHp(),sh:SHIPS.indexOf(SHIP()),lk:netPaint().lk||null,dw:netPaint().dw||null,sg:canSide()?1:0,
+  if(atSea){Object.assign(p,{al:state==='over'?0:1,x:+P.x.toFixed(1),z:+P.z.toFixed(1),a:+(((P.a%TAU)+TAU)%TAU).toFixed(2),rs:NET.rs|0,v:+Math.max(-9,Math.min(33,P.v)).toFixed(1),hp:Math.max(0,Math.min(maxHp(),P.hp)),mx:maxHp(),sh:SHIPS.indexOf(SHIP()),fl:myFleetTag()||null,lk:netPaint().lk||null,dw:netPaint().dw||null,sg:canSide()?1:0,
     s:NET.shots.map(s=>s.d),dn:NET.deaths,kb:NET.killer,k:NET.kills,dk:state==='shop'?1:0});}
-  else Object.assign(p,{sh:null,lk:null,dw:null,rs:null,al:null,x:null,z:null,a:null,v:null,hp:null,mx:null,sg:null,s:null,dn:null,kb:null,k:null,dk:null});
+  else Object.assign(p,{sh:null,fl:null,lk:null,dw:null,rs:null,al:null,x:null,z:null,a:null,v:null,hp:null,mx:null,sg:null,s:null,dn:null,kb:null,k:null,dk:null});
   R.presence(p).catch(()=>{});
 }
 function remoteName(r){if(r.pr&&typeof r.pr.n==='string'){const n=FB?FB.cleanName(r.pr.n):r.pr.n;if(n.length>=2)return n;}const key=r.by||(r.pr&&r.pr.id);if(key&&NET.names[key])return NET.names[key];
   if(key&&NET.user&&!r.asked){r.asked=true;NET.user.profiles([key]).then(ps=>{const n=ps[key]&&ps[key].name;if(n){NET.names[key]=n;r.tagKey='';}}).catch(()=>{});}
   return 'Captain';}
-function tagTex(name,hp,mx,col){const c=document.createElement('canvas');c.width=256;c.height=72;const g=c.getContext('2d');
-  g.font='700 30px "Barlow Semi Condensed",Arial,sans-serif';g.textAlign='center';g.lineWidth=6;g.strokeStyle='rgba(0,0,0,.65)';g.strokeText(name,128,32);g.fillStyle='#ffffff';g.fillText(name,128,32);
+function tagTex(name,hp,mx,col,mate){const c=document.createElement('canvas');c.width=256;c.height=72;const g=c.getContext('2d');
+  g.font='700 30px "Barlow Semi Condensed",Arial,sans-serif';g.textAlign='center';g.lineWidth=6;g.strokeStyle='rgba(0,0,0,.65)';g.strokeText(name,128,32);g.fillStyle=mate?'#a8ffc0':'#ffffff';g.fillText(name,128,32);
   const w=Math.min(200,mx*22),seg=w/mx;for(let i=0;i<mx;i++){g.fillStyle=i<hp?'#e2574a':'rgba(255,255,255,.25)';g.fillRect(128-w/2+i*seg+2,46,seg-4,12);}
   g.fillStyle=col;g.fillRect(118,62,20,6);
   const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t;}
@@ -1697,11 +1785,11 @@ function ensureRemoteShip(r){
   if(r.ship)return;const ci=((r.pr.c|0)%NET_COLORS.length+NET_COLORS.length)%NET_COLORS.length;
   const RS=SHIPS[r.pr.sh|0]||SHIPS[0];r.shi=r.pr.sh|0;r.sc=RS.scale;
   const pt={lk:r.pr.lk,dw:typeof r.pr.dw==='string'?r.pr.dw:''};r.lkKey=remoteLookKey(r.pr);
-  r.ship=makeShip(lookFor(RS.id,Object.assign(decodeLk(pt.lk)?paintLook(pt,hideThis(pt.dw)):{sail:NET_SAILS[ci],stripe:NET_COLORS[ci],flag:NET_COLORS[ci]},{guns:true})));
+  r.ship=makeShip(lookFor(RS.id,Object.assign(decodeLk(pt.lk)?paintLook(pt,hideThis(pt.dw)):{sail:NET_SAILS[ci],stripe:NET_COLORS[ci],flag:NET_COLORS[ci]},fleetFlag(r.pr.fl),{guns:true})));
   r.tag=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false,depthWrite:false}));r.tag.renderOrder=12;r.tag.scale.set(7,2,1);scene.add(r.tag);r.tagKey='';
   r.x=r.pr.x;r.z=r.pr.z;r.a=r.pr.a;r.vis=true;r.col=NET_COLORS[ci];
 }
-const remoteLookKey=pr=>(pr.lk||'')+(pr.dw||'')+(hideThis(pr.dw)?'h':'');
+const remoteLookKey=pr=>(pr.lk||'')+(pr.dw||'')+(hideThis(pr.dw)?'h':'')+'|'+(pr.fl||'')+(fleetByTag(pr.fl)?'f':'');
 function dropRemoteShip(r){if(r.ship){disposeGroup(r.ship);r.ship=null;}if(r.tag){scene.remove(r.tag);if(r.tag.material.map)r.tag.material.map.dispose();r.tag.material.dispose();r.tag=null;}}
 function netProcess(list){
   let online=0,sailing=0;const seen=new Set();
@@ -1727,7 +1815,7 @@ function netProcess(list){
       // real-time: the ball has already been flying while it travelled to us, so start it where it is now
       const age=(NET.room&&NET.room.serverNow&&typeof st==='number')?Math.max(0,Math.min(.6,(NET.room.serverNow()-st)/1000)):0;
       // if the ball's path while it was on its way already crossed my ship, it has hit me
-      if(age>0&&state==='play'&&MODE==='open'){const dx=vx*age,dz=vz*age,L2=dx*dx+dz*dz;let k=L2>0?((P.x-x)*dx+(P.z-z)*dz)/L2:0;k=Math.max(0,Math.min(1,k));
+      if(age>0&&state==='play'&&MODE==='open'&&!isMate(p.peer)){const dx=vx*age,dz=vz*age,L2=dx*dx+dz*dz;let k=L2>0?((P.x-x)*dx+(P.z-z)*dz)/L2:0;k=Math.max(0,Math.min(1,k));
         const cx=x+dx*k,cz=z+dz*k;if(Math.hypot(P.x-cx,P.z-cz)<P.r+.5){spark(x,1.3,z,{color:'#ffd99a',add:true,s:1.8,life:.1});boom(cx,cz,false);
           if(!inSafe(P)){NET.lastHitBy=p.peer;NET.lastHitT=clock;if(NET.room.reportHit)NET.room.reportHit(p.peer,id,P.x,P.z,st+age*k*1000);hurtPlayer();}continue;}}
       const m=new THREE.Mesh(BALL,M.ball);m.castShadow=true;scene.add(m);balls.push({m,x:x+vx*age,z:z+vz*age,vx,vz,life:1.1-age,max:1.1,owner:'r',from:p.peer,sid:id,trail:0});
@@ -1749,8 +1837,8 @@ function netTick(dt){
     if(r.ship.visible){poseShip(r.ship,r.x,r.z,r.a,clock,r.peer.length,0);r.ship.userData.guns.visible=!!pr.sg;
       if(wakeT<=0&&r.v>2.5)wake(r,r.sc||1);}
     if(r.tag){r.tag.visible=r.ship.visible&&Math.hypot(r.x-P.x,r.z-P.z)<90;r.tag.position.set(r.x,9*(r.sc||1),r.z);
-      const nm=remoteName(r)+(pr.dk?' (in port)':''),key=nm+'|'+pr.hp+'|'+pr.mx;
-      if(key!==r.tagKey){r.tagKey=key;if(r.tag.material.map)r.tag.material.map.dispose();r.tag.material.map=tagTex(nm,pr.hp|0,Math.max(1,pr.mx|0),r.col);r.tag.material.needsUpdate=true;}}
+      const mate=isMate(r.peer),nm=(pr.fl&&/^[A-Z0-9]{2,4}$/.test(pr.fl)?'['+pr.fl+'] ':'')+remoteName(r)+(pr.dk?' (in port)':''),key=nm+'|'+pr.hp+'|'+pr.mx+'|'+mate;
+      if(key!==r.tagKey){r.tagKey=key;if(r.tag.material.map)r.tag.material.map.dispose();r.tag.material.map=tagTex(nm,pr.hp|0,Math.max(1,pr.mx|0),mate?'#5be38f':r.col,mate);r.tag.material.needsUpdate=true;}}
   }
   // HUD
   const el=$('online'),inGame=state!=='title';
@@ -1849,9 +1937,9 @@ function update(dt){
     if(b.life<=0){splash(b.x,b.z);continue;}
     if(islands.some(r=>Math.hypot(b.x-r.x,b.z-r.z)<r.r*1.1)){b.life=0;boom(b.x,b.z,false);continue;}
     if(b.owner==='p'){for(const e of enemies){if(Math.hypot(b.x-e.x,b.z-e.z)<e.r+.5){b.life=0;e.hp--;e.flash=.15;e.mode='attack';boom(b.x,b.z,false);noise(.15,1500,.2);break;}}
-      if(b.life>0)for(const r of remoteShips()){if(Math.hypot(b.x-r.x,b.z-r.z)<1.7*(r.sc||1)+.5){b.life=0;boom(b.x,b.z,false);noise(.15,1500,.2);break;}}}
+      if(b.life>0)for(const r of remoteShips()){if(!isMate(r.peer)&&Math.hypot(b.x-r.x,b.z-r.z)<1.7*(r.sc||1)+.5){b.life=0;boom(b.x,b.z,false);noise(.15,1500,.2);break;}}}
     else if(b.owner==='r'){
-      if(state==='play'&&MODE==='open'&&Math.hypot(b.x-P.x,b.z-P.z)<P.r+.5){b.life=0;boom(b.x,b.z,false);if(!inSafe(P)){NET.lastHitBy=b.from;NET.lastHitT=clock;if(NET.fb&&NET.room&&NET.room.reportHit)NET.room.reportHit(b.from,b.sid|0,P.x,P.z,NET.room.serverNow());hurtPlayer();}}
+      if(state==='play'&&MODE==='open'&&!isMate(b.from)&&Math.hypot(b.x-P.x,b.z-P.z)<P.r+.5){b.life=0;boom(b.x,b.z,false);if(!inSafe(P)){NET.lastHitBy=b.from;NET.lastHitT=clock;if(NET.fb&&NET.room&&NET.room.reportHit)NET.room.reportHit(b.from,b.sid|0,P.x,P.z,NET.room.serverNow());hurtPlayer();}}
       else{for(const r of remoteShips()){if(r.peer!==b.from&&Math.hypot(b.x-r.x,b.z-r.z)<1.7*(r.sc||1)+.5){b.life=0;boom(b.x,b.z,false);break;}}
         if(b.life>0)for(const e of enemies){if(Math.hypot(b.x-e.x,b.z-e.z)<e.r+.5){b.life=0;boom(b.x,b.z,false);break;}}}}
     else if(state==='play'&&Math.hypot(b.x-P.x,b.z-P.z)<P.r+.5){b.life=0;boom(b.x,b.z,false);NET.lastHitBy=null;hurtPlayer();}
@@ -1937,7 +2025,7 @@ function drawMap(){
     g.beginPath();g.moveTo(x-r-2,y);g.lineTo(x-r+1.5,y);g.moveTo(x+r-1.5,y);g.lineTo(x+r+2,y);g.moveTo(x,y-r-2);g.lineTo(x,y-r+1.5);g.moveTo(x,y+r-1.5);g.lineTo(x,y+r+2);g.stroke();
     g.fillStyle=g.strokeStyle;g.beginPath();g.arc(x,y,e.kind==='boss'?2:1.2,0,TAU);g.fill();}
   for(const r of remoteShips()){const x=tx(r.x),y=tz(r.z);if(x<-8||x>S+8||y<-8||y>S+8)continue;
-    g.save();g.translate(x,y);g.rotate(r.a);g.fillStyle='#7fe8ff';g.strokeStyle='#08313d';g.lineWidth=1;g.beginPath();g.moveTo(6,0);g.lineTo(-4,3.5);g.lineTo(-4,-3.5);g.closePath();g.fill();g.stroke();g.restore();}
+    g.save();g.translate(x,y);g.rotate(r.a);g.fillStyle=isMate(r.peer)?'#5be38f':'#7fe8ff';g.strokeStyle='#08313d';g.lineWidth=1;g.beginPath();g.moveTo(6,0);g.lineTo(-4,3.5);g.lineTo(-4,-3.5);g.closePath();g.fill();g.stroke();g.restore();}
   g.restore();
   const edge=(x,z,col,r)=>{const dx=x-P.x,dz=z-P.z;if(Math.hypot(dx,dz)*sc<R2-7)return;const a=Math.atan2(dz,dx),ex=R2+Math.cos(a)*(R2-7),ey=R2+Math.sin(a)*(R2-7);
     g.fillStyle=col;g.beginPath();g.arc(ex,ey,r,0,TAU);g.fill();g.strokeStyle='rgba(0,0,0,.5)';g.lineWidth=1;g.stroke();};

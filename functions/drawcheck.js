@@ -53,11 +53,25 @@ Answer only with JSON: {"rude": true or false, "what": "a few words saying what 
 }
 
 let workingModel = null;
-async function aiCheck(dw, reported) {
+function aiCheck(dw, reported) {
+  return ask([{ inlineData: { mimeType: 'image/png', data: drawingPng(dw).toString('base64') } }, { text: prompt(dw, reported) }]);
+}
+// Names players type (fleet names and tags).
+function aiCheckText(what, text) {
+  return ask([{ text: `You check names for a family-friendly pirate ship game (players may be 12+). A player wants this as their ${what}:
+
+"${String(text).replace(/"/g, "'")}"
+
+Mark it rude if it contains or clearly hints at swear words, sexual words, slurs, hate or extremist references, drugs, or insults aimed at people or groups,
+including misspellings, letter swaps, numbers for letters, or words in other languages (Maltese, Italian, English and others).
+Pirate words (plunder, skull, blood, dead men, revenge, black, kraken) are fine.
+Answer only with JSON: {"rude": true or false, "what": "a few words saying why"}` }]);
+}
+async function ask(parts) {
   const project = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || 'overboard-2104';
   const token = (await admin.credential.applicationDefault().getAccessToken()).access_token;
   const body = {
-    contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'image/png', data: drawingPng(dw).toString('base64') } }, { text: prompt(dw, reported) }] }],
+    contents: [{ role: 'user', parts }],
     generationConfig: { temperature: 0, maxOutputTokens: 200, responseMimeType: 'application/json' },
   };
   let lastErr = null;
@@ -80,4 +94,4 @@ async function aiCheck(dw, reported) {
   throw lastErr || new Error('no AI model available');
 }
 
-module.exports = { aiCheck, drawingPng, asText, MODELS };
+module.exports = { aiCheck, aiCheckText, drawingPng, asText, MODELS };

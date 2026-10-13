@@ -229,3 +229,15 @@ test("the game's daily quest list is the referee's, word for word", () => {
   const grab = t => t.slice(t.indexOf('/*DAILYDEF*/'), t.indexOf('/*ENDDAILYDEF*/'));
   assert.ok(grab(eco).length > 200); assert.strictEqual(grab(src), grab(eco));
 });
+
+test('fleets: sensible names and tags only; founding needs Bosun and 500 gold, once', () => {
+  assert.deepStrictEqual(E.fleetForm({ n: '  The  Black Tide ', tag: 'tide', col: 2, em: 2 }), { ok: true, n: 'The Black Tide', tag: 'TIDE', col: 2, em: 2 });
+  assert.strictEqual(E.fleetForm({ n: 'ab', tag: 'TIDE', col: 2, em: 2 }).ok, false);
+  assert.strictEqual(E.fleetForm({ n: 'Good name', tag: 'TOOLONG', col: 2, em: 2 }).ok, false);
+  assert.strictEqual(E.fleetForm({ n: 'Good name', tag: 'OK', col: 99, em: 2 }).ok, false);
+  assert.strictEqual(E.fleetForm({ n: 'Good name', tag: 'OK', col: 1, em: 0 }).ok, false);
+  assert.strictEqual(E.fleetPay({ ...E.fresh(), gold: 900, xp: 100 }).ok, false, 'Deckhand');
+  assert.strictEqual(E.fleetPay({ ...E.fresh(), gold: 400, xp: 300 }).ok, false, 'not enough gold');
+  const r = E.fleetPay({ ...E.fresh(), gold: 900, xp: 300 }); assert.strictEqual(r.ok, true); assert.strictEqual(r.save.gold, 400);
+  assert.strictEqual(E.fleetPay({ ...r.save, fleet: 'abc' }).ok, false, 'already in one');
+});

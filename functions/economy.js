@@ -65,6 +65,8 @@
     if (s.dchk && typeof s.dchk === 'object' && DW_RE.test(s.dchk.dw || '')) o.dchk = { dw: s.dchk.dw, ok: !!s.dchk.ok, why: String(s.dchk.why || '').slice(0, 80), t: num(s.dchk.t) ? s.dchk.t : 0 }; else delete o.dchk;
     if (s.ck && typeof s.ck === 'object' && num(s.ck.n) && num(s.ck.t)) o.ck = { n: s.ck.n, t: s.ck.t }; else delete o.ck;
     // daily chest {d: last day claimed, st: streak} and today's quests {d: day, p: [progress x3], c: [claimed x3]}
+    if (typeof s.fleet === 'string' && /^[A-Za-z0-9_-]{1,30}$/.test(s.fleet)) o.fleet = s.fleet; else delete o.fleet;
+    if (s.fmsg && typeof s.fmsg === 'object') o.fmsg = { ok: !!s.fmsg.ok, why: String(s.fmsg.why || '').slice(0, 80), t: num(s.fmsg.t) ? s.fmsg.t : 0 }; else delete o.fmsg;
     if (s.daily && num(s.daily.d) && num(s.daily.st)) o.daily = { d: s.daily.d, st: Math.max(1, Math.min(999, Math.floor(s.daily.st))) }; else delete o.daily;
     if (s.q && num(s.q.d) && Array.isArray(s.q.p) && Array.isArray(s.q.c)) o.q = { d: s.q.d, p: [0, 1, 2].map(i => num(s.q.p[i]) ? Math.max(0, Math.floor(s.q.p[i])) : 0), c: [0, 1, 2].map(i => s.q.c[i] === true) }; else delete o.q;
     return o;
@@ -237,8 +239,29 @@ function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F
   function applyPvpKill(saveIn, now) { const s = norm(saveIn); s.gold += PVP.g; s.earned += PVP.g; s.xp += PVP.xp; s.sunk += 1;
     if (num(now)) { questEvent(s, 'captain', 1, now); questEvent(s, 'ship', 1, now); questEvent(s, 'gold', PVP.g, now); } return s; }
 
+  // Fleets: Google captains of rank 2 (Bosun) or more can found one for 500 gold; up to 20 captains each.
+  const FLEET = { price: 500, rank: 2, max: 20, colours: 9, emblems: 11 };
+  // Checks the details of a new fleet. Returns {ok, why, n, tag, col, em}.
+  function fleetForm(req) {
+    const n = String(req && req.n || '').replace(/[^\p{L}\p{N} '_-]/gu, '').replace(/\s+/g, ' ').trim();
+    const tag = String(req && req.tag || '').toUpperCase();
+    if (n.length < 3 || n.length > 20) return { ok: false, why: 'fleet names need 3 to 20 letters' };
+    if (!/^[A-Z0-9]{2,4}$/.test(tag)) return { ok: false, why: 'tags are 2 to 4 letters or numbers' };
+    const col = Number(req.col), em = Number(req.em);
+    if (!Number.isInteger(col) || col < 0 || col >= FLEET.colours) return { ok: false, why: 'unknown flag colour' };
+    if (!Number.isInteger(em) || em < 1 || em > FLEET.emblems) return { ok: false, why: 'unknown emblem' };
+    return { ok: true, n, tag, col, em };
+  }
+  // Paying for a new fleet (the referee also checks the tag is free and the name is polite).
+  function fleetPay(saveIn) {
+    const s = norm(saveIn);
+    if (s.fleet) return { save: s, ok: false, why: 'you are already in a fleet' };
+    if (rankIdx(s.xp) + 1 < FLEET.rank) return { save: s, ok: false, why: 'founding a fleet needs the rank of Bosun' };
+    if (s.gold < FLEET.price) return { save: s, ok: false, why: 'founding a fleet costs ' + FLEET.price + ' gold' };
+    s.gold -= FLEET.price; return { save: s, ok: true };
+  }
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

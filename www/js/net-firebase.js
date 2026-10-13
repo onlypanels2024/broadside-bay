@@ -4,7 +4,7 @@
 //    plus referee calls: reportHit, reportDeath, onReward, onBanned, serverNow.
 (function () {
   'use strict';
-  const PLAYER_KEYS = ['x', 'z', 'a', 'v', 'hp', 'mx', 'sh', 'lk', 'dw', 'rs', 'al', 'c', 'sg', 'dk', 'k', 'dn', 'kb', 's', 'm'];
+  const PLAYER_KEYS = ['x', 'z', 'a', 'v', 'hp', 'mx', 'sh', 'lk', 'dw', 'fl', 'rs', 'al', 'c', 'sg', 'dk', 'k', 'dn', 'kb', 's', 'm'];
   const cleanName = n => String(n || '').replace(/[^\p{L}\p{N} '_-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 16);
 
   function nativeAuth() {
@@ -82,6 +82,8 @@
           return out.reverse();
         },
         async boardMine(path) { const u = auth.currentUser; if (!u) return null; try { return (await db.ref(path + '/' + u.uid).get()).val(); } catch (e) { return null; } },
+        // Follow the list of fleets. Returns a function that stops following.
+        watchFleets(cb) { const ref = db.ref('fleets'), fn = s => cb(s.val() || {}); ref.on('value', fn); return () => ref.off('value', fn); },
         // Report another captain's drawing to the referee.
         report(tg, dw) {
           const u = auth.currentUser; if (!u) return;
