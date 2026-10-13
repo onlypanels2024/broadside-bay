@@ -4,7 +4,7 @@
 //    plus referee calls: reportHit, reportDeath, onReward, onBanned, serverNow.
 (function () {
   'use strict';
-  const PLAYER_KEYS = ['x', 'z', 'a', 'v', 'hp', 'mx', 'sh', 'lk', 'dw', 'fl', 'ti', 'cx', 'rs', 'al', 'c', 'sg', 'dk', 'k', 'dn', 'kb', 's', 'm'];
+  const PLAYER_KEYS = ['x', 'z', 'a', 'v', 'hp', 'mx', 'sh', 'lk', 'dw', 'fl', 'ti', 'cx', 'qc', 'rs', 'al', 'c', 'sg', 'dk', 'k', 'dn', 'kb', 's', 'm'];
   const cleanName = n => String(n || '').replace(/[^\p{L}\p{N} '_-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 16);
 
   function nativeAuth() {
@@ -91,6 +91,17 @@
           db.ref('kraken/' + slot + '/hp').transaction(h => (h === null ? 59 : h > 0 ? h - 1 : undefined)).catch(() => {});
           db.ref('kraken/' + slot + '/hits/' + u.uid).transaction(n => (n || 0) + 1).catch(() => {});
         },
+        // Friends: my list (uid -> name) and requests to me (uid -> {n}); both followed live.
+        watchFriends(cb) {
+          const u = auth.currentUser; if (!u) return () => {};
+          const st = { list: {}, reqs: {} }, a = db.ref('friends/' + u.uid), b = db.ref('friendreq/' + u.uid);
+          const fa = s => { st.list = s.val() || {}; cb(st); }, fb = s => { st.reqs = s.val() || {}; cb(st); };
+          a.on('value', fa); b.on('value', fb); return () => { a.off('value', fa); b.off('value', fb); };
+        },
+        friendAsk(uid, myName) { const u = auth.currentUser; if (!u || uid === u.uid) return; db.ref('friendreq/' + uid + '/' + u.uid).set({ n: myName, t: firebase.database.ServerValue.TIMESTAMP }).catch(() => {}); },
+        async friendAccept(uid, name, myName) { const u = auth.currentUser; if (!u) return;
+          try { await db.ref('friends/' + u.uid + '/' + uid).set(String(name).slice(0, 16) || 'Captain'); await db.ref('friends/' + uid + '/' + u.uid).set(myName); await db.ref('friendreq/' + u.uid + '/' + uid).remove(); } catch (e) {} },
+        async friendRemove(uid) { const u = auth.currentUser; if (!u) return; try { await db.ref('friends/' + u.uid + '/' + uid).remove(); await db.ref('friends/' + uid + '/' + u.uid).remove(); } catch (e) {} },
         // Report another captain's drawing to the referee.
         report(tg, dw) {
           const u = auth.currentUser; if (!u) return;
@@ -140,6 +151,7 @@
       onConnection(h) { connHandlers.push(h); setTimeout(() => h(connected)); return () => {}; },
       onPeers() { return () => {}; },
       peers() { if (dirty) rebuild(); return snap; },
+      onlineIds() { return menuOnly; },
       async presence(patch) {
         if (closed) return;
         for (const k in patch) { if (patch[k] === null) delete mine[k]; else mine[k] = patch[k]; }

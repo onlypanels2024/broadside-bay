@@ -204,3 +204,19 @@ test('shared kraken: its health only goes down one hit at a time, and you only c
   assert.strictEqual(db.as({ uid: 'A' }).write('/kraken/5/hits/B', 1, { now: T0 }).allowed, false);
   assert.strictEqual(targaryen.database(rules, {}, T0).as({ uid: 'A' }).write('/kraken/6/hp', 59, { now: T0 }).allowed, true);
 });
+
+test('friends: ask anyone, only the asked captain can accept, and nobody can edit someone else\'s list', () => {
+  const asA = { uid: 'A' }, asB = { uid: 'B' };
+  let db = targaryen.database(rules, {}, T0);
+  let r = db.as(asB).write('/friendreq/A/B', { n: 'Maria', t: TS }, { now: T0 }); assert.strictEqual(r.allowed, true); db = r.newDatabase;
+  assert.strictEqual(db.as(asB).write('/friendreq/B/B', { n: 'Maria', t: TS }, { now: T0 }).allowed, false, 'not to yourself');
+  assert.strictEqual(db.as(asB).write('/friends/A/B', 'Maria', { now: T0 }).allowed, false, 'B cannot add themselves to A');
+  r = db.as(asA).write('/friends/A/B', 'Maria', { now: T0 }); assert.strictEqual(r.allowed, true); db = r.newDatabase;
+  r = db.as(asA).write('/friends/B/A', 'Gary', { now: T0 }); assert.strictEqual(r.allowed, true, 'A accepts B\'s request'); db = r.newDatabase;
+  assert.strictEqual(db.as({ uid: 'C' }).write('/friends/B/C', 'Eve', { now: T0 }).allowed, false, 'no request from B to C');
+  assert.strictEqual(db.as(asA).read('/friendreq/A').allowed, true);
+  assert.strictEqual(db.as(asB).read('/friendreq/A').allowed, false);
+  assert.strictEqual(db.as(asA).write('/friendreq/A/B', null, { now: T0 }).allowed, true);
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { qc: 31 }), T0).allowed, true);
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { qc: 'hello rude words' }), T0).allowed, false, 'chat is only numbers');
+});

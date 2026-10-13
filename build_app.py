@@ -144,7 +144,7 @@ rep("function netShot(x,z,vx,vz){if(!NET.room)return;NET.shots.push({d:[++NET.sh
 rep("  const p={m:atSea?'open':'menu',c:NET.color,id:NET.myId||null};","  const p={m:atSea?'open':'menu',c:NET.color};")
 rep("x:+P.x.toFixed(1),z:+P.z.toFixed(1),a:+P.a.toFixed(2),","x:+P.x.toFixed(1),z:+P.z.toFixed(1),a:+(((P.a%TAU)+TAU)%TAU).toFixed(2),rs:NET.rs|0,")
 rep("v:+P.v.toFixed(1),hp:P.hp,","v:+Math.max(-9,Math.min(33,P.v)).toFixed(1),hp:Math.max(0,Math.min(maxHp(),P.hp)),")
-rep("else Object.assign(p,{sh:null,lk:null,dw:null,al:null,","else Object.assign(p,{sh:null,lk:null,dw:null,rs:null,al:null,")
+rep("else Object.assign(p,{sh:null,qc:null,lk:null,dw:null,al:null,","else Object.assign(p,{sh:null,qc:null,lk:null,dw:null,rs:null,al:null,")
 rep("function remoteName(r){const key=r.by||(r.pr&&r.pr.id);",
     "function remoteName(r){if(r.pr&&typeof r.pr.n==='string'){const n=FB?FB.cleanName(r.pr.n):r.pr.n;if(n.length>=2)return n;}const key=r.by||(r.pr&&r.pr.id);")
 rep("      if(pr.kb&&pr.kb===NET.myPeer){NET.kills++;","      if(!NET.fb&&pr.kb&&pr.kb===NET.myPeer){NET.kills++;")
@@ -181,8 +181,8 @@ function econKill(kind,id){if(econServer()){const K=ONLINE_KILL[kind]||ONLINE_KI
   """)
 rep("  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();updQuestChip();}","  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();updQuestChip();if(NET.pending&&NET.pending.size)econSync();}")
 # ---- ship paint online: other captains only ever see colours the referee has approved
-rep("sh:SHIPS.indexOf(SHIP()),lk:paint.lk,dw:paint.dw||null,",
-    "sh:SHIPS.indexOf(SHIP()),lk:netPaint().lk||null,dw:netPaint().dw||null,")
+rep("sh:SHIPS.indexOf(SHIP()),qc:myChat,lk:paint.lk,dw:paint.dw||null,",
+    "sh:SHIPS.indexOf(SHIP()),qc:myChat,lk:netPaint().lk||null,dw:netPaint().dw||null,")
 rep("function econServer(){return MODE==='open'&&saveMode==='server'&&!!NET.room;}",
 """function econServer(){return MODE==='open'&&saveMode==='server'&&!!NET.room;}
 // What we tell other captains: online, only the referee's copy (the database refuses anything else).
@@ -243,8 +243,8 @@ rep("function fleetGoogle(){return true;}","function fleetGoogle(){const u=FB&&F
 rep("function fleetsAll(){return {};}","function fleetsAll(){return NET.fleets||{};}")
 rep("function myFleetId(){return null;}","function myFleetId(){return (NET.srv&&NET.srv.fleet)||null;}")
 rep("function fleetMsg(){return null;}","function fleetMsg(){return NET.srv&&NET.srv.fmsg||null;}")
-rep("sh:SHIPS.indexOf(SHIP()),lk:netPaint().lk||null,","sh:SHIPS.indexOf(SHIP()),fl:myFleetTag()||null,lk:netPaint().lk||null,")
-rep("else Object.assign(p,{sh:null,lk:null,dw:null,rs:null,","else Object.assign(p,{sh:null,fl:null,lk:null,dw:null,rs:null,")
+rep("sh:SHIPS.indexOf(SHIP()),qc:myChat,lk:netPaint().lk||null,","sh:SHIPS.indexOf(SHIP()),fl:myFleetTag()||null,qc:myChat,lk:netPaint().lk||null,")
+rep("else Object.assign(p,{sh:null,qc:null,lk:null,dw:null,rs:null,","else Object.assign(p,{sh:null,fl:null,qc:null,lk:null,dw:null,rs:null,")
 rep("NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();});",
     "NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();fleetChanged();});\n  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});")
 rep("function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}",
@@ -263,6 +263,15 @@ rep("function logSave(){return null;}","function logSave(){return NET.srv;}")
 rep("sh:SHIPS.indexOf(SHIP()),fl:myFleetTag()||null,","sh:SHIPS.indexOf(SHIP()),fl:myFleetTag()||null,ti:(NET.srv&&NET.srv.title)||null,cx:(NET.srv&&NET.srv.cx)||null,")
 rep("else Object.assign(p,{sh:null,fl:null,","else Object.assign(p,{sh:null,fl:null,ti:null,cx:null,")
 rep("econSync();dailyNotice();fleetChanged();});","econSync();dailyNotice();fleetChanged();achNotice();});")
+# ---- friends
+rep("function friendsOn(){return false;}","function friendsOn(){return econServer()&&!!NET.srv;}")
+rep("function friendsData(){return{list:{},reqs:{}};}","function friendsData(){return NET.friends||{list:{},reqs:{}};}")
+rep("function friendAsk(uid,name){} function friendAccept(uid,name){} function friendRemove(uid){}",
+    "function friendAsk(uid,name){if(fleetGoogle())FB.friendAsk(uid,FB.user().name);else $('friendmsg').textContent='Sign in with Google to add friends.';}\nfunction friendAccept(uid,name){FB.friendAccept(uid,name,FB.user().name);}\nfunction friendRemove(uid){FB.friendRemove(uid);}")
+rep("function onlineSet(){return typeof NET!=='undefined'&&NET.onlineIds?NET.onlineIds:new Set();}","function onlineSet(){return NET.room&&NET.room.onlineIds?NET.room.onlineIds():new Set();}")
+rep("  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});",
+    "  NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});\n  let reqN=-1;NET.friends={list:{},reqs:{}};NET.unfriends=FB.watchFriends(fd=>{NET.friends={list:fd.list,reqs:fd.reqs};const n=Object.keys(fd.reqs).length;if(reqN>=0&&n>reqN&&state==='play')showBanner('New friend request (Menu → Friends)');reqN=n;renderFriends();});")
+rep("if(NET.unfleets){NET.unfleets();NET.unfleets=null;}","if(NET.unfleets){NET.unfleets();NET.unfleets=null;}if(NET.unfriends){NET.unfriends();NET.unfriends=null;}NET.friends=null;")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 
