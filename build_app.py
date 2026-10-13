@@ -306,6 +306,9 @@ rep("function seasonClaimUI(box){}   // the app: offer last season's reward to i
 rep("function notifSaveToken(t){}","function notifSaveToken(t){NET.pushToken=t;if(FB&&FB.user())FB.saveToken(t);}")
 rep("function notifSaveTokenClear(){}","function notifSaveTokenClear(){if(FB&&FB.user())FB.clearToken();}")
 rep("NET.unwatch=FB.watchSave(sv=>{","if(notifOn&&NET.pushToken)FB.saveToken(NET.pushToken);NET.unwatch=FB.watchSave(sv=>{")
+# ---- delete my online data (Google Play requires a way to do this inside the app)
+rep("function eraseOn(){return false;}","function eraseOn(){const u=FB&&FB.user();return !!(u&&u.google&&NET.room);}")
+rep("function eraseNow(){}","function eraseNow(){FB.request({k:'erase'});try{['bb-srv-cache','bb-open-wish'].forEach(k=>localStorage.removeItem(k));}catch(e){}setTimeout(async()=>{closeMenu();toMenu();closeOnline();await FB.signOut();refreshStart();showBanner('Your online captain has been deleted');},2500);}")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

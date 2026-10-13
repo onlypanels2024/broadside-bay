@@ -376,6 +376,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
       <button class="btn ghost" id="wxtog">Rain &amp; lightning: <span id="wxtogv">On</span></button>
       <button class="btn ghost" id="drawtog">Captains' drawings: <span id="drawtogv">Shown</span></button>
       <button class="btn ghost" id="menuleave">Main menu</button>
+      <button class="linkbtn" id="menuerase" hidden>Delete my online data</button>
     </div>
     <p class="menunote" id="menuleavenote"></p>
   </div>
@@ -1746,6 +1747,11 @@ async function notifSetup(){const p=CapP();if(!p)return;const LN=p.LocalNotifica
   try{if(PN){await PN.requestPermissions();if(!notifSetup.listening){notifSetup.listening=true;PN.addListener('registration',tk=>notifSaveToken(tk.value));}await PN.register();}}catch(e){}}
 $('notiftog').onclick=()=>{audio();notifOn=!notifOn;try{localStorage.setItem('bb-notif',notifOn?'1':'0')}catch(e){}updNotif();notifSetup();if(notifOn)showBanner('Notifications on');};
 updNotif();setTimeout(notifSetup,4000);
+function eraseOn(){const u=FB&&FB.user();return !!(u&&u.google&&NET.room);}   // the app: signed in with Google
+function eraseNow(){FB.request({k:'erase'});try{['bb-srv-cache','bb-open-wish'].forEach(k=>localStorage.removeItem(k));}catch(e){}setTimeout(async()=>{closeMenu();toMenu();closeOnline();await FB.signOut();refreshStart();showBanner('Your online captain has been deleted');},2500);}
+let eraseArm=false;
+$('menuerase').onclick=()=>{audio();if(!eraseArm){eraseArm=true;$('menuerase').textContent='Tap again to delete your online captain for good';$('menuerase').classList.add('warn');return;}
+  eraseArm=false;$('menuerase').textContent='Deleting…';eraseNow();};
 function updSea(){$('seav').textContent=seaOn?'On':'Off';}updSea();
 $('seatog').onclick=()=>{audio();seaOn=!seaOn;try{localStorage.setItem('bb-sea',seaOn?'1':'0')}catch(e){}updSea();};
 function updBuzz(){$('buzzv').textContent=buzzOn?'On':'Off';}updBuzz();
@@ -2270,7 +2276,7 @@ function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.cl
   menuPaused=!onlineAtSea();if(menuPaused)state='paused';
   $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
   $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
-  $('menureport').hidden=!onlineAtSea();$('menufriends').textContent=duelOn()?'Friends & duels':'Friends';$('menufriends').hidden=!friendsOn();$('menulog').hidden=!logOn();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
+  $('menureport').hidden=!onlineAtSea();$('menuerase').hidden=!eraseOn();eraseArm=false;$('menuerase').textContent='Delete my online data';$('menuerase').classList.remove('warn');$('menufriends').textContent=duelOn()?'Friends & duels':'Friends';$('menufriends').hidden=!friendsOn();$('menulog').hidden=!logOn();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
   $('menuleave').textContent=MODE==='open'?'Main menu':'Leave battle';
   $('menuleavenote').textContent=MODE==='open'?'Your voyage is saved when you leave.':'';
   $('menuov').hidden=false;}

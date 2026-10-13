@@ -178,6 +178,7 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
   if ((await db.ref(`banned/${uid}`).get()).val()) return;
   const dw = typeof req.dw === 'string' && /^[0-9a-f]{64}$/.test(req.dw) ? req.dw : null;
   if (dw && (req.k === 'check' || (req.k === 'look' && typeof req.lk === 'string' && req.lk[6] === 'z'))) await checkFirst(db, uid, rid, dw);
+  if (req.k === 'erase') { await eraseCaptain(db, uid); return; }
   if (req.k === 'fleet') { await fleetRequest(db, uid, rid, req); return; }
   if (req.k === 'check') {
     await db.ref(`saves/${uid}`).transaction(save => { const out = E.norm(save); out.last = save && typeof save.last === 'string' && save.last > rid ? save.last : rid; return out; });
@@ -337,3 +338,19 @@ exports.notifyFriend = onValueCreated('/friendreq/{uid}/{from}', async (event) =
   const m = event.data.val(); if (!m) return;
   await notify(admin.database(), event.params.uid, 'Friend request', `${cleanName(m.n)} wants to be shipmates.`);
 });
+
+// ---- "Delete my online data": everything stored about this captain, then the sign-in account itself
+async function eraseCaptain(db, uid) {
+  try {
+    const save = E.norm((await db.ref(`saves/${uid}`).get()).val());
+    if (save.fleet) await leaveFleet(db, save.fleet, uid);
+    const friends = (await db.ref(`friends/${uid}`).get()).val() || {};
+    await Promise.all(Object.keys(friends).map(f => db.ref(`friends/${f}/${uid}`).remove()));
+    const wk = E.weekOf(Date.now()), sn = E.seasonAt(Date.now()).no;
+    const paths = [`saves/${uid}`, `players/${uid}`, `online/${uid}`, `stats/${uid}`, `tokens/${uid}`, `friends/${uid}`, `friendreq/${uid}`, `duelreq/${uid}`, `coopreq/${uid}`,
+      `rewards/${uid}`, `requests/${uid}`, `board/all/${uid}`, `board/w${wk}/${uid}`, `board/w${wk - 1}/${uid}`, `board/s${sn}/${uid}`, `board/s${sn - 1}/${uid}`, `ref/lives/${uid}`, `ref/strikes/${uid}`];
+    await Promise.all(paths.map(p => db.ref(p).remove()));
+    await admin.auth().deleteUser(uid).catch(() => {});
+    logger.info('captain erased', { uid });
+  } catch (e) { logger.error('erase failed', { uid, err: String(e && e.message || e) }); }
+}
