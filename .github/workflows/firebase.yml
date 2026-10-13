@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["functions/**", "database.rules.json", "firebase.json", ".github/workflows/firebase.yml"]
+    paths: ["functions/**", "docs/**", "database.rules.json", "firebase.json", ".github/workflows/firebase.yml"]
 jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
@@ -52,7 +52,7 @@ jobs:
           echo "Deploying to Firebase project: $PROJECT" 
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
           set -o pipefail
-          if ! npx --yes firebase-tools@14 deploy --only database,functions --project "$PROJECT" --non-interactive --force 2>&1 | tee deploy.log; then
+          if ! npx --yes firebase-tools@14 deploy --only database,functions,hosting --project "$PROJECT" --non-interactive --force 2>&1 | tee deploy.log; then
             # Save a readable copy of the failure (no secrets: the key is never printed) for diagnosis
             sed 's/\x1b\[[0-9;]*m//g' deploy.log | grep -vE "ensuring required API|required API .* is enabled|Enabling now" | tail -60 > "$RUNNER_TEMP/deploy-error.txt"
             git config user.name "deploy-bot"; git config user.email "deploy-bot@users.noreply.github.com"
