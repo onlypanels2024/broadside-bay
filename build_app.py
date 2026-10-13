@@ -179,7 +179,7 @@ function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typ
   if(P.hp>maxHp())P.hp=maxHp();updHud();updXP();updAim();if(state==='shop')renderShop();}
 function econKill(kind,id){if(econServer()){const K=ONLINE_KILL[kind]||ONLINE_KILL.sloop;addGold(K.g);addXP(K.xp);if(IS_SHIP(kind))sunk++;econRequest(id!==undefined?{k:'kill',e:kind,id:String(id)}:{k:'kill',e:kind});return;}
   """)
-rep("  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();updQuestChip();}","  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();updQuestChip();if(NET.pending&&NET.pending.size)econSync();}")
+rep("  uniT-=dt;if(uniT<=0){uniT=.5;streamIslands();setIslandUniforms();updQuestChip();}","  uniT-=dt;if(uniT<=0){uniT=.5;streamIslands();setIslandUniforms();updQuestChip();if(NET.pending&&NET.pending.size)econSync();}")
 # ---- ship paint online: other captains only ever see colours the referee has approved
 rep("sh:SHIPS.indexOf(SHIP()),qc:myChat,lk:paint.lk,dw:paint.dw||null,",
     "sh:SHIPS.indexOf(SHIP()),qc:myChat,lk:netPaint().lk||null,dw:netPaint().dw||null,")
@@ -292,6 +292,13 @@ rep("function coopOn(){return false;}","function coopOn(){return !!(FB&&NET.room
 rep("function coopNet(){return null;}","function coopNet(){if(!FB||!NET.room)return null;return{me:NET.myId,invite:(uid,ok)=>FB.coopInvite(uid,FB.user().name,ok),clear:uid=>FB.coopClear(uid),set:(p,v)=>FB.coopSet(p,v),watch:(p,cb)=>FB.coopWatch(p,cb)};}")
 rep("  NET.unduel=FB.duelWatch(duelInbox);","  NET.unduel=FB.duelWatch(duelInbox);NET.uncoop=FB.coopInboxWatch(coopInbox);")
 rep("if(NET.unduel){NET.unduel();NET.unduel=null;}","if(NET.unduel){NET.unduel();NET.unduel=null;}if(NET.uncoop){NET.uncoop();NET.uncoop=null;}")
+# ---- the open sea grows with the number of captains online (size kept on the server, a few bytes)
+rep("function worldTierWanted(){return 0;}","""function worldTierWanted(){const w=NET.world,today=Math.floor(serverNowMs()/86400000);return w&&w.day===today?w.tier|0:0;}
+const tierFor=n=>n>=40?4:n>=28?3:n>=16?2:n>=8?1:0;
+function worldCheck(){if(!FB||!NET.room)return;const today=Math.floor(serverNowMs()/86400000),t=tierFor(NET.online|0);if(t>worldTierWanted()||(t>0&&(!NET.world||NET.world.day!==today)))FB.raiseWorld(today,t);}""")
+rep("  NET.online=online;NET.sailing=sailing;","  NET.online=online;NET.sailing=sailing;if(typeof worldCheck==='function')worldCheck();")
+rep("  NET.fleets={};NET.unfleets=","  NET.unworld=FB.watchWorld(w=>{NET.world=w;setWorldTier(worldTierWanted());});\n  NET.fleets={};NET.unfleets=")
+rep("if(NET.unfleets){NET.unfleets();NET.unfleets=null;}","if(NET.unfleets){NET.unfleets();NET.unfleets=null;}if(NET.unworld){NET.unworld();NET.unworld=null;}")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

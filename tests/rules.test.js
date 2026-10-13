@@ -233,3 +233,14 @@ test('duels: a respawn may jump to the duel arena; challenges only as yourself',
   assert.strictEqual(d.as({ uid: 'C' }).write('/duelreq/A/B', { n: 'Maria', t: TS, ok: true }, { now: T0 }).allowed, false, 'nobody else can accept for B');
   assert.strictEqual(d.as({ uid: 'B' }).write('/duelreq/B/A', null, { now: T0 }).allowed, true, 'B clears its inbox');
 });
+
+test('the size of the open sea can only grow during a day, then starts again', () => {
+  const day = Math.floor(T0 / 86400000);
+  let db = targaryen.database(rules, { world: { day, tier: 1 } }, T0);
+  assert.strictEqual(db.as({ uid: 'A' }).write('/world', { day, tier: 2 }, { now: T0 }).allowed, true);
+  assert.strictEqual(db.as({ uid: 'A' }).write('/world', { day, tier: 0 }, { now: T0 }).allowed, false, 'no shrinking mid-day');
+  assert.strictEqual(db.as({ uid: 'A' }).write('/world', { day: day + 1, tier: 0 }, { now: T0 + 86400000 }).allowed, true, 'new day');
+  assert.strictEqual(db.as({ uid: 'A' }).write('/world', { day: day + 9, tier: 4 }, { now: T0 }).allowed, false, 'not a future day');
+  assert.strictEqual(db.as({ uid: 'A' }).write('/world', { day, tier: 9 }, { now: T0 }).allowed, false);
+  assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(400, 0, {}), T0).allowed, false, 'new ships still start at a port');
+});

@@ -561,7 +561,7 @@ if(!window.THREE){document.getElementById('err').hidden=false;return;}
 const $=id=>document.getElementById(id);
 const TAU=Math.PI*2, rnd=(a,b)=>a+Math.random()*(b-a);
 const angDiff=(t,a)=>((t-a+Math.PI*3)%TAU+TAU)%TAU-Math.PI;
-const ARENA=60,WORLD=280,SAFE_R=30;
+let ARENA=60,WORLD=280;const SAFE_R=30;
 let MODE='waves';const BOUND=()=>MODE==='open'||MODE==='story'?WORLD:ARENA;
 function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 const ARENA_D={x:-195,z:-200,r:70};let arenaG=null;
@@ -971,6 +971,14 @@ function disposeGroup(g){scene.remove(g);if(g.userData.ground)g.userData.ground.
 
 /* ================= islands ================= */
 const islands=[];
+// Each island is just {x,z,r,rot,port?}. Its 3D model is built when you sail within reach and thrown away when you
+// sail far off, so a bigger sea costs no extra memory. The same island always looks the same (seeded by its position).
+const ISL_IN=230,ISL_OUT=290;
+function addIslandData(x,z,r,rot,port){const i={x,z,r,rot:rot||0,g:null};if(port)i.port=port;islands.push(i);return i;}
+function buildIsland(i){const seed=(Math.round(i.x*31)*73856093^Math.round(i.z*31)*19349663)>>>0,old=Math.random;Math.random=mulberry(seed);
+  try{i.g=makeIsland(i.r,!!i.port);}finally{Math.random=old;}i.g.position.set(i.x,0,i.z);i.g.rotation.y=i.rot;}
+function dropIsland(i){if(!i.g)return;scene.remove(i.g);i.g.userData.ownGeo.forEach(x=>x.dispose());i.g=null;}
+function streamIslands(){for(const i of islands){const d=Math.hypot(i.x-P.x,i.z-P.z);if(!i.g&&d<ISL_IN)buildIsland(i);else if(i.g&&d>ISL_OUT)dropIsland(i);}}
 const FROND=(()=>{const L2=2.7,g=new THREE.PlaneGeometry(L2,1.05,10,1);g.rotateX(-Math.PI/2);g.translate(L2/2,0,0);const p=g.attributes.position;
   for(let i=0;i<p.count;i++){const t=p.getX(i)/L2;p.setY(i,t*.55-t*t*1.5);}g.computeVertexNormals();return g;})();
 const COCO=new THREE.SphereGeometry(.15,8,6);
@@ -1306,26 +1314,41 @@ function clearActors(){
 }
 function clearWorld(){
   clearActors();openBuilt=false;
-  islands.forEach(i=>{scene.remove(i.g);i.g.userData.ownGeo.forEach(x=>x.dispose())});islands.length=0;if(arenaG){scene.remove(arenaG);arenaG=null;}
+  islands.forEach(dropIsland);islands.length=0;if(arenaG){scene.remove(arenaG);arenaG=null;}
 }
 function placeIslands(n,minFromCenter){
   // in a co-op battle both phones must build the same islands, so use a random generator seeded by the host
   if(coop&&!placeIslands.seeded){const seed=[...String(coop.host)].reduce((h,c)=>Math.imul(h^c.charCodeAt(0),16777619)>>>0,2166136261);const old=Math.random;Math.random=mulberry(seed);placeIslands.seeded=true;
     try{placeIslands(n,minFromCenter);}finally{Math.random=old;placeIslands.seeded=false;}return;}
   for(let i=0;i<n;i++){for(let k=0;k<40;k++){const r=rnd(2.6,4.4),x=rnd(-ARENA+8,ARENA-8),z=rnd(-ARENA+8,ARENA-8);
-    if(Math.hypot(x,z)>minFromCenter&&islands.every(o=>Math.hypot(o.x-x,o.z-z)>o.r+r+11)){const g=makeIsland(r);g.position.set(x,0,z);g.rotation.y=rnd(0,TAU);islands.push({g,x,z,r});break;}}}
+    if(Math.hypot(x,z)>minFromCenter&&islands.every(o=>Math.hypot(o.x-x,o.z-z)>o.r+r+11)){addIslandData(x,z,r,rnd(0,TAU));break;}}}
+  streamIslands();
   setIslandUniforms();
 }
 function threat(){return Math.min(6,1+sunk/6);}
 function nearestPort(x,z){let b=PORTS[0],bd=1e9;for(const p of PORTS){const d=Math.hypot(x-p.x,z-p.z);if(d<bd){bd=d;b=p;}}return [b,bd];}
 const inSafe=s=>PORTS.some(p=>Math.hypot(s.x-p.x,s.z-p.z)<SAFE_R);
+const WORLD0=280,WORLD_STEP=50,WORLD_TIERS=4;let worldTier=0;
+function worldTierWanted(){const w=NET.world,today=Math.floor(serverNowMs()/86400000);return w&&w.day===today?w.tier|0:0;}
+const tierFor=n=>n>=40?4:n>=28?3:n>=16?2:n>=8?1:0;
+function worldCheck(){if(!FB||!NET.room)return;const today=Math.floor(serverNowMs()/86400000),t=tierFor(NET.online|0);if(t>worldTierWanted()||(t>0&&(!NET.world||NET.world.day!==today)))FB.raiseWorld(today,t);}   // the app: today's size from the server
+// Add the islands of ring k (between the old and new edge); always the same for everyone.
+function addWorldRing(k){const rng=mulberry(1718+k*977),inner=WORLD0+(k-1)*WORLD_STEP,outer=WORLD0+k*WORLD_STEP;let added=0,tries=0;
+  while(added<24&&tries<3000){tries++;const r=2.6+rng()*2.6,x=(rng()*2-1)*(outer-14),z=(rng()*2-1)*(outer-14),rot=rng()*TAU;
+    if(Math.max(Math.abs(x),Math.abs(z))<inner+6)continue;
+    if(islands.every(o=>Math.hypot(o.x-x,o.z-z)>o.r+r+14)){addIslandData(x,z,r,rot);added++;}}}
+function setWorldTier(t){t=Math.max(0,Math.min(WORLD_TIERS,t|0));if(MODE!=='open'||!openBuilt||t<=worldTier)return;
+  for(let k=worldTier+1;k<=t;k++)addWorldRing(k);worldTier=t;WORLD=WORLD0+t*WORLD_STEP;streamIslands();setIslandUniforms();
+  if(state==='play')showBanner('More captains at sea: the known sea grows');}
 function buildOpenWorld(){
+  worldTier=0;WORLD=WORLD0;
   const rng=mulberry(1718);
-  for(const p of PORTS){const g=makeIsland(6,true);g.position.set(p.x,0,p.z);islands.push({g,x:p.x,z:p.z,r:6,port:p});}
+  for(const p of PORTS)addIslandData(p.x,p.z,6,0,p);
   let tries=0;
   while(islands.length<55&&tries<5000){tries++;const r=2.6+rng()*2.4,x=(rng()*2-1)*(WORLD-14),z=(rng()*2-1)*(WORLD-14);
-    if(Math.hypot(x-ARENA_D.x,z-ARENA_D.z)>ARENA_D.r+20&&islands.every(o=>Math.hypot(o.x-x,o.z-z)>o.r+r+(o.port?28:14))){const g=makeIsland(r);g.position.set(x,0,z);g.rotation.y=rng()*TAU;islands.push({g,x,z,r});}}
-  openBuilt=true;
+    if(Math.hypot(x-ARENA_D.x,z-ARENA_D.z)>ARENA_D.r+20&&islands.every(o=>Math.hypot(o.x-x,o.z-z)>o.r+r+(o.port?28:14))){addIslandData(x,z,r,rng()*TAU);}}
+  openBuilt=true;streamIslands();
+  if(MODE==='open')setWorldTier(worldTierWanted());
   // the duel arena: a ring of red and white buoys
   const ag=new THREE.Group();ag.position.set(ARENA_D.x,0,ARENA_D.z);const bw=std({color:L('#f2efe6'),roughness:.6}),br=std({color:L('#c4372b'),roughness:.6});
   for(let i=0;i<32;i++){const a=i/32*TAU,m=new THREE.Mesh(new THREE.CylinderGeometry(.55,.7,1.6,10),i%2?bw:br);m.position.set(Math.cos(a)*ARENA_D.r,.3,Math.sin(a)*ARENA_D.r);m.castShadow=true;ag.add(m);}
@@ -1377,7 +1400,7 @@ function openWorldTick(dt){
   seaEventsTick(dt);
 }
 function reset(){
-  MODE='waves';
+  MODE='waves';ARENA=60;
   clearWorld();$('wavelbl').textContent='Wave';$('boss').classList.remove('left');$('map').hidden=true;$('dock').hidden=true;
   up={hull:0,sails:0,reload:0,triple:0,broadside:0};pw={speed:0,rapid:0,side:0};
   const sv=loadWaves();careerFrom(sv);gold=sv?(sv.gold|0):0;setAim('front',true);
@@ -1387,7 +1410,13 @@ function reset(){
   placeIslands(8,14);
   nextWave();updHud();updXP();$('rankrow').hidden=false;
 }
-function nextWave(){wave++;waveTimer=2;if(wave%5===0)showBanner('Boss ship ahead',true);else showBanner('Wave '+wave);}
+function nextWave(){wave++;growBay();waveTimer=2;if(wave%5===0)showBanner('Boss ship ahead',true);else showBanner('Wave '+wave);}
+// Wave battle: the bay starts 120 wide and widens 8 every wave (up to 240), with new islands at the edges.
+function growBay(){const want=Math.min(120,60+(Math.max(1,wave)-1)*4);if(want<=ARENA)return;const a=ARENA;ARENA=want;
+  const rng=mulberry(4242+want*13),n=Math.max(1,Math.round(((2*want)**2-(2*a)**2)/1800));let added=0,tries=0;
+  while(added<n&&tries<800){tries++;const r=2.6+rng()*1.8,x=(rng()*2-1)*(want-5),z=(rng()*2-1)*(want-5),rot=rng()*TAU;
+    if(Math.max(Math.abs(x),Math.abs(z))<a-8)continue;if(islands.every(o=>Math.hypot(o.x-x,o.z-z)>o.r+r+11)){addIslandData(x,z,r,rot);added++;}}
+  streamIslands();setIslandUniforms();if(wave>1&&wave%3===1)setTimeout(()=>showBanner('The bay opens up'),1800);}
 let enemySeq=0;
 function spawnShip(kind,x,z){
   if(x===undefined){const ang=rnd(0,TAU),dist=kind==='boss'?48:40;x=Math.max(-ARENA,Math.min(ARENA,P.x+Math.cos(ang)*dist));z=Math.max(-ARENA,Math.min(ARENA,P.z+Math.sin(ang)*dist));}
@@ -1794,7 +1823,7 @@ function coopTick(dt){const c=coop,N=coopNet();if(!c||!N)return;
     for(const sh of (st.es||[])){const id=sh[0]|0;if(id<=c.maxEs)continue;c.maxEs=id;const m=new THREE.Mesh(BALL,sh[5]?M.hotball:M.ball);m.castShadow=true;scene.add(m);
       balls.push({m,x:sh[1],z:sh[2],vx:sh[3],vz:sh[4],life:1.1,max:1.1,owner:'e',trail:0});}
     // the waves follow the host
-    if(st.w!==wave){wave=st.w|0;coopRevive();if(state==='shop'){$('shopov').hidden=true;state='play';MUS.mode='play';}showBanner(wave%5===0?'Boss ship ahead':'Wave '+wave,wave%5===0);updHud();}
+    if(st.w!==wave){wave=st.w|0;growBay();coopRevive();if(state==='shop'){$('shopov').hidden=true;state='play';MUS.mode='play';}showBanner(wave%5===0?'Boss ship ahead':'Wave '+wave,wave%5===0);updHud();}
     if(st.ph==='shop'&&state==='play'&&c.rd!==wave){addGold(wave*20);addXP(wave*10);updHud();coopRevive();openShop();}
     if(st.ph==='over'&&!c.over){c.over=true;if(state!=='over')gameOver();}
     if(c.sendT<=0){c.sendT=.1;const g=myShipState();g.rd=c.rd;N.set('coop/'+c.host+'/g',g);}
@@ -2232,6 +2261,7 @@ function goOnline(){if(!FB||NET.room||NET.banned)return;const u=FB.user();if(!u)
   R.onConnection(c=>{NET.ok=c;netUiKey='';});
   R.onReward(r=>{NET.kills++;showBanner(r.d?'Duel won: +100 gold':'You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
   NET.pending=new Map();NET.srv=null;NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();fleetChanged();achNotice();});
+  NET.unworld=FB.watchWorld(w=>{NET.world=w;setWorldTier(worldTierWanted());});
   NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});setTimeout(loadPorts,1500);
   NET.unduel=FB.duelWatch(duelInbox);NET.uncoop=FB.coopInboxWatch(coopInbox);
   let reqN=-1;NET.friends={list:{},reqs:{}};NET.unfriends=FB.watchFriends(fd=>{NET.friends={list:fd.list,reqs:fd.reqs};const n=Object.keys(fd.reqs).length;if(reqN>=0&&n>reqN&&state==='play')showBanner('New friend request (Menu → Friends)');reqN=n;renderFriends();});
@@ -2241,7 +2271,7 @@ let fleetKey='';
 function fleetChanged(){const f=fleetsAll()[myFleetId()],k=f?f.tag+f.col+f.em:'';if(k!==fleetKey){const had=fleetKey;fleetKey=k;if(state!=='title')setShip(shipId);if(had!==''||k!=='')NET.last=null;
     if(k&&!had&&state==='play')showBanner('You sail with ['+f.tag+'] '+f.n);}
   NET.last=null;renderFleet();}
-function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.unfleets){NET.unfleets();NET.unfleets=null;}if(NET.unfriends){NET.unfriends();NET.unfriends=null;}if(NET.unduel){NET.unduel();NET.unduel=null;}if(NET.uncoop){NET.uncoop();NET.uncoop=null;}NET.friends=null;NET.fleets={};fleetKey='';if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
+function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.unfleets){NET.unfleets();NET.unfleets=null;}if(NET.unworld){NET.unworld();NET.unworld=null;}if(NET.unfriends){NET.unfriends();NET.unfriends=null;}if(NET.unduel){NET.unduel();NET.unduel=null;}if(NET.uncoop){NET.uncoop();NET.uncoop=null;}NET.friends=null;NET.fleets={};fleetKey='';if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
 refreshStart();
 if(FB)FB.ready.then(()=>{const u=FB.user();if(u&&!u.google){FB.signOut();}else if(u)goOnline();refreshStart();});
 function netShot(x,z,vx,vz){if(!NET.room)return;const st=NET.room.serverNow?NET.room.serverNow():Date.now();NET.shots.push({d:[++NET.shotSeq,+x.toFixed(1),+z.toFixed(1),+vx.toFixed(1),+vz.toFixed(1),st],t:clock});if(NET.shots.length>30)NET.shots.shift();}
@@ -2305,7 +2335,7 @@ function netProcess(list){
       spark(x,1.3,z,{color:'#ffd99a',add:true,s:1.8,life:.1});const dd=Math.hypot(x-P.x,z-P.z);if(dd<60)noise(.25,800,.3*(1-dd/60));}
   }
   for(const [k,r] of NET.peers)if(!seen.has(k)){dropRemoteShip(r);NET.peers.delete(k);}
-  NET.online=online;NET.sailing=sailing;
+  NET.online=online;NET.sailing=sailing;if(typeof worldCheck==='function')worldCheck();
 }
 let netUiKey='';
 function netTick(dt){
@@ -2346,7 +2376,7 @@ function update(dt){
     if(Math.random()<.3)smoke(s.g.position.x,1.5,s.g.position.z,1,true);
     if(s.t>3){if(s.keep)s.g.visible=false;else disposeGroup(s.g);}}
   sinking=sinking.filter(s=>s.t<=3);
-  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();updQuestChip();if(NET.pending&&NET.pending.size)econSync();}
+  uniT-=dt;if(uniT<=0){uniT=.5;streamIslands();setIslandUniforms();updQuestChip();if(NET.pending&&NET.pending.size)econSync();}
   netTick(dt);
   {let tg=0,bt=0;if(state==='play'){let nd=1e9;for(const e of enemies){if(e.mode==='roam'||e.mode==='convoy'||e.mode==='escort')continue;const d=Math.hypot(e.x-P.x,e.z-P.z);if(d<nd)nd=d;if(e.kind==='boss'&&d<80)bt=1;}for(const r of remoteShips()){const d=Math.hypot(r.x-P.x,r.z-P.z);if(d<nd)nd=d;}tg=Math.max(0,Math.min(1,(44-nd)/24));if(bt)tg=Math.max(tg,.8);}musUpdate(dt,tg,bt);}
   wakeT-=dt;const doWake=wakeT<=0;if(doWake)wakeT=.07;
@@ -2721,7 +2751,7 @@ function drawMap(){
 }
 
 /* ================= loop ================= */
-for(let i=0;i<5;i++){const r=rnd(2.8,4.2),a=i/5*TAU+.4,x=Math.cos(a)*rnd(18,32),z=Math.sin(a)*rnd(18,32);const g=makeIsland(r);g.position.set(x,0,z);islands.push({g,x,z,r});}
+for(let i=0;i<5;i++){const r=rnd(2.8,4.2),a=i/5*TAU+.4,x=Math.cos(a)*rnd(18,32),z=Math.sin(a)*rnd(18,32);addIslandData(x,z,r,rnd(0,TAU));}streamIslands();
 setIslandUniforms();updHud();updAim();
 let last=performance.now();
 function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;

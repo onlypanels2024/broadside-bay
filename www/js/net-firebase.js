@@ -112,6 +112,9 @@
         coopClear(uid) { const u = auth.currentUser; if (!u) return; db.ref('coopreq/' + u.uid + '/' + uid).remove().catch(() => {}); },
         coopSet(path, v) { if (!/^coop\//.test(path)) return; (v === null ? db.ref(path).remove() : db.ref(path).set(v)).catch(() => {}); },
         coopWatch(path, cb) { if (!/^coop\//.test(path)) return () => {}; const ref = db.ref(path), fn = s => cb(s.val()); ref.on('value', fn); return () => ref.off('value', fn); },
+        // Today's size of the open sea: {day, tier}. Anyone may raise it (the rules only allow it to grow, and reset daily).
+        watchWorld(cb) { const ref = db.ref('world'), fn = s => cb(s.val()); ref.on('value', fn); return () => ref.off('value', fn); },
+        raiseWorld(day, tier) { db.ref('world').transaction(w => (!w || day > w.day || (day === w.day && tier > w.tier)) ? { day, tier } : undefined).catch(() => {}); },
         // Report another captain's drawing to the referee.
         report(tg, dw) {
           const u = auth.currentUser; if (!u) return;

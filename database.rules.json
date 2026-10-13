@@ -18,10 +18,10 @@
           ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 16"
         },
         "x": {
-          ".validate": "newData.isNumber() && newData.val() >= -285 && newData.val() <= 285"
+          ".validate": "newData.isNumber() && newData.val() >= -485 && newData.val() <= 485"
         },
         "z": {
-          ".validate": "newData.isNumber() && newData.val() >= -285 && newData.val() <= 285"
+          ".validate": "newData.isNumber() && newData.val() >= -485 && newData.val() <= 485"
         },
         "a": {
           ".validate": "newData.isNumber() && newData.val() >= -20 && newData.val() <= 20"
@@ -116,10 +116,10 @@
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
         "x": {
-          ".validate": "newData.isNumber() && newData.val() >= -300 && newData.val() <= 300"
+          ".validate": "newData.isNumber() && newData.val() >= -500 && newData.val() <= 500"
         },
         "z": {
-          ".validate": "newData.isNumber() && newData.val() >= -300 && newData.val() <= 300"
+          ".validate": "newData.isNumber() && newData.val() >= -500 && newData.val() <= 500"
         },
         "t": {
           ".validate": "newData.val() === now"
@@ -367,6 +367,20 @@
         "g": {
           ".write": "auth != null && auth.uid === root.child('coop').child($host).child('gu').val()"
         }
+      }
+    },
+    "world": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".validate": "newData.hasChildren(['day','tier']) && newData.child('tier').isNumber() && newData.child('tier').val() >= 0 && newData.child('tier').val() <= 4 && newData.child('day').isNumber() && newData.child('day').val() * 86400000 <= now + 86400000 && newData.child('day').val() * 86400000 >= now - 2 * 86400000 && (!data.exists() || newData.child('day').val() > data.child('day').val() || (newData.child('day').val() === data.child('day').val() && newData.child('tier').val() > data.child('tier').val()))",
+      "day": {
+        ".validate": true
+      },
+      "tier": {
+        ".validate": true
+      },
+      "$other": {
+        ".validate": false
       }
     }
   }
