@@ -354,6 +354,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
       <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
       <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
       <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
+      <button class="btn ghost" id="notiftog" hidden>Notifications: <span id="notifv">Off</span></button>
       <button class="btn ghost" id="seatog">Sea sounds: <span id="seav">On</span></button>
       <button class="btn ghost" id="buzztog">Vibration: <span id="buzzv">On</span></button>
       <button class="btn ghost" id="wxtog">Rain &amp; lightning: <span id="wxtogv">On</span></button>
@@ -1648,6 +1649,23 @@ fb.addEventListener('contextmenu',e=>e.preventDefault());
 $('snd').onclick=()=>{audio();setMusic(!MUS.on);};
 function updWxTog(){$('wxtogv').textContent=WX.fx?'On':'Off';}
 $('wxtog').onclick=()=>{audio();WX.fx=!WX.fx;try{localStorage.setItem('bb-wxfx',WX.fx?'1':'0')}catch(e){}updWxTog();};
+/* ---- notifications (phone app only, off until you switch them on) ---- */
+const CapP=()=>window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()&&window.Capacitor.Plugins||null;
+let notifOn=false;try{notifOn=localStorage.getItem('bb-notif')==='1'}catch(e){}
+function notifSaveToken(t){}   // the app: keep the token online so the referee can send challenges and port alerts
+function notifSaveTokenClear(){}
+function updNotif(){const p=CapP();$('notiftog').hidden=!(p&&p.LocalNotifications);$('notifv').textContent=notifOn?'On':'Off';}
+async function notifSetup(){const p=CapP();if(!p)return;const LN=p.LocalNotifications,PN=p.PushNotifications;
+  try{if(LN){await LN.createChannel({id:'game',name:'Broadside Bay',importance:4});}}catch(e){}
+  if(!notifOn){try{if(LN)await LN.cancel({notifications:[{id:1}]});}catch(e){}notifSaveTokenClear();return;}
+  try{const r=LN?await LN.requestPermissions():{display:'granted'};if(r.display!=='granted'){notifOn=false;try{localStorage.setItem('bb-notif','0')}catch(e){}updNotif();showBanner('Notifications are blocked in your phone settings');return;}}catch(e){}
+  // the daily chest: a reminder at 10 am tomorrow (moved forward every time you play)
+  try{if(LN){await LN.cancel({notifications:[{id:1}]});const t=new Date();t.setDate(t.getDate()+1);t.setHours(10,0,0,0);
+    await LN.schedule({notifications:[{id:1,title:'Your daily chest is ready',body:'Open it before midnight to keep your streak going.',schedule:{at:t,allowWhileIdle:true},channelId:'game'}]});}}catch(e){}
+  // challenges, invites and port battles come from the referee
+  try{if(PN){await PN.requestPermissions();if(!notifSetup.listening){notifSetup.listening=true;PN.addListener('registration',tk=>notifSaveToken(tk.value));}await PN.register();}}catch(e){}}
+$('notiftog').onclick=()=>{audio();notifOn=!notifOn;try{localStorage.setItem('bb-notif',notifOn?'1':'0')}catch(e){}updNotif();notifSetup();if(notifOn)showBanner('Notifications on');};
+updNotif();setTimeout(notifSetup,4000);
 function updSea(){$('seav').textContent=seaOn?'On':'Off';}updSea();
 $('seatog').onclick=()=>{audio();seaOn=!seaOn;try{localStorage.setItem('bb-sea',seaOn?'1':'0')}catch(e){}updSea();};
 function updBuzz(){$('buzzv').textContent=buzzOn?'On':'Off';}updBuzz();

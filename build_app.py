@@ -302,6 +302,10 @@ rep("function seasonClaimUI(box){}   // the app: offer last season's reward to i
   FB.board('board/s'+prev,'s',10).then(rows=>{if(!rows)return;const me=myUid(),i=rows.findIndex(r=>r.uid===me);if(i<0)return;
     const b=document.createElement('button');b.className='btn small';b.style.display='block';b.style.margin='8px auto 0';b.textContent='Claim: #'+(i+1)+' in season '+prev+' · 1,000 gold';
     b.onclick=()=>{econRequest({k:'season',id:String(prev)});addGold(1000);updHud();b.disabled=true;b.textContent='Claimed ✓';chime(true);showBanner('Season Champion!');};box.appendChild(b);});}""")
+# ---- notifications: tokens are saved for the signed-in captain
+rep("function notifSaveToken(t){}","function notifSaveToken(t){NET.pushToken=t;if(FB&&FB.user())FB.saveToken(t);}")
+rep("function notifSaveTokenClear(){}","function notifSaveTokenClear(){if(FB&&FB.user())FB.clearToken();}")
+rep("NET.unwatch=FB.watchSave(sv=>{","if(notifOn&&NET.pushToken)FB.saveToken(NET.pushToken);NET.unwatch=FB.watchSave(sv=>{")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

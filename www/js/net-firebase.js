@@ -115,6 +115,9 @@
         // Today's size of the open sea: {day, tier}. Anyone may raise it (the rules only allow it to grow, and reset daily).
         watchWorld(cb) { const ref = db.ref('world'), fn = s => cb(s.val()); ref.on('value', fn); return () => ref.off('value', fn); },
         raiseWorld(day, tier) { db.ref('world').transaction(w => (!w || day > w.day || (day === w.day && tier > w.tier)) ? { day, tier } : undefined).catch(() => {}); },
+        // Notifications: where the referee should send this captain's alerts.
+        saveToken(t) { const u = auth.currentUser; if (!u || !t) return; db.ref('tokens/' + u.uid).set({ t: String(t).slice(0, 400) }).catch(() => {}); },
+        clearToken() { const u = auth.currentUser; if (!u) return; db.ref('tokens/' + u.uid).remove().catch(() => {}); },
         // Report another captain's drawing to the referee.
         report(tg, dw) {
           const u = auth.currentUser; if (!u) return;

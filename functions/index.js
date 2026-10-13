@@ -57,6 +57,19 @@ async function portScore(db, fid, port, pts) {
   const f = (await db.ref(`fleets/${fid}`).get()).val(); if (!f) return;
   const ev = E.eventAt(Date.now()), mul = ev && ev.id === 'fleet2' ? 2 : 1;
   await db.ref(`board/p${E.weekOf(Date.now())}/${port}/${fid}`).transaction(r => ({ n: f.n, tag: f.tag, s: ((r && r.s) | 0) + pts * mul }));
+  try {
+    const wk = E.weekOf(Date.now()); let lead = null;
+    const snap = await db.ref(`board/p${wk}/${port}`).orderByChild('s').limitToLast(1).get(); snap.forEach(x => { lead = x.key; });
+    const prev = (await db.ref(`ref/portlead/${wk}/${port}`).get()).val();
+    if (lead && lead !== prev) {
+      await db.ref(`ref/portlead/${wk}/${port}`).set(lead);
+      if (prev) {
+        const lost = (await db.ref(`fleets/${prev}`).get()).val(), won = (await db.ref(`fleets/${lead}`).get()).val();
+        const names = ['Port Solace', 'Coral Haven', 'Blackrock Harbour'];
+        if (lost && won) await Promise.all(Object.keys(lost.m || {}).map(u => notify(db, u, 'Port battle!', `[${won.tag}] ${won.n} took the lead at ${names[port]}. Sail out and win it back!`)));
+      }
+    }
+  } catch (e) { logger.warn('port lead check failed', { err: String(e && e.message || e) }); }
 }
 
 async function strike(db, uid, reason) {
@@ -297,3 +310,30 @@ async function leaveFleet(db, fid, uid) {
     await Promise.all(Object.keys(tags).map(t => db.ref(`fleettags/${t}`).remove()));
   }
 }
+
+// ---- notifications (only for captains who switched them on: their phone saved a token under tokens/<uid>)
+async function notify(db, uid, title, body) {
+  try {
+    const tok = (await db.ref(`tokens/${uid}`).get()).val();
+    if (!tok || typeof tok.t !== 'string') return;
+    await admin.messaging().send({ token: tok.t, notification: { title, body }, android: { priority: 'high', notification: { channelId: 'game' } } });
+    await db.ref('status/notify').set({ ok: true, at: Date.now() });
+  } catch (e) {
+    const msg = String(e && e.message || e);
+    logger.warn('notification failed', { uid, err: msg });
+    if (/registration-token-not-registered|invalid-registration-token|not a valid FCM/i.test(msg)) await db.ref(`tokens/${uid}`).remove();
+    else await db.ref('status/notify').set({ ok: false, err: msg.slice(0, 300), at: Date.now() });
+  }
+}
+exports.notifyDuel = onValueCreated('/duelreq/{uid}/{from}', async (event) => {
+  const m = event.data.val(); if (!m || m.ok) return;
+  await notify(admin.database(), event.params.uid, 'Duel challenge!', `${cleanName(m.n)} challenges you to a duel in the arena.`);
+});
+exports.notifyCoop = onValueCreated('/coopreq/{uid}/{from}', async (event) => {
+  const m = event.data.val(); if (!m || m.ok) return;
+  await notify(admin.database(), event.params.uid, 'Wave battle invite', `${cleanName(m.n)} wants to fight a Wave battle with you.`);
+});
+exports.notifyFriend = onValueCreated('/friendreq/{uid}/{from}', async (event) => {
+  const m = event.data.val(); if (!m) return;
+  await notify(admin.database(), event.params.uid, 'Friend request', `${cleanName(m.n)} wants to be shipmates.`);
+});

@@ -32,6 +32,9 @@ jobs:
         run: |
           sed -i 's/android:name=".MainActivity"/android:name=".MainActivity"\n            android:screenOrientation="fullUser"/' android/app/src/main/AndroidManifest.xml
           grep -n "screenOrientation" android/app/src/main/AndroidManifest.xml
+          # notifications need permission on Android 13+
+          grep -q POST_NOTIFICATIONS android/app/src/main/AndroidManifest.xml || sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' android/app/src/main/AndroidManifest.xml
+          grep -n "uses-permission" android/app/src/main/AndroidManifest.xml
       - name: Full screen (hide the status and navigation bars, use the whole screen around the camera)
         run: |
           F=$(find android/app/src/main/java -name MainActivity.java)

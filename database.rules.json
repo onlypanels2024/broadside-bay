@@ -382,6 +382,13 @@
       "$other": {
         ".validate": false
       }
+    },
+    "tokens": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "!newData.exists() || (newData.hasChildren(['t']) && newData.child('t').isString() && newData.child('t').val().length <= 400)"
+      }
     }
   }
 }

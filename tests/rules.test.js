@@ -251,3 +251,9 @@ test('schooners: only if owned, and their hull is 4 plus armour', () => {
   assert.strictEqual(writeAs(owns, 'A', '/players/A', ship(21, 0, { sh: 5, mx: 6, hp: 6 }), T0).allowed, false);
   assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh: 5, mx: 4, hp: 4 }), T0).allowed, false);
 });
+
+test('notification tokens: only your own', () => {
+  assert.strictEqual(writeAs(empty(), 'A', '/tokens/A', { t: 'abc' }, T0).allowed, true);
+  assert.strictEqual(writeAs(empty(), 'A', '/tokens/B', { t: 'abc' }, T0).allowed, false);
+  assert.strictEqual(empty().as({ uid: 'B' }).read('/tokens/A').allowed, false);
+});
