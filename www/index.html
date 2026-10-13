@@ -187,6 +187,10 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .objective.tut{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 205px);width:min(440px,calc(100vw - 32px));box-sizing:border-box;z-index:2;font-size:16px;text-align:center;padding:10px 14px;border-color:var(--brass-hi);box-shadow:0 0 20px rgba(214,178,98,.35)}
 .glowpulse{animation:glowp 1.1s ease-out infinite}
 @keyframes glowp{0%{box-shadow:0 0 0 0 rgba(255,214,90,.85)}100%{box-shadow:0 0 0 24px rgba(255,214,90,0)}}
+.seasonline{font-size:13px;color:var(--brass-hi);margin:2px 0 6px;line-height:1.4}
+.seasonline b{color:var(--parch);font-family:var(--display);letter-spacing:.04em}
+.seasonbox{text-align:left;padding:9px 11px;margin-top:10px;border-radius:9px;border:1px solid rgba(214,178,98,.45);background:rgba(214,178,98,.08);font-size:13px;color:#d3e1e6;line-height:1.4}
+.seasonbox b{color:var(--brass-hi)}
 .qreset{font-size:12px;color:var(--muted);margin-top:10px}
 .chip.online{color:#9ff0c0;border-color:rgba(120,230,170,.55);display:inline-flex;align-items:center;gap:6px}
 .chip.online i{width:7px;height:7px;border-radius:50%;background:#5be38f;box-shadow:0 0 8px #5be38f}
@@ -334,6 +338,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <h1>Broadside Bay</h1>
     <div class="rule"></div>
     <p>Take command of your brig and make your fortune on the open sea.</p>
+    <div class="seasonline" id="seasonline"></div>
     <div class="modes">
       <div class="tutbox" id="tutbox" hidden><b>New here?</b> Learn to sail and fight in two minutes.<button class="btn" id="goTut">First voyage</button><button class="linkbtn" id="skipTut">Skip it</button></div>
       <button class="btn" id="goOpen">Open sea</button>
@@ -449,7 +454,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
   <div class="card">
     <div class="eyebrow">The most feared captains</div>
     <h2>Leaderboards</h2>
-    <div class="modeseg" id="bwhen"><button id="bWeek" class="on">This week</button><button id="bAll">All time</button></div>
+    <div class="modeseg" id="bwhen"><button id="bWeek" class="on">This week</button><button id="bSeason">Season</button><button id="bAll">All time</button></div>
     <div class="modeseg" id="bwhat"><button id="bS" class="on">Ships sunk</button><button id="bG">Gold</button><button id="bC">Captains</button><button id="bF">Fleets</button></div>
     <div class="blist" id="blist"></div>
     <div class="qreset" id="bnote"></div>
@@ -520,6 +525,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
   <div class="card">
     <div class="eyebrow">Every day at sea</div>
     <h2>Daily chest</h2>
+    <div class="seasonbox" id="seasonbox"></div>
     <p class="menunote" id="chestnote">Come back every day for a bigger chest.</p>
     <div class="days" id="days"></div>
     <button class="btn" id="chestbtn">Open chest</button>
@@ -1250,6 +1256,7 @@ const orbM={speed:std({color:L('#bfe9ff'),emissive:L('#3fb6ff'),emissiveIntensit
 const BARW=new THREE.PlaneGeometry(1,.16);BARW.translate(.5,0,0);
 const barBgM=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.5,depthTest:false}),barFgM=new THREE.MeshBasicMaterial({color:L('#e04a35'),depthTest:false});
 
+const GHOST={sloop:{side:'#3c4a46',trim:'#7fd8b0',sail:'#c9eadb',stripe:null,ecol:'#2a6b4a',flag:'#1d3a30',lamp:'#7fffc0'},galleon:{side:'#323c3a',trim:'#7fd8b0',sail:'#b9e0cf',stripe:'#2a6b4a',ecol:'#2a6b4a',flag:'#1d3a30',lamp:'#7fffc0'},fireship:{side:'#2c3532',sail:'#a9d8c2',ecol:'#2a6b4a',lamp:'#7fffc0'},boss:{side:'#20302c',trim:'#7fd8b0',sail:'#9fd0bb',stripe:'#1d3a30',flag:'#7fd8b0',lamp:'#7fffc0'}};
 const BOSS_NAMES=['The Iron Maw','The Crimson Tide','The Widow\'s Wake','The Black Squall'];
 const LOOKS={
   player:{side:'#6e4527',bottom:'#1c1712',trim:'#b8923f',deck:'#b48a5c',sail:'#ece2cb',stripe:'#1f5c74',emblem:'star',flag:'#1f5c74',masts:[1.0,-.75]},
@@ -1316,6 +1323,31 @@ function addXP(n){const before=rankOf(xp);xp+=n;const after=rankOf(xp);updXP();
 let xpKey='';
 function updXP(){const r=rankOf(xp),cur=RANKS[r].xp,nxt=RANKS[r+1]?RANKS[r+1].xp:null,f=nxt?(xp-cur)/(nxt-cur):1,k=r+'|'+Math.round(f*100);
   if(k===xpKey)return;xpKey=k;$('rkname').textContent=RANKS[r].n;$('xpfill').style.width=Math.round(f*100)+'%';}
+/*SEASONDEF*/// Seasons last 6 weeks (season 1 began Monday 12 October 2026); each has a theme. Weekends bring an event.
+const SEASON0_WEEK=2963;
+const SEASONS=[
+  {id:'gold',n:'Gold Rush',d:'Treasure maps turn up twice as often, and dug-up treasure pays 50% more.'},
+  {id:'kraken',n:'Kraken Season',d:'The kraken is tougher, stays longer and pays 50% more.'},
+  {id:'ghost',n:'Ghost Fleet',d:'Ghostly pirates haunt the sea. Every pirate sunk pays 25% more.'},
+  {id:'storm',n:'Storm Season',d:'Storms roll in far more often. Hold on to your hat.'},
+];
+const WEEKENDS=[
+  {id:'gold2',n:'Double gold weekend',d:'Every ship you sink pays double gold.'},
+  {id:'kraken2',n:'Kraken weekend',d:'The kraken pays double, and stays longer.'},
+  {id:'fleet2',n:'Fleet tournament',d:'Port battle points count double.'},
+];
+const weekNo=now=>Math.floor((now/86400000+3)/7);
+function seasonAt(now){const w=weekNo(now)-SEASON0_WEEK,n=Math.floor(w/6),k=((n%SEASONS.length)+SEASONS.length)%SEASONS.length;return Object.assign({no:n+1,weeksLeft:6-(w-n*6)},SEASONS[k]);}
+function eventAt(now){const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}
+// gold multiplier for a reward at a moment in time
+function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
+  if(S.id==='gold'&&kind==='treasure')m*=1.5;
+  if(S.id==='kraken'&&kind==='kraken')m*=1.5;
+  if(S.id==='ghost'&&['sloop','galleon','fireship','boss'].includes(kind))m*=1.25;
+  if(E&&E.id==='gold2'&&['sloop','galleon','fireship','boss','merchant','kraken'].includes(kind))m*=2;
+  if(E&&E.id==='kraken2'&&kind==='kraken')m*=2;
+  return m;}
+/*ENDSEASONDEF*/
 const XP_FOR={sloop:20,galleon:50,fireship:35,boss:250,player:120,treasure:60,merchant:80,escort:70,kraken:400};
 const LOCAL_GOLD={sloop:50,galleon:150,fireship:100,boss:300,treasure:400,merchant:500,escort:300,kraken:900};
 const IS_SHIP=k=>['sloop','galleon','boss','fireship','merchant','kraken'].includes(k);
@@ -1338,7 +1370,7 @@ function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typ
   if(pc&&paint.dw&&!np.dw&&!(sv.dok&&sv.dok[paint.dw])){okDrawings=okDrawings.filter(d=>d!==paint.dw);try{localStorage.setItem('bb-dok',JSON.stringify(okDrawings))}catch(e){}showBanner('Your drawing was removed after a report');}
   if(pc)paint=np;if(want!==shipId||pc)setShip(want);
   if(P.hp>maxHp())P.hp=maxHp();updHud();updXP();updAim();if(state==='shop')renderShop();}
-function econKill(kind,id){if(econServer()){const K=ONLINE_KILL[kind]||ONLINE_KILL.sloop;addGold(K.g);addXP(K.xp);if(IS_SHIP(kind))sunk++;econRequest(id!==undefined?{k:'kill',e:kind,id:String(id)}:{k:'kill',e:kind});return;}
+function econKill(kind,id){if(econServer()){const K=ONLINE_KILL[kind]||ONLINE_KILL.sloop;addGold(Math.round(K.g*eventMul(kind,serverNowMs())));addXP(K.xp);if(IS_SHIP(kind))sunk++;econRequest(id!==undefined?{k:'kill',e:kind,id:String(id)}:{k:'kill',e:kind});return;}
   addGold(LOCAL_GOLD[kind]||50);addXP(XP_FOR[kind]||20);if(MODE==='open'){if(IS_SHIP(kind))sunk++;saveOpen();}}
 
 function clearActors(){
@@ -1456,7 +1488,7 @@ function growBay(){const want=Math.min(120,60+(Math.max(1,wave)-1)*4);if(want<=A
 let enemySeq=0;
 function spawnShip(kind,x,z){
   if(x===undefined){const ang=rnd(0,TAU),dist=kind==='boss'?48:40;x=Math.max(-ARENA,Math.min(ARENA,P.x+Math.cos(ang)*dist));z=Math.max(-ARENA,Math.min(ARENA,P.z+Math.sin(ang)*dist));}
-  const g=makeShip(LOOKS[kind]);enemySeq++;
+  const g=makeShip(MODE==='open'&&seasonAt(serverNowMs()).id==='ghost'&&GHOST[kind]?Object.assign({},LOOKS[kind],GHOST[kind]):LOOKS[kind]);enemySeq++;
   const bar=new THREE.Group(),bg=new THREE.Mesh(BARW,barBgM),fg=new THREE.Mesh(BARW,barFgM);bg.renderOrder=10;fg.renderOrder=11;fg.position.z=.01;bar.add(bg,fg);bar.visible=false;scene.add(bar);
   const open=MODE==='open',hp=kind==='boss'?(open?30+Math.round(threat()*8):30+wave*3):kind==='galleon'?5:kind==='fireship'?3:2;
   enemies.push({id:enemySeq,g,bar,fg,kind,x,z,v:0,big:kind!=='sloop',hp,max:hp,r:kind==='boss'?4:kind==='galleon'?2.4:1.7,
@@ -1734,7 +1766,13 @@ function updQuestChip(){const cOn=onlineAtSea()&&state==='play';if($('chatbtn').
   const st=dailyState(),done=st.quests.filter(q=>q.claimed).length,claimable=st.canChest||st.quests.some(q=>q.done&&!q.claimed);
   const key=done+'|'+claimable;if(key===daily.lastKey)return;daily.lastKey=key;
   $('qchiptxt').textContent='Quests '+done+'/3';$('qdot').hidden=!claimable;}
+function seasonText(now){const S=seasonAt(now),E=eventAt(now);return{S,E};}
+function seasonLine(){const {S,E}=seasonText(serverNowMs());$('seasonline').innerHTML='';const b=document.createElement('b');b.textContent='Season '+S.no+': '+S.n;$('seasonline').appendChild(b);
+  $('seasonline').appendChild(document.createTextNode(' · '+S.weeksLeft+(S.weeksLeft===1?' week':' weeks')+' left'+(E?' · This weekend: '+E.n:'')));}
 function renderDaily(){const st=dailyState();
+  {const {S,E}=seasonText(serverNowMs()),bx=$('seasonbox');bx.innerHTML='';const b=document.createElement('b');b.textContent='Season '+S.no+': '+S.n+' ';bx.appendChild(b);bx.appendChild(document.createTextNode('('+S.weeksLeft+(S.weeksLeft===1?' week':' weeks')+' left). '+S.d+' The top 10 captains on the season leaderboard win 1,000 gold and the Season Champion title.'));
+   if(E){bx.appendChild(document.createElement('br'));const e2=document.createElement('b');e2.textContent=E.n+'! ';bx.appendChild(e2);bx.appendChild(document.createTextNode(E.d));}
+   seasonClaimUI(bx);}
   const days=$('days');days.innerHTML='';
   const shown=st.canChest?st.streak:st.streak;   // today's box is the streak day
   for(let i=1;i<=7;i++){const el=document.createElement('div');const g=DAILY_CHEST[i-1];
@@ -1783,21 +1821,26 @@ const ACH=[
   {id:'sotl',n:'Ship of the Line',d:'Own a Man-o\'-War',st:'ship.manowar',need:1,ti:'Ship of the Line'},
   {id:'fleet',n:'Fleet Sailor',d:'Join a fleet',st:'fleet',need:1,ti:'Fleet Sailor'},
   {id:'duelist',n:'Duelist',d:'Win 5 duels',st:'ks.duel',need:5,ti:'the Duelist'},
+  {id:'champ',n:'Season Champion',d:'Finish a season in the top 10',st:'sr',need:1,ti:'Season Champion'},
 ];
 // Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (or nothing).
 const COS={
-  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'}],
+  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'}],
   ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'}],
   fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
   pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
 };
 const COS_SLOTS=['trail','ball','fig','pet'];
-function achStat(s,st){if(!s)return 0;if(st.startsWith('ks.'))return (s.ks&&s.ks[st.slice(3)])|0;if(st==='ship.manowar')return s.ships&&s.ships.manowar?1:0;if(st==='fleet')return s.fleet?1:0;return s[st]|0;}
+function achStat(s,st){if(!s)return 0;if(st==='sr')return Array.isArray(s.sr)?s.sr.length:0;if(st.startsWith('ks.'))return (s.ks&&s.ks[st.slice(3)])|0;if(st==='ship.manowar')return s.ships&&s.ships.manowar?1:0;if(st==='fleet')return s.fleet?1:0;return s[st]|0;}
 const achDone=(s,a)=>achStat(s,a.st)>=a.need;
 function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return false;
   return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
 /*ENDACHDEF*/
 function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}
+function seasonClaimUI(box){const S=seasonAt(serverNowMs()),prev=S.no-1,sv=NET.srv;if(prev<1||!sv||(sv.sr||[]).includes(prev)||!FB)return;
+  FB.board('board/s'+prev,'s',10).then(rows=>{if(!rows)return;const me=myUid(),i=rows.findIndex(r=>r.uid===me);if(i<0)return;
+    const b=document.createElement('button');b.className='btn small';b.style.display='block';b.style.margin='8px auto 0';b.textContent='Claim: #'+(i+1)+' in season '+prev+' · 1,000 gold';
+    b.onclick=()=>{econRequest({k:'season',id:String(prev)});addGold(1000);updHud();b.disabled=true;b.textContent='Claimed ✓';chime(true);showBanner('Season Champion!');};box.appendChild(b);});}
 /* ---- co-op Wave battle with a friend: the inviter's phone runs the battle, the friend's phone follows ---- */
 function coopOn(){return !!(FB&&NET.room);}
 function coopNet(){if(!FB||!NET.room)return null;return{me:NET.myId,invite:(uid,ok)=>FB.coopInvite(uid,FB.user().name,ok),clear:uid=>FB.coopClear(uid),set:(p,v)=>FB.coopSet(p,v),watch:(p,cb)=>FB.coopWatch(p,cb)};}   // the app: {invite(uid,ok), clear(uid), set(path,v), watch(path,cb)->stop, me}
@@ -2173,9 +2216,9 @@ const weekOf=now=>Math.floor((now/86400000+3)/7);
 const board={when:'w',what:'s',from:'menu',seq:0};
 const BOARD_UNIT={s:'ships',g:'gold',c:'captains',xp:'XP'};
 async function renderBoard(){const seq=++board.seq,list=$('blist');list.innerHTML='<p class="menunote">Loading…</p>';
-  $('bWeek').classList.toggle('on',board.when==='w');$('bAll').classList.toggle('on',board.when==='all');$('bwhat').hidden=board.when!=='w';
+  $('bWeek').classList.toggle('on',board.when==='w');$('bSeason').classList.toggle('on',board.when==='s');$('bAll').classList.toggle('on',board.when==='all');$('bwhat').hidden=board.when!=='w';
   ['s','g','c','f'].forEach(k=>$('b'+k.toUpperCase()).classList.toggle('on',board.what===k));
-  const fl=board.when==='w'&&board.what==='f',path=board.when==='w'?'board/'+(fl?'f':'w')+weekOf(serverNowMs()):'board/all',field=board.when==='w'?(fl?'s':board.what):'xp';
+  const fl=board.when==='w'&&board.what==='f',path=board.when==='w'?'board/'+(fl?'f':'w')+weekOf(serverNowMs()):board.when==='s'?'board/s'+seasonAt(serverNowMs()).no:'board/all',field=board.when==='w'?(fl?'s':board.what):board.when==='s'?'s':'xp';
   const [rows,mine]=await Promise.all([boardLoad(path,field),fl?Promise.resolve(null):boardMine(path)]);if(seq!==board.seq)return;
   list.innerHTML='';
   if(!rows){list.innerHTML='<p class="menunote">Could not load the leaderboard. Check your connection.</p>';return;}
@@ -2186,11 +2229,11 @@ async function renderBoard(){const seq=++board.seq,list=$('blist');list.innerHTM
     el.innerHTML=`<span class="bn">${i}</span><span class="bnm"></span><span class="bv">${v}</span>`;el.querySelector('.bnm').textContent=fl?'['+(r.tag||'?')+'] '+(r.n||'Fleet')+(r.uid===myFleetId()?' (yours)':''):(r.n||'Captain')+(r.uid===me?' (you)':'');if(fl&&r.uid===myFleetId())el.classList.add('me');return el;};
   rows.forEach((r,i)=>{if(r.uid===me)shownMe=true;list.appendChild(row(i+1,r));});
   if(!shownMe&&mine&&(mine[field]|0)>0){const g=document.createElement('div');g.className='bgap';g.textContent='⋯';list.appendChild(g);list.appendChild(row('–',{...mine,uid:me}));}
-  $('bnote').textContent=fl?'Every ship a fleet\'s captains sink this week counts for the fleet.':board.when==='w'?'This week runs Monday to Sunday (UTC). Only sinkings the referee approved count.':'Ranked by experience. Sign in with Google to appear here.';}
+  $('bnote').textContent=board.when==='s'?(()=>{const S=seasonAt(serverNowMs());return `Season ${S.no}: ${S.n}, ${S.weeksLeft} weeks left. Ships sunk this season; the top 10 win 1,000 gold and the Season Champion title.`;})():fl?'Every ship a fleet\'s captains sink this week counts for the fleet.':board.when==='w'?'This week runs Monday to Sunday (UTC). Only sinkings the referee approved count.':'Ranked by experience. Sign in with Google to appear here.';}
 function openBoard(from){if(!boardOn())return;audio();board.from=from;$('menuov').hidden=true;$('start').hidden=true;$('boardov').hidden=false;renderBoard();}
 $('boardclose').onclick=()=>{audio();$('boardov').hidden=true;if(board.from==='menu')$('menuov').hidden=false;else{$('start').hidden=false;}};
 $('menuboard').onclick=()=>openBoard('menu');$('goBoard').onclick=()=>openBoard('start');
-$('bWeek').onclick=()=>{board.when='w';renderBoard();};$('bAll').onclick=()=>{board.when='all';renderBoard();};
+$('bWeek').onclick=()=>{board.when='w';renderBoard();};$('bSeason').onclick=()=>{board.when='s';renderBoard();};$('bAll').onclick=()=>{board.when='all';renderBoard();};
 ['s','g','c','f'].forEach(k=>$('b'+k.toUpperCase()).onclick=()=>{board.what=k;renderBoard();});
 function openReport(){const box=$('replist');box.innerHTML='';let n=0;
   if(typeof NET!=='undefined')for(const r of NET.peers.values()){const pr=r.pr||{};if(pr.m!=='open'||!DW_RE.test(pr.dw||'')||!decodeLk(pr.lk)||decodeLk(pr.lk).e!==DRAW_E)continue;n++;
@@ -2251,7 +2294,7 @@ $('aim').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation
 $('aim').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleAim();}});
 $('sndv').textContent=MUS.on?'On':'Off';
 function waveNote(){const w=loadWaves();$('wavenote').hidden=!w;if(w)$('wavenote').textContent=`${RANKS[rankOf(w.xp|0)].n} · ${shipById(w.ship).name} · ${w.gold|0} gold`;}
-function refreshStart(){waveNote();storyNote();tutNote();
+function refreshStart(){waveNote();storyNote();tutNote();seasonLine();
   if(FB){$('goBoard').hidden=false;$('savenote').hidden=true;$('newVoyage').hidden=true;$('goOpen').textContent='Open sea';
     const u=FB.user();if(u&&u.google){$('savenote').hidden=false;$('savenote').textContent='Signed in as '+u.name;
       FB.loadSave().then(sv=>{if(!sv)return;cacheSave(sv);$('goOpen').textContent='Continue voyage';$('savenote').textContent=`Signed in as ${u.name} · ${RANKS[rankOf(sv.xp|0)].n} · ${shipById(sv.ship).name} · ${sv.gold|0} gold`;
@@ -2564,7 +2607,7 @@ function update(dt){
     boom(e.x,e.z,true,boss?3:1);noise(.8,260,.5);if(Math.hypot(e.x-P.x,e.z-P.z)<70)buzz('medium');shake=Math.max(shake,boss?1.4:.6);
     if(coop&&coop.role==='host')coop.sunk.push([e.id,e.kind]);
     if(MODE==='story'){storyKill(e);if(e.kind==='merchant')convoySunk(e);}else{econKill(e.kind);if(e.kind==='merchant')convoySunk(e);}
-    if(MODE==='open'&&(boss||(e.kind==='galleon'&&Math.random()<.3)))addPickup('map',e.x+rnd(-2,2),e.z+rnd(-2,2));
+    if(MODE==='open'&&(boss||(e.kind==='galleon'&&Math.random()<(seasonAt(serverNowMs()).id==='gold'?.6:.3))))addPickup('map',e.x+rnd(-2,2),e.z+rnd(-2,2));
     const coins=boss?10:e.kind==='merchant'?14:e.big?4:2,val=boss?25:e.big?15:10,spread=boss?5:e.kind==='merchant'?4:2;
     for(let i=0;i<coins;i++)addPickup('coin',e.x+rnd(-spread,spread),e.z+rnd(-spread,spread),val);
     if(Math.random()<(boss?1:e.big?.6:.22))addPickup('barrel',e.x+rnd(-1,1),e.z+rnd(-1,1));
@@ -2657,13 +2700,14 @@ function convoyArrived(){const c=convoy;convoy=null;
 function convoySunk(e){if(convoy&&convoy.m===e){convoy.esc.forEach(x=>{if(x.hp>0)x.mode='attack';});convoy.m=null;convoy=null;showBanner('Merchant sunk! Her escorts want revenge',true);}}
 /* ---- the kraken: the same one for everyone online, rising every 8 minutes for 4 minutes ---- */
 const KR={slot:480000,life:240000,hp:60};
+const krakenBig=t=>{const S=seasonAt(t),E=eventAt(t);return S.id==='kraken'||(E&&E.id==='kraken2');};
 const kraken={on:false,slot:-1,x:0,z:0,r:5,hp:KR.hp,mine:0,g:null,tent:[],atkT:3,warn:null,dead:false,claimed:-1,announced:-1,rise:0,flash:0};
 function krakenSpot(slot){let a=(slot*2654435761)>>>0;const R=()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
   for(let k=0;k<60;k++){const x=(R()*2-1)*(WORLD-40),z=(R()*2-1)*(WORLD-40);
     if(PORTS.some(p=>Math.hypot(x-p.x,z-p.z)<SAFE_R+40)||Math.hypot(x-ARENA_D.x,z-ARENA_D.z)<ARENA_D.r+30)continue;if(islands.some(i=>Math.hypot(x-i.x,z-i.z)<i.r+14))continue;return{x,z};}return{x:120,z:120};}
 // online: the app shares the kraken's health through the database
 function krakenWatch(slot,cb){return FB&&NET.room?FB.krakenWatch(slot,cb):()=>{};}
-function krakenHitShared(slot){if(FB&&NET.room)FB.krakenHit(slot);}
+function krakenHitShared(slot){if(FB&&NET.room)FB.krakenHit(slot,kraken.max>60);}
 let krakenOff=null;
 const KM={body:std({color:L('#3b2134'),roughness:.55,metalness:.1}),eye:std({color:L('#ffd23a'),emissive:L('#ffb000'),emissiveIntensity:2.5}),warn:new THREE.MeshBasicMaterial({color:L('#ff3a2a'),transparent:true,opacity:.0,depthWrite:false})};
 function buildKraken(){const g=new THREE.Group();
@@ -2677,8 +2721,8 @@ function buildKraken(){const g=new THREE.Group();
   scene.add(g);return{g,tent,ring};}
 function krakenNow(){return (typeof serverNowMs==='function'?serverNowMs():Date.now())+(window.__wxShift||0);}
 function krakenTick(dt){
-  const sto=MODE==='story'&&story.kraken,now=krakenNow(),slot=sto?-7:Math.floor(now/KR.slot),age=sto?0:now-slot*KR.slot,alive=sto||(age<KR.life&&MODE==='open');
-  if(slot!==kraken.slot){if(krakenOff){krakenOff();krakenOff=null;}Object.assign(kraken,{slot,hp:KR.hp,mine:0,dead:false});const sp=krakenSpot(slot);kraken.x=sp.x;kraken.z=sp.z;
+  const sto=MODE==='story'&&story.kraken,now=krakenNow(),slot=sto?-7:Math.floor(now/KR.slot),age=sto?0:now-slot*KR.slot,big=!sto&&krakenBig(slot*KR.slot),alive=sto||(age<(big?360000:KR.life)&&MODE==='open');
+  if(slot!==kraken.slot){if(krakenOff){krakenOff();krakenOff=null;}Object.assign(kraken,{slot,hp:big?90:KR.hp,mine:0,dead:false});kraken.max=big?90:KR.hp;const sp=krakenSpot(slot);kraken.x=sp.x;kraken.z=sp.z;
     if(MODE==='open')krakenOff=krakenWatch(slot,v=>{if(typeof v==='number'&&v<kraken.hp)kraken.hp=v;});
     if(sto){kraken.x=story.kraken.x;kraken.z=story.kraken.z;kraken.hp=story.kraken.hp;}}
   const show=alive&&!kraken.dead;
@@ -2711,7 +2755,7 @@ function krakenTick(dt){
   // ships can't sail through it
   if(d<kraken.r+P.r){const k=(kraken.r+P.r-d)/(d||1);P.x+=(P.x-kraken.x)*k;P.z+=(P.z-kraken.z)*k;P.v*=.8;}
   // boss bar
-  if(show){const near=d<90;if(near){$('bossname').textContent='The Kraken';$('bossfill').style.width=(Math.max(0,kraken.hp)/KR.hp*100)+'%';}
+  if(show){const near=d<90;if(near){$('bossname').textContent='The Kraken';$('bossfill').style.width=(Math.max(0,kraken.hp)/(kraken.max||KR.hp)*100)+'%';}
     if(near!==kraken.bar){kraken.bar=near;$('boss').hidden=!near&&!enemies.some(e=>e.kind==='boss'&&Math.hypot(e.x-P.x,e.z-P.z)<80);}}
   else if(kraken.bar){kraken.bar=false;$('boss').hidden=true;}
 }
@@ -2751,7 +2795,7 @@ const WXC={dz:L('#2f7fc6'),dh:L('#cdeaf3'),ds:new THREE.Color(1,.9,.72),sz:L('#3
 const WATER0={};['uDeep','uMid','uShallow','uSand','uFoam'].forEach(k=>WATER0[k]=waterMat.uniforms[k].value.clone());
 const sunDay=new THREE.Vector3(),moonDir=new THREE.Vector3(),tmpC=new THREE.Color(),tmpC2=new THREE.Color();
 const wxHash=n=>{let a=(n*2654435761)>>>0;a^=a>>>15;a=Math.imul(a,2246822519)>>>0;a^=a>>>13;return(a>>>0)/4294967296;};
-const wxKind=slot=>{const r=wxHash(slot+7);return r<.55?'clear':r<.75?'fog':'storm';};
+const wxKind=slot=>{const r=wxHash(slot+7),storm=seasonAt(slot*WX_SLOT).id==='storm';return storm?(r<.4?'clear':r<.55?'fog':'storm'):(r<.55?'clear':r<.75?'fog':'storm');};
 const WXT={clear:{cloud:0,fog:0,rain:0,amp:1},fog:{cloud:.45,fog:1,rain:0,amp:.9},storm:{cloud:.9,fog:.35,rain:1,amp:2.1}};
 const smooth=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
 // rain: streaks in a box that follows the camera

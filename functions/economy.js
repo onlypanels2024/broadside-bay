@@ -82,6 +82,8 @@
     if (typeof s.title === 'string' && ACH.some(a => a.id === s.title)) o.title = s.title; else delete o.title;
     if (typeof s.cx === 'string' && /^[0-9]{4}$/.test(s.cx)) o.cx = s.cx; else delete o.cx;
     if (s.sg0 === true) o.sg0 = true; else delete o.sg0;
+    if (Array.isArray(s.sr)) o.sr = s.sr.filter(x => Number.isInteger(x) && x > 0).slice(-20); else delete o.sr;
+    if (o.sr && !o.sr.length) delete o.sr;
     if (typeof s.kl === 'string' && /^[0-9]{1,9}$/.test(s.kl)) o.kl = s.kl; else delete o.kl;
     if (typeof s.fleet === 'string' && /^[A-Za-z0-9_-]{1,30}$/.test(s.fleet)) o.fleet = s.fleet; else delete o.fleet;
     if (s.fmsg && typeof s.fmsg === 'object') o.fmsg = { ok: !!s.fmsg.ok, why: String(s.fmsg.why || '').slice(0, 80), t: num(s.fmsg.t) ? s.fmsg.t : 0 }; else delete o.fmsg;
@@ -156,20 +158,46 @@ const ACH=[
   {id:'sotl',n:'Ship of the Line',d:'Own a Man-o\'-War',st:'ship.manowar',need:1,ti:'Ship of the Line'},
   {id:'fleet',n:'Fleet Sailor',d:'Join a fleet',st:'fleet',need:1,ti:'Fleet Sailor'},
   {id:'duelist',n:'Duelist',d:'Win 5 duels',st:'ks.duel',need:5,ti:'the Duelist'},
+  {id:'champ',n:'Season Champion',d:'Finish a season in the top 10',st:'sr',need:1,ti:'Season Champion'},
 ];
 // Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (or nothing).
 const COS={
-  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'}],
+  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'}],
   ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'}],
   fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
   pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
 };
 const COS_SLOTS=['trail','ball','fig','pet'];
-function achStat(s,st){if(!s)return 0;if(st.startsWith('ks.'))return (s.ks&&s.ks[st.slice(3)])|0;if(st==='ship.manowar')return s.ships&&s.ships.manowar?1:0;if(st==='fleet')return s.fleet?1:0;return s[st]|0;}
+function achStat(s,st){if(!s)return 0;if(st==='sr')return Array.isArray(s.sr)?s.sr.length:0;if(st.startsWith('ks.'))return (s.ks&&s.ks[st.slice(3)])|0;if(st==='ship.manowar')return s.ships&&s.ships.manowar?1:0;if(st==='fleet')return s.fleet?1:0;return s[st]|0;}
 const achDone=(s,a)=>achStat(s,a.st)>=a.need;
 function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return false;
   return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
 /*ENDACHDEF*/
+  /*SEASONDEF*/// Seasons last 6 weeks (season 1 began Monday 12 October 2026); each has a theme. Weekends bring an event.
+const SEASON0_WEEK=2963;
+const SEASONS=[
+  {id:'gold',n:'Gold Rush',d:'Treasure maps turn up twice as often, and dug-up treasure pays 50% more.'},
+  {id:'kraken',n:'Kraken Season',d:'The kraken is tougher, stays longer and pays 50% more.'},
+  {id:'ghost',n:'Ghost Fleet',d:'Ghostly pirates haunt the sea. Every pirate sunk pays 25% more.'},
+  {id:'storm',n:'Storm Season',d:'Storms roll in far more often. Hold on to your hat.'},
+];
+const WEEKENDS=[
+  {id:'gold2',n:'Double gold weekend',d:'Every ship you sink pays double gold.'},
+  {id:'kraken2',n:'Kraken weekend',d:'The kraken pays double, and stays longer.'},
+  {id:'fleet2',n:'Fleet tournament',d:'Port battle points count double.'},
+];
+const weekNo=now=>Math.floor((now/86400000+3)/7);
+function seasonAt(now){const w=weekNo(now)-SEASON0_WEEK,n=Math.floor(w/6),k=((n%SEASONS.length)+SEASONS.length)%SEASONS.length;return Object.assign({no:n+1,weeksLeft:6-(w-n*6)},SEASONS[k]);}
+function eventAt(now){const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}
+// gold multiplier for a reward at a moment in time
+function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
+  if(S.id==='gold'&&kind==='treasure')m*=1.5;
+  if(S.id==='kraken'&&kind==='kraken')m*=1.5;
+  if(S.id==='ghost'&&['sloop','galleon','fireship','boss'].includes(kind))m*=1.25;
+  if(E&&E.id==='gold2'&&['sloop','galleon','fireship','boss','merchant','kraken'].includes(kind))m*=2;
+  if(E&&E.id==='kraken2'&&kind==='kraken')m*=2;
+  return m;}
+/*ENDSEASONDEF*/
   const docked = p => !!p && inHarbour(p.x, p.z);
   const atSea = (p, now) => !!p && p.al === 1 && num(p.t) && now - p.t <= RATE.freshMs && !inHarbour(p.x, p.z);
 
@@ -202,7 +230,7 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
         rl.rj = 0; s.rl = rl;
         const ship = ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken'].includes(req.e);
         s.ks = { ...(s.ks || {}), [req.e]: ((s.ks && s.ks[req.e]) | 0) + 1 };
-        const g = Math.round(K.g * (opts && opts.goldMul || 1));
+        const g = Math.round(K.g * (opts && opts.goldMul || 1) * eventMul(req.e, now));
         s.gold += g; s.earned += g; s.xp += K.xp; if (ship) s.sunk += 1;
         questEvent(s, req.e, 1, now); if (ship) questEvent(s, 'ship', 1, now); questEvent(s, 'gold', g, now);
         return { save: s, ok: true };
@@ -266,12 +294,18 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
         if (!cosOk(s, req.cx)) return no('look not unlocked');
         if (req.cx === '0000') delete s.cx; else s.cx = req.cx; return { save: s, ok: true };
       }
+      case 'season': {
+        const n = Number(req.id); if (!Number.isInteger(n) || n < 1) return no('unknown season');
+        if (!(opts && opts.seasonTop === n)) return no('not in that season\'s top 10');
+        if ((s.sr || []).includes(n)) return no('already claimed');
+        s.sr = (s.sr || []).concat([n]).slice(-20); s.gold += 1000; return { save: s, ok: true };
+      }
       case 'starter': {
         if (s.sg0) return no('starter reward already given');
         s.sg0 = true; s.gold += 300; return { save: s, ok: true };
       }
       case 'reset': {
-        const f = fresh(); if (s.rl) f.rl = s.rl; if (s.sg0) f.sg0 = true; for (const k of ['ks', 'dn', 'bs']) if (s[k]) f[k] = s[k];   // the captain's log survives a new voyage   // keep the rate limiter so a reset can't be used to farm
+        const f = fresh(); if (s.rl) f.rl = s.rl; if (s.sg0) f.sg0 = true; if (s.sr) f.sr = s.sr; for (const k of ['ks', 'dn', 'bs']) if (s[k]) f[k] = s[k];   // the captain's log survives a new voyage   // keep the rate limiter so a reset can't be used to farm
         const pt = s.paint && checkPaint(s.paint.lk, s.paint.dw, 0); if (pt) f.paint = pt;   // keep colours a Deckhand may use
         return { save: f, ok: true };
       }
@@ -341,6 +375,6 @@ function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return fals
   const portNear = (x, z) => num(x) && num(z) ? PORTS.findIndex(([px, pz]) => Math.hypot(x - px, z - pz) < PORT_R) : -1;
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -73,8 +73,8 @@ rep("  const sv=fresh?null:loadOpen();","  if(sv===undefined)sv=fresh?null:loadO
 rep("  pw={speed:0,rapid:0,side:0};placeAtPort(p);updAim();updChips();","  pw={speed:0,rapid:0,side:0};NET.rs=(NET.rs|0)+1;placeAtPort(p);updAim();updChips();")
 
 # ---- start screen + join flow
-rep("function refreshStart(){waveNote();storyNote();tutNote();const sv=loadOpen();",
-"""function refreshStart(){waveNote();storyNote();tutNote();
+rep("function refreshStart(){waveNote();storyNote();tutNote();seasonLine();const sv=loadOpen();",
+"""function refreshStart(){waveNote();storyNote();tutNote();seasonLine();
   if(FB){$('savenote').hidden=true;$('newVoyage').hidden=true;$('goOpen').textContent='Open sea';
     const u=FB.user();if(u&&u.google){$('savenote').hidden=false;$('savenote').textContent='Signed in as '+u.name;
       FB.loadSave().then(sv=>{if(!sv)return;$('goOpen').textContent='Continue voyage';$('savenote').textContent=`Signed in as ${u.name} · ${RANKS[rankOf(sv.xp|0)].n} · ${shipById(sv.ship).name} · ${sv.gold|0} gold`;
@@ -173,7 +173,7 @@ function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typ
   gold=sv.gold|0;earned=sv.earned|0;sunk=sv.sunk|0;up=Object.assign({hull:0,sails:0,reload:0,triple:0,broadside:0},sv.up||{});
   xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';if(want!==shipId)setShip(want);
   if(P.hp>maxHp())P.hp=maxHp();updHud();updXP();updAim();if(state==='shop')renderShop();}
-function econKill(kind,id){if(econServer()){const K=ONLINE_KILL[kind]||ONLINE_KILL.sloop;addGold(K.g);addXP(K.xp);if(IS_SHIP(kind))sunk++;econRequest(id!==undefined?{k:'kill',e:kind,id:String(id)}:{k:'kill',e:kind});return;}
+function econKill(kind,id){if(econServer()){const K=ONLINE_KILL[kind]||ONLINE_KILL.sloop;addGold(Math.round(K.g*eventMul(kind,serverNowMs())));addXP(K.xp);if(IS_SHIP(kind))sunk++;econRequest(id!==undefined?{k:'kill',e:kind,id:String(id)}:{k:'kill',e:kind});return;}
   """)
 rep("  uniT-=dt;if(uniT<=0){uniT=.5;streamIslands();setIslandUniforms();updQuestChip();}","  uniT-=dt;if(uniT<=0){uniT=.5;streamIslands();setIslandUniforms();updQuestChip();if(NET.pending&&NET.pending.size)econSync();}")
 # ---- ship paint online: other captains only ever see colours the referee has approved
@@ -252,7 +252,7 @@ function fleetChanged(){const f=fleetsAll()[myFleetId()],k=f?f.tag+f.col+f.em:''
 function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.unfleets){NET.unfleets();NET.unfleets=null;}NET.fleets={};fleetKey='';""")
 # ---- the shared kraken
 rep("function krakenWatch(slot,cb){return ()=>{};}","function krakenWatch(slot,cb){return FB&&NET.room?FB.krakenWatch(slot,cb):()=>{};}")
-rep("function krakenHitShared(slot){}","function krakenHitShared(slot){if(FB&&NET.room)FB.krakenHit(slot);}")
+rep("function krakenHitShared(slot){}","function krakenHitShared(slot){if(FB&&NET.room)FB.krakenHit(slot,kraken.max>60);}")
 # ---- captain's log, titles and looks
 rep("function logOn(){return false;}","function logOn(){return econServer()&&!!NET.srv;}")
 rep("function logSave(){return null;}","function logSave(){return NET.srv;}")
@@ -297,6 +297,11 @@ rep("  NET.fleets={};NET.unfleets=","  NET.unworld=FB.watchWorld(w=>{NET.world=w
 rep("if(NET.unfleets){NET.unfleets();NET.unfleets=null;}","if(NET.unfleets){NET.unfleets();NET.unfleets=null;}if(NET.unworld){NET.unworld();NET.unworld=null;}")
 # ---- starter reward for the first online voyage (the referee gives it once per Google account)
 rep("  [2500,6000].forEach(ms=>setTimeout(()=>{","  setTimeout(()=>{try{if(localStorage.getItem('bb-starter')==='1'&&FB.user()&&FB.user().google&&econServer()){econRequest({k:'starter'});addGold(300);updHud();showBanner('Starter reward: 300 gold');localStorage.removeItem('bb-starter');}}catch(e){}},3500);\n  [2500,6000].forEach(ms=>setTimeout(()=>{")
+# ---- season rewards
+rep("function seasonClaimUI(box){}   // the app: offer last season's reward to its top 10","""function seasonClaimUI(box){const S=seasonAt(serverNowMs()),prev=S.no-1,sv=NET.srv;if(prev<1||!sv||(sv.sr||[]).includes(prev)||!FB)return;
+  FB.board('board/s'+prev,'s',10).then(rows=>{if(!rows)return;const me=myUid(),i=rows.findIndex(r=>r.uid===me);if(i<0)return;
+    const b=document.createElement('button');b.className='btn small';b.style.display='block';b.style.margin='8px auto 0';b.textContent='Claim: #'+(i+1)+' in season '+prev+' · 1,000 gold';
+    b.onclick=()=>{econRequest({k:'season',id:String(prev)});addGold(1000);updHud();b.disabled=true;b.textContent='Claimed ✓';chime(true);showBanner('Season Champion!');};box.appendChild(b);});}""")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

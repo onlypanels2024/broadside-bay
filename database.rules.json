@@ -174,7 +174,7 @@
           ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && !root.child('banned').child($uid).exists()",
           ".validate": "newData.hasChildren(['k','t']) && newData.child('t').val() === now",
           "k": {
-            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|check|daily|quest|fleet|title|cos|starter|reset)$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|check|daily|quest|fleet|title|cos|starter|season|reset)$/)"
           },
           "e": {
             ".validate": "newData.isString() && newData.val().matches(/^(sloop|galleon|boss|fireship|treasure|merchant|escort|kraken)$/)"
@@ -278,7 +278,7 @@
       "$slot": {
         "hp": {
           ".write": "auth != null",
-          ".validate": "newData.isNumber() && ((!data.exists() && newData.val() === 59) || newData.val() === data.val() - 1) && newData.val() >= 0"
+          ".validate": "newData.isNumber() && ((!data.exists() && (newData.val() === 59 || newData.val() === 89)) || newData.val() === data.val() - 1) && newData.val() >= 0"
         },
         "hits": {
           "$uid": {

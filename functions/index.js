@@ -32,6 +32,10 @@ async function boardAdd(db, uid, name, add, save) {
     const o = r || { s: 0, g: 0, c: 0 };
     o.n = name ? cleanName(name) : (o.n || 'Captain'); o.s = (o.s | 0) + (add.s | 0); o.g = (o.g | 0) + (add.g | 0); o.c = (o.c | 0) + (add.c | 0); return o;
   });
+  if (add.s || add.g) {   // this season's board
+    const sn = E.seasonAt(Date.now()).no;
+    await db.ref(`board/s${sn}/${uid}`).transaction(r => { const o = r || { s: 0, g: 0 }; o.n = name ? cleanName(name) : (o.n || 'Captain'); o.s = (o.s | 0) + (add.s | 0); o.g = (o.g | 0) + (add.g | 0); return o; });
+  }
   if (save && save.fleet && add.s) {
     const f = (await db.ref(`fleets/${save.fleet}`).get()).val();
     if (f) await db.ref(`board/f${wk}/${save.fleet}`).transaction(r => ({ n: f.n, tag: f.tag, s: ((r && r.s) | 0) + add.s }));
@@ -51,7 +55,8 @@ async function portHolder(db, port, week) {
 async function portScore(db, fid, port, pts) {
   if (!fid || port < 0 || !pts) return;
   const f = (await db.ref(`fleets/${fid}`).get()).val(); if (!f) return;
-  await db.ref(`board/p${E.weekOf(Date.now())}/${port}/${fid}`).transaction(r => ({ n: f.n, tag: f.tag, s: ((r && r.s) | 0) + pts }));
+  const ev = E.eventAt(Date.now()), mul = ev && ev.id === 'fleet2' ? 2 : 1;
+  await db.ref(`board/p${E.weekOf(Date.now())}/${port}/${fid}`).transaction(r => ({ n: f.n, tag: f.tag, s: ((r && r.s) | 0) + pts * mul }));
 }
 
 async function strike(db, uid, reason) {
@@ -180,6 +185,12 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
     port = E.portNear(player.x, player.z);
     myFleet = (await db.ref(`saves/${uid}/fleet`).get()).val();
     if (port >= 0 && myFleet && (await portHolder(db, port, E.weekOf(Date.now()) - 1)) === myFleet) opts = { goldMul: E.PORT_BONUS };
+  }
+  // season reward: this captain must be in that season's top 10 (by ships sunk)
+  if (req.k === 'season') {
+    const n = Number(req.id); const top = [];
+    try { const snap = await db.ref(`board/s${n}`).orderByChild('s').limitToLast(10).get(); snap.forEach(x => { top.push(x.key); }); } catch (e) {}
+    if (Number.isInteger(n) && n < E.seasonAt(Date.now()).no && top.includes(uid)) opts = { ...(opts || {}), seasonTop: n };
   }
   let verdict = null;
   const res = await db.ref(`saves/${uid}`).transaction(save => {

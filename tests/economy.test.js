@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const E = require('../functions/economy.js');
 
-const NOW = 1_800_000_000_000;
+const NOW = Date.UTC(2026, 9, 14, 12);   // a Wednesday in season 1 (Gold Rush): no weekend event, pirates at normal pay
 const atSea = { x: 80, z: 60, al: 1, t: NOW - 500 };
 const seaAt = t => ({ ...atSea, t: t - 300 });
 const inPort = { x: 21, z: 0, al: 1, t: NOW - 500, dk: 1 };
@@ -244,7 +244,7 @@ test('fleets: sensible names and tags only; founding needs Bosun and 500 gold, o
 
 test('sea events pay once per their gap; a kraken only once per appearance', () => {
   let s = null;
-  let r = E.processRequest(s, { k: 'kill', e: 'treasure' }, atSea, NOW); assert.strictEqual(r.ok, true); assert.strictEqual(r.save.gold, 400); s = r.save;
+  let r = E.processRequest(s, { k: 'kill', e: 'treasure' }, atSea, NOW); assert.strictEqual(r.ok, true); assert.strictEqual(r.save.gold, 600, 'Gold Rush season: treasure pays 50% more'); s = r.save;
   assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'treasure' }, seaAt(NOW + 30000), NOW + 30000).ok, false);
   assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'treasure' }, seaAt(NOW + 61000), NOW + 61000).ok, true);
   r = E.processRequest(s, { k: 'kill', e: 'kraken', id: '777' }, atSea, NOW); assert.strictEqual(r.ok, true); s = r.save;
@@ -300,4 +300,25 @@ test('schooner costs 600 at Bosun; fire ships pay and count as ships', () => {
   assert.strictEqual(r.ok, true); assert.strictEqual(r.save.gold, 100);
   const k = E.processRequest(null, { k: 'kill', e: 'fireship' }, atSea, NOW);
   assert.deepStrictEqual([k.save.gold, k.save.sunk, k.save.ks.fireship], [120, 1, 1]);
+});
+
+test('seasons and weekend events', () => {
+  const sat = Date.UTC(2026, 9, 17, 12), wed = Date.UTC(2026, 9, 14, 12);
+  assert.strictEqual(E.seasonAt(wed).no, 1); assert.strictEqual(E.seasonAt(wed).id, 'gold');
+  assert.strictEqual(E.seasonAt(Date.UTC(2026, 10, 25)).id, 'kraken', 'season 2 after six weeks');
+  assert.strictEqual(E.eventAt(wed), null); assert.ok(E.eventAt(sat));
+  // a double gold weekend doubles a sloop's pay
+  let t = sat; while (E.eventAt(t).id !== 'gold2') t += 7 * 86400000;
+  assert.strictEqual(E.processRequest(null, { k: 'kill', e: 'sloop' }, { ...atSea, t: t - 300 }, t).save.gold, 140);
+  // season reward only for a referee-confirmed top 10 place, once
+  assert.strictEqual(E.processRequest(null, { k: 'season', id: '1' }, null, NOW).ok, false);
+  const r = E.processRequest(null, { k: 'season', id: '1' }, null, NOW, { seasonTop: 1 }); assert.strictEqual(r.ok, true); assert.strictEqual(r.save.gold, 1000);
+  assert.strictEqual(E.processRequest(r.save, { k: 'season', id: '1' }, null, NOW, { seasonTop: 1 }).ok, false);
+});
+
+test("the game's seasons are the referee's, word for word", () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'src-artifact.html'), 'utf8');
+  const eco = require('fs').readFileSync(require('path').join(__dirname, '..', 'functions', 'economy.js'), 'utf8');
+  const grab = t => t.slice(t.indexOf('/*SEASONDEF*/'), t.indexOf('/*ENDSEASONDEF*/'));
+  assert.ok(grab(eco).length > 500); assert.strictEqual(grab(src), grab(eco));
 });
