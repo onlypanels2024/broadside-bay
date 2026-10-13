@@ -164,11 +164,11 @@ rep("  if(MODE==='open'){NET.deaths++;","  if(MODE==='open'){NET.deaths++;if(NET
 rep("$('onlinetxt').textContent=NET.ok?`${NET.online} online · ${NET.sailing} at sea`:'Offline: playing solo';",
     "$('onlinetxt').textContent=NET.ok?`${NET.online} online · ${NET.sailing} at sea`:(NET.banned?'Offline: removed by the referee':'Offline: playing solo');")
 # ---- economy: the online referee alone decides gold, XP, upgrades and ships in online Open sea
-rep("function econServer(){return false;}\nfunction econRequest(r){}\nfunction econKill(kind){",
+rep("function econServer(){return false;}\nfunction econRequest(r){}\nfunction econKill(kind,id){",
 """function econServer(){return MODE==='open'&&saveMode==='server'&&!!NET.room;}
 function econRequest(r){if(!econServer())return;const k=FB.request(r);if(k)NET.pending.set(k,Date.now());}
 // Online kill rewards include the coins the wreck drops (coins online are just for show).
-const ONLINE_KILL={sloop:{g:70,xp:20},galleon:{g:210,xp:50},boss:{g:550,xp:250}};
+const ONLINE_KILL={sloop:{g:70,xp:20},galleon:{g:210,xp:50},boss:{g:550,xp:250},treasure:{g:400,xp:60},merchant:{g:500,xp:80},escort:{g:300,xp:70},kraken:{g:900,xp:400}};
 // Show the reward straight away, then follow the referee's answer: while requests are waiting we keep
 // the local numbers; once all are answered we take the referee's numbers (correcting anything refused).
 function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typeof sv.last==='string'?sv.last:'';
@@ -177,7 +177,7 @@ function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typ
   gold=sv.gold|0;earned=sv.earned|0;sunk=sv.sunk|0;up=Object.assign({hull:0,sails:0,reload:0,triple:0,broadside:0},sv.up||{});
   xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';if(want!==shipId)setShip(want);
   if(P.hp>maxHp())P.hp=maxHp();updHud();updXP();updAim();if(state==='shop')renderShop();}
-function econKill(kind){if(econServer()){const K=ONLINE_KILL[kind]||ONLINE_KILL.sloop;addGold(K.g);addXP(K.xp);sunk++;econRequest({k:'kill',e:kind});return;}
+function econKill(kind,id){if(econServer()){const K=ONLINE_KILL[kind]||ONLINE_KILL.sloop;addGold(K.g);addXP(K.xp);if(IS_SHIP(kind))sunk++;econRequest(id!==undefined?{k:'kill',e:kind,id:String(id)}:{k:'kill',e:kind});return;}
   """)
 rep("  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();updQuestChip();}","  uniT-=dt;if(uniT<=0){uniT=.5;setIslandUniforms();updQuestChip();if(NET.pending&&NET.pending.size)econSync();}")
 # ---- ship paint online: other captains only ever see colours the referee has approved
@@ -254,6 +254,9 @@ function fleetChanged(){const f=fleetsAll()[myFleetId()],k=f?f.tag+f.col+f.em:''
     if(k&&!had&&state==='play')showBanner('You sail with ['+f.tag+'] '+f.n);}
   NET.last=null;renderFleet();}
 function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.unfleets){NET.unfleets();NET.unfleets=null;}NET.fleets={};fleetKey='';""")
+# ---- the shared kraken
+rep("function krakenWatch(slot,cb){return ()=>{};}","function krakenWatch(slot,cb){return FB&&NET.room?FB.krakenWatch(slot,cb):()=>{};}")
+rep("function krakenHitShared(slot){}","function krakenHitShared(slot){if(FB&&NET.room)FB.krakenHit(slot);}")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

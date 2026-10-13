@@ -43,6 +43,7 @@
           await txn('saves/'+uid,sv=>{const o=E.norm(sv);o.fmsg={ok:msg.ok,why:msg.why,t:Date.now()};o.last=sv&&typeof sv.last==='string'&&sv.last>rid?sv.last:rid;return o;});continue;}
         if(req.k==='check'){await txn('saves/'+uid,sv=>{const o=E.norm(sv);o.last=sv&&typeof sv.last==='string'&&sv.last>rid?sv.last:rid;return o;});continue;}
         const player=(await db.ref('players/'+uid).get()).val();let verdict;
+        if(req.k==='kill'&&req.e==='kraken'){const kr=(await db.ref('kraken/'+req.id).get()).val();if(!kr||kr.hp>0||!kr.hits||(kr.hits[uid]|0)<3){window.__refLog.push(['req','kill','kraken',false,'kraken not earned']);await txn('saves/'+uid,sv=>{const o=E.norm(sv);o.last=sv&&sv.last>rid?sv.last:rid;return o;});continue;}}
         await txn('saves/'+uid,sv=>{verdict=E.processRequest(sv,req,player,Date.now());const out=verdict.save;
           out.last=sv&&typeof sv.last==='string'&&sv.last>rid?sv.last:rid;return out;});
         window.__refLog.push(['req',req.k,req.e||req.id||'',verdict.ok,verdict.reason||'']);

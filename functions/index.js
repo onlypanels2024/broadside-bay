@@ -139,16 +139,24 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
     return;
   }
   const player = (await db.ref(`players/${uid}`).get()).val();
+  // a kraken reward needs that kraken really sunk (shared health at 0) and this captain to have hit it
+  let pre = null;
+  if (req.k === 'kill' && req.e === 'kraken') {
+    const kr = (await db.ref(`kraken/${req.id}`).get()).val(), sl = Number(req.id);
+    const fresh = Number.isFinite(sl) && Math.abs(Date.now() - sl * E.KRAKEN.slot) < 1800000;
+    if (!fresh || !kr || kr.hp > 0 || !kr.hits || (kr.hits[uid] | 0) < E.KRAKEN.minHits) pre = 'kraken not earned';
+    if (fresh) await db.ref(`kraken/${sl - 3}`).remove();
+  }
   let verdict = null;
   const res = await db.ref(`saves/${uid}`).transaction(save => {
-    verdict = E.processRequest(save, req, player, Date.now());
+    verdict = pre ? { save: E.norm(save), ok: false, reason: pre } : E.processRequest(save, req, player, Date.now());
     const out = verdict.save;
     // tells the phone which of its requests have been dealt with
     out.last = save && typeof save.last === 'string' && save.last > rid ? save.last : rid;
     return out;
   });
   if (verdict && !verdict.ok) logger.info('request refused', { uid, k: req.k, reason: verdict.reason });
-  if (verdict && verdict.ok && req.k === 'kill') await boardAdd(db, uid, player && player.n, { s: 1, g: E.KILL[req.e].g }, res.snapshot.val());
+  if (verdict && verdict.ok && req.k === 'kill') await boardAdd(db, uid, player && player.n, { s: ['sloop', 'galleon', 'boss', 'merchant', 'kraken'].includes(req.e) ? 1 : 0, g: E.KILL[req.e].g }, res.snapshot.val());
   else if (verdict && verdict.ok && (req.k === 'daily' || req.k === 'quest') && await isGoogle(uid)) await boardAdd(db, uid, player && player.n, {}, res.snapshot.val());
   if (verdict && verdict.strike) await strike(db, uid, 'claims: ' + verdict.reason);
 });

@@ -165,10 +165,10 @@
             ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|check|daily|quest|fleet|reset)$/)"
           },
           "e": {
-            ".validate": "newData.isString() && newData.val().matches(/^(sloop|galleon|boss)$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^(sloop|galleon|boss|treasure|merchant|escort|kraken)$/)"
           },
           "id": {
-            ".validate": "newData.isString() && newData.val().matches(/^(broadside|reload|sails|hull|triple|brig|corvette|frigate|galleon|manowar|0|1|2)$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^(broadside|reload|sails|hull|triple|brig|corvette|frigate|galleon|manowar|[0-9]{1,9})$/)"
           },
           "t": {
             ".validate": "newData.val() === now"
@@ -252,6 +252,21 @@
       ".indexOn": [
         ".value"
       ]
+    },
+    "kraken": {
+      ".read": "auth != null",
+      "$slot": {
+        "hp": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber() && ((!data.exists() && newData.val() === 59) || newData.val() === data.val() - 1) && newData.val() >= 0"
+        },
+        "hits": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.isNumber() && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() + 1)"
+          }
+        }
+      }
     }
   }
 }

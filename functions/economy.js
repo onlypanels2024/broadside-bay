@@ -27,11 +27,18 @@
     sloop: { g: 70, xp: 20, pts: 1 },
     galleon: { g: 210, xp: 50, pts: 2.5 },
     boss: { g: 550, xp: 250, pts: 0 },
+    // sea events: each has its own minimum time between claims (gap, ms)
+    treasure: { g: 400, xp: 60, pts: 0, gap: 60000 },
+    merchant: { g: 500, xp: 80, pts: 0, gap: 150000 },
+    escort: { g: 300, xp: 70, pts: 0, gap: 150000 },
+    kraken: { g: 900, xp: 400, pts: 0, gap: 240000 },
   };
   // How fast pirates can realistically be sunk: a bucket of 12 "sloop points" refilled at 8 per minute,
   // and at most one boss every 2 minutes (bosses appear every 4).
   const RATE = { cap: 12, perMin: 8, bossGapMs: 120000, maxRejects: 12, freshMs: 15000 };
   const PVP = { g: 150, xp: 120 };
+  // The kraken: everyone online sees the same one. A new one can rise every 8 minutes and stays 4 minutes.
+  const KRAKEN = { slot: 480000, life: 240000, hp: 60, minHits: 3 };
   // Ship paint. A 7-letter code (hull, trim, sails, stripe, emblem colour, flag, emblem), each a base-36 index,
   // plus an optional 16x16 drawing (64 hex digits) when the emblem is the captain's own (index 35).
   // The rank needed for each choice; must match PAINT_RANK in the game (a test checks this).
@@ -65,6 +72,7 @@
     if (s.dchk && typeof s.dchk === 'object' && DW_RE.test(s.dchk.dw || '')) o.dchk = { dw: s.dchk.dw, ok: !!s.dchk.ok, why: String(s.dchk.why || '').slice(0, 80), t: num(s.dchk.t) ? s.dchk.t : 0 }; else delete o.dchk;
     if (s.ck && typeof s.ck === 'object' && num(s.ck.n) && num(s.ck.t)) o.ck = { n: s.ck.n, t: s.ck.t }; else delete o.ck;
     // daily chest {d: last day claimed, st: streak} and today's quests {d: day, p: [progress x3], c: [claimed x3]}
+    if (typeof s.kl === 'string' && /^[0-9]{1,9}$/.test(s.kl)) o.kl = s.kl; else delete o.kl;
     if (typeof s.fleet === 'string' && /^[A-Za-z0-9_-]{1,30}$/.test(s.fleet)) o.fleet = s.fleet; else delete o.fleet;
     if (s.fmsg && typeof s.fmsg === 'object') o.fmsg = { ok: !!s.fmsg.ok, why: String(s.fmsg.why || '').slice(0, 80), t: num(s.fmsg.t) ? s.fmsg.t : 0 }; else delete o.fmsg;
     if (s.daily && num(s.daily.d) && num(s.daily.st)) o.daily = { d: s.daily.d, st: Math.max(1, Math.min(999, Math.floor(s.daily.st))) }; else delete o.daily;
@@ -142,10 +150,17 @@ function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F
           s.rl = rl; return no(reason, strike);
         };
         if (req.e === 'boss') { if (now - (rl.lb || 0) < RATE.bossGapMs) return reject('boss claimed too soon'); rl.lb = now; }
+        else if (K.gap) {
+          const key = 'l' + req.e[0] + req.e[1];
+          if (now - (rl[key] || 0) < K.gap) return reject(req.e + ' claimed too soon');
+          if (req.e === 'kraken') { if (!/^[0-9]{1,9}$/.test(String(req.id)) || String(s.kl) === String(req.id)) return reject('kraken already claimed'); s.kl = String(req.id); }
+          rl[key] = now;
+        }
         else { if (rl.b < K.pts) return reject('sinking faster than pirates appear'); rl.b -= K.pts; }
         rl.rj = 0; s.rl = rl;
-        s.gold += K.g; s.earned += K.g; s.xp += K.xp; s.sunk += 1;
-        questEvent(s, req.e, 1, now); questEvent(s, 'ship', 1, now); questEvent(s, 'gold', K.g, now);
+        const ship = ['sloop', 'galleon', 'boss', 'merchant', 'kraken'].includes(req.e);
+        s.gold += K.g; s.earned += K.g; s.xp += K.xp; if (ship) s.sunk += 1;
+        questEvent(s, req.e, 1, now); if (ship) questEvent(s, 'ship', 1, now); questEvent(s, 'gold', K.g, now);
         return { save: s, ok: true };
       }
       case 'up': {
@@ -262,6 +277,6 @@ function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F
   }
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

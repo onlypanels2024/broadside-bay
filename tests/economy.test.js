@@ -241,3 +241,14 @@ test('fleets: sensible names and tags only; founding needs Bosun and 500 gold, o
   const r = E.fleetPay({ ...E.fresh(), gold: 900, xp: 300 }); assert.strictEqual(r.ok, true); assert.strictEqual(r.save.gold, 400);
   assert.strictEqual(E.fleetPay({ ...r.save, fleet: 'abc' }).ok, false, 'already in one');
 });
+
+test('sea events pay once per their gap; a kraken only once per appearance', () => {
+  let s = null;
+  let r = E.processRequest(s, { k: 'kill', e: 'treasure' }, atSea, NOW); assert.strictEqual(r.ok, true); assert.strictEqual(r.save.gold, 400); s = r.save;
+  assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'treasure' }, seaAt(NOW + 30000), NOW + 30000).ok, false);
+  assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'treasure' }, seaAt(NOW + 61000), NOW + 61000).ok, true);
+  r = E.processRequest(s, { k: 'kill', e: 'kraken', id: '777' }, atSea, NOW); assert.strictEqual(r.ok, true); s = r.save;
+  assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'kraken', id: '777' }, seaAt(NOW + 900000), NOW + 900000).ok, false, 'same kraken twice');
+  assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'kraken', id: '778' }, seaAt(NOW + 900000), NOW + 900000).ok, true);
+  assert.strictEqual(E.processRequest(null, { k: 'kill', e: 'merchant' }, inPort, NOW).ok, false, 'not from a harbour');
+});

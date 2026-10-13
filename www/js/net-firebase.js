@@ -84,6 +84,13 @@
         async boardMine(path) { const u = auth.currentUser; if (!u) return null; try { return (await db.ref(path + '/' + u.uid).get()).val(); } catch (e) { return null; } },
         // Follow the list of fleets. Returns a function that stops following.
         watchFleets(cb) { const ref = db.ref('fleets'), fn = s => cb(s.val() || {}); ref.on('value', fn); return () => ref.off('value', fn); },
+        // The shared kraken: follow its health, and record a hit on it (health down one, my hit count up one).
+        krakenWatch(slot, cb) { const ref = db.ref('kraken/' + slot + '/hp'), fn = s => cb(s.val()); ref.on('value', fn); return () => ref.off('value', fn); },
+        krakenHit(slot) {
+          const u = auth.currentUser; if (!u) return;
+          db.ref('kraken/' + slot + '/hp').transaction(h => (h === null ? 59 : h > 0 ? h - 1 : undefined)).catch(() => {});
+          db.ref('kraken/' + slot + '/hits/' + u.uid).transaction(n => (n || 0) + 1).catch(() => {});
+        },
         // Report another captain's drawing to the referee.
         report(tg, dw) {
           const u = auth.currentUser; if (!u) return;
