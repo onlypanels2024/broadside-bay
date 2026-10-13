@@ -85,6 +85,9 @@
     if (Array.isArray(s.sr)) o.sr = s.sr.filter(x => Number.isInteger(x) && x > 0).slice(-20); else delete o.sr;
     if (o.sr && !o.sr.length) delete o.sr;
     if (typeof s.kl === 'string' && /^[0-9]{1,9}$/.test(s.kl)) o.kl = s.kl; else delete o.kl;
+    // video rewards today {d: day, n: gold videos, c: 1 when today's chest was doubled}; no-ads subscription paid until na (ms)
+    if (s.ad && typeof s.ad === 'object' && num(s.ad.d)) o.ad = { d: s.ad.d, n: num(s.ad.n) ? Math.max(0, Math.floor(s.ad.n)) : 0, c: s.ad.c ? 1 : 0 }; else delete o.ad;
+    if (num(s.na) && s.na > 0) o.na = Math.floor(s.na); else delete o.na;
     if (typeof s.fleet === 'string' && /^[A-Za-z0-9_-]{1,30}$/.test(s.fleet)) o.fleet = s.fleet; else delete o.fleet;
     if (s.fmsg && typeof s.fmsg === 'object') o.fmsg = { ok: !!s.fmsg.ok, why: String(s.fmsg.why || '').slice(0, 80), t: num(s.fmsg.t) ? s.fmsg.t : 0 }; else delete o.fmsg;
     if (s.daily && num(s.daily.d) && num(s.daily.st)) o.daily = { d: s.daily.d, st: Math.max(1, Math.min(999, Math.floor(s.daily.st))) }; else delete o.daily;
@@ -304,14 +307,36 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
         if (s.sg0) return no('starter reward already given');
         s.sg0 = true; s.gold += 300; return { save: s, ok: true };
       }
+      // a short video watched (or skipped with the No ads subscription): a little gold, a few times a day
+      case 'adgold': {
+        const day = dayOf(now), a = s.ad && s.ad.d === day ? { ...s.ad } : { d: day, n: 0, c: 0 };
+        if (a.n >= ADS.perDay) return no('no more video rewards today');
+        a.n += 1; s.ad = a; s.gold += ADS.gold; return { save: s, ok: true, g: ADS.gold };
+      }
+      // today's chest paid again, once, after a video
+      case 'chest2': {
+        const day = dayOf(now), d = s.daily, a = s.ad && s.ad.d === day ? { ...s.ad } : { d: day, n: 0, c: 0 };
+        if (!(d && d.d === day)) return no('open today\'s chest first');
+        if (a.c) return no('already doubled today');
+        const g = DAILY_CHEST[Math.min(d.st, DAILY_CHEST.length) - 1];
+        a.c = 1; s.ad = a; s.gold += g; return { save: s, ok: true, g };
+      }
+      // the No ads subscription; the referee has already asked Google Play when it runs out (opts.noAdsUntil)
+      case 'noads': {
+        if (!(opts && num(opts.noAdsUntil))) return no('subscription not confirmed by Google Play');
+        if (opts.noAdsUntil > 0) s.na = Math.floor(opts.noAdsUntil); else delete s.na;
+        return { save: s, ok: true };
+      }
       case 'reset': {
-        const f = fresh(); if (s.rl) f.rl = s.rl; if (s.sg0) f.sg0 = true; if (s.sr) f.sr = s.sr; for (const k of ['ks', 'dn', 'bs']) if (s[k]) f[k] = s[k];   // the captain's log survives a new voyage   // keep the rate limiter so a reset can't be used to farm
+        const f = fresh(); if (s.rl) f.rl = s.rl; if (s.na) f.na = s.na; if (s.ad) f.ad = s.ad; if (s.sg0) f.sg0 = true; if (s.sr) f.sr = s.sr; for (const k of ['ks', 'dn', 'bs']) if (s[k]) f[k] = s[k];   // the captain's log survives a new voyage   // keep the rate limiter so a reset can't be used to farm
         const pt = s.paint && checkPaint(s.paint.lk, s.paint.dw, 0); if (pt) f.paint = pt;   // keep colours a Deckhand may use
         return { save: f, ok: true };
       }
       default: return no('unknown request');
     }
   }
+  // Video rewards: gold per video and videos per day
+  const ADS = { gold: 100, perDay: 5 };
   // Drawing checks cost a little money (AI), so each captain gets CHECKS.perHour of them.
   const CHECKS = { perHour: 15 };
   function checkQuota(saveIn, now) {
@@ -375,6 +400,6 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
   const portNear = (x, z) => num(x) && num(z) ? PORTS.findIndex(([px, pz]) => Math.hypot(x - px, z - pz) < PORT_R) : -1;
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

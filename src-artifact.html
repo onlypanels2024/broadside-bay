@@ -235,6 +235,7 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .btn:disabled{opacity:.5;cursor:default;box-shadow:none;transform:none}
 .btn:focus-visible,.item:focus-visible{outline:2px solid var(--parch);outline-offset:3px}
 .sub{font-size:13px;color:var(--muted);margin-top:12px}
+.adbtn{margin:10px auto 0;display:block;width:auto;max-width:100%;font-size:13px;letter-spacing:.05em;padding:9px 16px;border-color:rgba(232,196,110,.55)}
 .purse{display:inline-flex;gap:8px;align-items:baseline;font-family:var(--display);font-weight:800;font-size:22px;color:var(--brass-hi);font-variant-numeric:tabular-nums}
 .shop{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;text-align:left}
 .item{min-width:0;display:flex;flex-direction:column;gap:3px;padding:10px;border-radius:8px;border:1px solid rgba(214,178,98,.35);background:rgba(255,255,255,.04);
@@ -336,6 +337,8 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
       <button class="btn ghost dressbtn" id="goDress">Ship &amp; colours</button>
       <button class="linkbtn" id="goBoard" hidden>Leaderboards</button>
       <button class="linkbtn" id="replayTut" hidden>Replay the first voyage</button>
+      <button class="linkbtn" id="startnoads" hidden>Remove ads</button>
+      <div class="savenote" id="noadsnote" hidden></div>
     </div>
     <div class="sub" style="font-size:11px;opacity:.7">Music instrument recordings: FluidR3 GM soundfont by Frank Wen, CC BY 3.0.</div>
   </div>
@@ -353,6 +356,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
       <button class="btn ghost" id="menufleet" hidden>Fleet</button>
       <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
       <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
+      <button class="btn ghost" id="noadsbtn" hidden>Remove ads</button>
       <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
       <button class="btn ghost" id="notiftog" hidden>Notifications: <span id="notifv">Off</span></button>
       <button class="btn ghost" id="seatog">Sea sounds: <span id="seav">On</span></button>
@@ -371,6 +375,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <h2 id="shoptitle">Wave cleared</h2>
     <p id="shopnote">Spend your gold before you sail again.</p>
     <div class="purse"><span class="lbl">Gold</span><span id="purse">0</span></div>
+    <button class="btn ghost adbtn" id="adgoldbtn" hidden></button>
     <div class="rankline"><b id="shoprank">Deckhand</b><div class="xpbar"><div id="shopxp"></div></div><span id="shopxptxt"></span></div>
     <div class="tabs" role="tablist"><button class="tab on" id="tabUp" role="tab">Upgrades</button><button class="tab" id="tabYard" role="tab">Shipyard</button><button class="tab" id="tabPaint" role="tab">Paint</button></div>
     <div class="shop" id="shop"></div>
@@ -493,6 +498,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <p class="menunote" id="chestnote">Come back every day for a bigger chest.</p>
     <div class="days" id="days"></div>
     <button class="btn" id="chestbtn">Open chest</button>
+    <button class="btn ghost adbtn" id="chest2btn" hidden></button>
     <div class="rule"></div>
     <h2 style="font-size:22px">Today's quests</h2>
     <div class="qlist" id="qlist"></div>
@@ -1406,7 +1412,7 @@ function openWorldTick(dt){
   saveT-=dt;if(saveT<=0){saveT=10;saveOpen();}
   seaEventsTick(dt);
 }
-function reset(){
+function reset(){AD.waveVids=0;
   MODE='waves';ARENA=60;
   clearWorld();$('wavelbl').textContent='Wave';$('boss').classList.remove('left');$('map').hidden=true;$('dock').hidden=true;
   up={hull:0,sails:0,reload:0,triple:0,broadside:0};pw={speed:0,rapid:0,side:0};
@@ -1489,7 +1495,7 @@ function renderYard(){
   }
 }
 function renderShop(){
-  $('purse').textContent=gold;
+  $('purse').textContent=gold;renderAdGold();
   {const r=rankOf(xp),cur=RANKS[r].xp,nxt=RANKS[r+1]?RANKS[r+1].xp:null;$('shoprank').textContent=RANKS[r].n;
    $('shopxp').style.width=(nxt?Math.round((xp-cur)/(nxt-cur)*100):100)+'%';$('shopxptxt').textContent=nxt?`${xp} / ${nxt} XP`:`${xp} XP · top rank`;}
   if(shopTab==='yard'){renderYard();return;}
@@ -1692,6 +1698,44 @@ const dayOf=now=>Math.floor(now/86400000);
 function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
   const pool=QUESTS.map((q,i)=>i),out=[];while(out.length<3){const k=Math.floor(rnd()*pool.length);out.push(pool.splice(k,1)[0]);}return out.sort((x,y)=>x-y);}
 /*ENDDAILYDEF*/
+/* ---- video rewards, between-battle ads and the No ads subscription ----
+   The app fills in adsOn/noAdsOn/adReward/adInter/noAdsBuy/noAdsPrice with Google AdMob and Google Play;
+   the web version shows no ads (window.__fakeAds stands in for them in tests). */
+const ADS_GOLD=100,ADS_PER_DAY=5,AD_WAVE_MAX=2,AD_GAP=240000,AD_FREE_RUNS=3;
+const AD={busy:false,waveVids:0,day:-1,n:0,chest:-1,runs:0,last:0};
+try{AD.runs=+localStorage.getItem('bb-runs')||0;AD.last=+localStorage.getItem('bb-adlast')||0;}catch(e){}
+function adsOn(){return !!window.__fakeAds;}
+function noAdsOn(){return !!(window.__fakeAds&&window.__fakeAds.noAds);}
+function adReward(){const f=window.__fakeAds;if(f)f.rewarded=(f.rewarded|0)+1;return Promise.resolve(!!f);}
+function adInter(){const f=window.__fakeAds;if(f)f.inter=(f.inter|0)+1;return Promise.resolve();}
+function noAdsBuy(say){say('Remove ads is only in the Android app.');}
+function noAdsPrice(){return '€5';}
+function adVideosLeft(){const day=dayOf(serverNowMs());if(AD.day!==day){AD.day=day;AD.n=0;}
+  if(econServer()){const sv=dailySave()||{},a=sv.ad&&sv.ad.d===day?sv.ad:{n:0};return ADS_PER_DAY-Math.max(a.n|0,AD.n);}
+  return MODE==='waves'&&!coop?AD_WAVE_MAX-AD.waveVids:0;}
+const adGoldNow=()=>econServer()?ADS_GOLD:Math.min(300,50+25*wave);
+function renderAdGold(){const b=$('adgoldbtn'),left=adsOn()&&state==='shop'?adVideosLeft():0;b.hidden=left<=0;if(b.hidden)return;
+  b.textContent=(noAdsOn()?'Bonus gold: +':'▶ Watch a video: +')+adGoldNow()+' gold'+(left>1?` (${left} left${econServer()?' today':''})`:'');b.disabled=AD.busy;}
+$('adgoldbtn').onclick=async()=>{if(AD.busy||adVideosLeft()<=0)return;audio();AD.busy=true;renderAdGold();const g=adGoldNow();
+  const ok=noAdsOn()||await adReward();AD.busy=false;
+  if(ok){if(econServer()){AD.n++;econRequest({k:'adgold'});}else AD.waveVids++;addGold(g);chime(true);setTimeout(()=>chime(true),160);updHud();renderShop();showBanner('+'+g+' gold');}
+  renderAdGold();};
+function renderChest2(st){const b=$('chest2btn'),day=dayOf(serverNowMs()),sv=dailySave()||{},a=sv.ad&&sv.ad.d===day?sv.ad:{};
+  b.hidden=!(adsOn()&&econServer()&&!st.canChest&&!a.c&&AD.chest!==day);if(b.hidden)return;
+  const g=DAILY_CHEST[Math.min(st.streak,7)-1];b.textContent=(noAdsOn()?'Bonus: double today\'s chest, +':'▶ Watch a video to double it: +')+g+' gold';b.disabled=AD.busy;}
+$('chest2btn').onclick=async()=>{const st=dailyState(),day=st.day;if(AD.busy||st.canChest||AD.chest===day)return;audio();AD.busy=true;renderChest2(st);
+  const g=DAILY_CHEST[Math.min(st.streak,7)-1],ok=noAdsOn()||await adReward();AD.busy=false;
+  if(ok){AD.chest=day;addGold(g);econRequest({k:'chest2'});chime(true);setTimeout(()=>chime(true),160);updHud();showBanner('Chest doubled: +'+g+' gold');}
+  renderChest2(dailyState());};
+// a short ad between Wave battles: never in a captain's first battles, never mid-fight, at most every few minutes
+function battleEnded(){if(MODE!=='waves'||coop)return;AD.runs++;try{localStorage.setItem('bb-runs',AD.runs)}catch(e){}}
+function betweenBattles(go){if(!adsOn()||noAdsOn()||MODE!=='waves'||coop||AD.runs<=AD_FREE_RUNS||Date.now()-AD.last<AD_GAP){go();return;}
+  AD.last=Date.now();try{localStorage.setItem('bb-adlast',AD.last)}catch(e){}adInter().then(go,go);}
+function renderNoAds(){const on=adsOn(),txt=noAdsOn()?'No ads: on ✓':'Remove ads: '+noAdsPrice()+' a month';
+  $('noadsbtn').hidden=!on;$('noadsbtn').textContent=txt;$('startnoads').hidden=!on;$('startnoads').textContent=txt;}
+$('noadsbtn').onclick=()=>{audio();noAdsBuy(t=>{$('menunote').textContent=t;renderNoAds();});};
+$('startnoads').onclick=()=>{audio();noAdsBuy(t=>{const n=$('noadsnote');n.textContent=t;n.hidden=!t;renderNoAds();});};
+
 /* ---- daily chest and quests (online Open sea; the referee pays) ---- */
 function dailyOn(){return false;}          // the app: online Open sea with the referee
 function dailySave(){return null;}         // the app: the referee's copy of this captain's save
@@ -1730,6 +1774,7 @@ function renderDaily(){const st=dailyState();
     if(q.claimed){b.textContent='Claimed ✓';b.disabled=true;}else if(q.done){b.textContent='Claim';b.onclick=()=>claimQuest(q);}else{b.textContent='In progress';b.disabled=true;b.classList.add('ghost');}
     r.appendChild(b);const bar=document.createElement('div');bar.className='qbar';bar.innerHTML=`<i style="width:${Math.round(q.p/q.Q.n*100)}%"></i>`;r.appendChild(bar);ql.appendChild(r);}
   const left=86400000-(serverNowMs()%86400000),h=Math.floor(left/3600000),m=Math.floor(left%3600000/60000);
+  renderChest2(st);
   $('qreset').textContent=`New chest and quests in ${h} h ${m} min.`+(st.quests.some(q=>q.Q.ev==='captain')?' Captains sunk count only when the referee confirms them.':'');}
 function openDaily(from){if(!dailyOn())return;daily.from=from;audio();firing=false;joy=null;if(state==='play'&&!onlineAtSea())state='paused';
   ['menuov'].forEach(id=>$(id).hidden=true);renderDaily();$('dailyov').hidden=false;}
@@ -1958,7 +2003,7 @@ const TUT=[
   {t:'Buy an upgrade with your gold. Bigger sails make you faster.',el:'shop'},
 ];
 function tutDoneBefore(){try{return localStorage.getItem('bb-tut')==='1'}catch(e){return false}}
-function tutNote(){$('tutbox').hidden=tutDoneBefore();$('replayTut').hidden=!tutDoneBefore();}
+function tutNote(){$('tutbox').hidden=tutDoneBefore();$('replayTut').hidden=!tutDoneBefore();renderNoAds();}
 $('replayTut').onclick=()=>{audio();startTutorial();};
 $('skipTut').onclick=()=>{audio();try{localStorage.setItem('bb-tut','1')}catch(e){}tutNote();};
 $('goTut').onclick=()=>{audio();startTutorial();};
@@ -2187,7 +2232,7 @@ function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.cl
   menuPaused=!onlineAtSea();if(menuPaused)state='paused';
   $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
   $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
-  $('menureport').hidden=!onlineAtSea();$('menuerase').hidden=!eraseOn();eraseArm=false;$('menuerase').textContent='Delete my online data';$('menuerase').classList.remove('warn');$('menufriends').textContent=duelOn()?'Friends & duels':'Friends';$('menufriends').hidden=!friendsOn();$('menulog').hidden=!logOn();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
+  $('menureport').hidden=!onlineAtSea();renderNoAds();$('menuerase').hidden=!eraseOn();eraseArm=false;$('menuerase').textContent='Delete my online data';$('menuerase').classList.remove('warn');$('menufriends').textContent=duelOn()?'Friends & duels':'Friends';$('menufriends').hidden=!friendsOn();$('menulog').hidden=!logOn();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
   $('menuleave').textContent=MODE==='open'?'Main menu':'Leave battle';
   $('menuleavenote').textContent=MODE==='open'?'Your voyage is saved when you leave.':'';
   $('menuov').hidden=false;}
@@ -2237,7 +2282,7 @@ function toMenu(){if(coop)endCoop();$('objective').hidden=true;$('objective').cl
 $('goOpen').onclick=()=>{audio();const b=$('goOpen');if(b.disabled)return;b.disabled=true;b.textContent='Charting the sea…';
   setTimeout(()=>{startOpen(false);b.disabled=false;musPlay();$('start').hidden=true;$('hint').hidden=false;state='play';showBanner(PORTS[0].name);},40);};
 $('goWaves').onclick=()=>{audio();musPlay();$('start').hidden=true;$('hint').hidden=false;reset();state='play'};
-$('again').onclick=()=>{audio();$('over').hidden=true;if(coop){toMenu();return;}if(MODE==='open'&&duel){endDuel();return;}if(MODE==='open')respawn();else if(MODE==='story')startStory(story.i);else{musPlay();reset();state='play';}};
+$('again').onclick=()=>{audio();$('over').hidden=true;if(coop){toMenu();return;}if(MODE==='open'&&duel){endDuel();return;}if(MODE==='open')respawn();else if(MODE==='story')startStory(story.i);else betweenBattles(()=>{musPlay();reset();state='play';});};
 $('overmenu').onclick=()=>{audio();toMenu();};$('shopmenu').onclick=()=>{audio();toMenu();};
 refreshStart();
 const stick=document.createElement('div'),knob=document.createElement('div');
@@ -2270,7 +2315,7 @@ function gameOver(){
     setTimeout(()=>{if(state!=='over')return;$('overeyebrow').textContent='Lost at sea';$('overtxt').textContent=(killerName?`Sunk by ${killerName}. `:'')+(lost?`You lost ${lost} gold from your hold. Your upgrades are safe.`:'Your upgrades are safe.');
       $('overlbl').textContent='Ships sunk so far';$('os').textContent=sunk;$('ob').textContent='';$('again').textContent='Return to port';$('over').hidden=false},1400);return;}
   if(MODE==='story'){setTimeout(()=>{if(state!=='over')return;storyEnd(false,'Your ship went down.');},1400);return;}
-  saveWaves();
+  saveWaves();battleEnded();
   if(earned>best){best=earned;try{localStorage.setItem('bb-best',best)}catch(e){}}
   setTimeout(()=>{if(state!=='over')return;$('overtxt').textContent=`She went down on wave ${wave}.`;$('overlbl').textContent='Gold plundered';$('again').textContent='Sail again';
     $('os').textContent=earned;$('ob').textContent=earned>=best&&earned>0?'A new record.':'Best: '+best;$('over').hidden=false},1400);

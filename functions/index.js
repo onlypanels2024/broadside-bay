@@ -10,6 +10,43 @@ const admin = require('firebase-admin');
 const R = require('./referee');
 const E = require('./economy');
 const D = require('./drawcheck');
+const crypto = require('crypto');
+
+// ---- the No ads subscription: Google Play says whether it's paid, and until when ----
+const APP_ID = 'com.broadsidebay.game', NOADS_SKU = 'noads_monthly';
+let playAuth = null;
+async function playSubUntil(token) {
+  if (!playAuth) { const { GoogleAuth } = require('google-auth-library'); playAuth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/androidpublisher'] }); }
+  const client = await playAuth.getClient();
+  const r = await client.request({ url: `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${APP_ID}/purchases/subscriptionsv2/tokens/${encodeURIComponent(token)}` });
+  const sub = r.data || {};
+  const ok = ['SUBSCRIPTION_STATE_ACTIVE', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD', 'SUBSCRIPTION_STATE_CANCELED'].includes(sub.subscriptionState);
+  const exp = Math.max(0, ...(sub.lineItems || []).filter(l => l.productId === NOADS_SKU).map(l => Date.parse(l.expiryTime) || 0));
+  return { until: ok && exp > Date.now() ? exp : 0, state: sub.subscriptionState || '?' };
+}
+// a token from the phone (just bought) or the one kept from before (renewals); one subscription per Google account
+async function noAdsCheck(db, uid, tok) {
+  if (!(await isGoogle(uid))) return { pre: 'sign in with Google to use No ads' };
+  const mine = (await db.ref(`ref/subs/${uid}`).get()).val();
+  const token = typeof tok === 'string' && /^[A-Za-z0-9._-]{20,600}$/.test(tok) ? tok : mine && mine.tok;
+  if (!token) return { pre: 'no subscription found' };
+  const h = crypto.createHash('sha256').update(token).digest('hex').slice(0, 40);
+  const owner = (await db.ref(`ref/subtok/${h}`).get()).val();
+  if (owner && owner !== uid) return { pre: 'subscription belongs to another captain' };
+  try {
+    const v = await playSubUntil(token);
+    await db.ref(`ref/subtok/${h}`).set(uid);
+    await db.ref(`ref/subs/${uid}`).set({ tok: token, until: v.until, state: v.state, at: Date.now() });
+    await db.ref('status/billing').set({ ok: true, at: Date.now() });
+    return { opts: { noAdsUntil: v.until } };
+  } catch (e) {
+    const err = String(e && e.message || e).slice(0, 300);
+    logger.error('google play check failed', { uid, err });
+    let who = ''; try { who = (await (await fetch('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email', { headers: { 'Metadata-Flavor': 'Google' } })).text()); } catch (x) {}
+    await db.ref('status/billing').set({ ok: false, err, sa: who, at: Date.now() });
+    return { pre: 'could not reach Google Play' };
+  }
+}
 
 admin.initializeApp();
 setGlobalOptions({ region: 'europe-west1', maxInstances: 10, memory: '256MiB' });
@@ -206,6 +243,7 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
     try { const snap = await db.ref(`board/s${n}`).orderByChild('s').limitToLast(10).get(); snap.forEach(x => { top.push(x.key); }); } catch (e) {}
     if (Number.isInteger(n) && n < E.seasonAt(Date.now()).no && top.includes(uid)) opts = { ...(opts || {}), seasonTop: n };
   }
+  if (req.k === 'noads') { const c = await noAdsCheck(db, uid, req.tok); if (c.pre) pre = c.pre; else opts = { ...(opts || {}), ...c.opts }; }
   let verdict = null;
   const res = await db.ref(`saves/${uid}`).transaction(save => {
     verdict = pre ? { save: E.norm(save), ok: false, reason: pre } : E.processRequest(save, req, player, Date.now(), opts);
@@ -349,6 +387,9 @@ async function eraseCaptain(db, uid) {
     const wk = E.weekOf(Date.now()), sn = E.seasonAt(Date.now()).no;
     const paths = [`saves/${uid}`, `players/${uid}`, `online/${uid}`, `stats/${uid}`, `tokens/${uid}`, `friends/${uid}`, `friendreq/${uid}`, `duelreq/${uid}`, `coopreq/${uid}`,
       `rewards/${uid}`, `requests/${uid}`, `board/all/${uid}`, `board/w${wk}/${uid}`, `board/w${wk - 1}/${uid}`, `board/s${sn}/${uid}`, `board/s${sn - 1}/${uid}`, `ref/lives/${uid}`, `ref/strikes/${uid}`];
+    const sub = (await db.ref(`ref/subs/${uid}`).get()).val();
+    if (sub && sub.tok) paths.push(`ref/subtok/${crypto.createHash('sha256').update(sub.tok).digest('hex').slice(0, 40)}`);
+    paths.push(`ref/subs/${uid}`);
     await Promise.all(paths.map(p => db.ref(p).remove()));
     await admin.auth().deleteUser(uid).catch(() => {});
     logger.info('captain erased', { uid });

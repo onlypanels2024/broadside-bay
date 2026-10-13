@@ -322,3 +322,20 @@ test("the game's seasons are the referee's, word for word", () => {
   const grab = t => t.slice(t.indexOf('/*SEASONDEF*/'), t.indexOf('/*ENDSEASONDEF*/'));
   assert.ok(grab(eco).length > 500); assert.strictEqual(grab(src), grab(eco));
 });
+
+test('video rewards: gold a few times a day, chest doubled once after opening it, no ads only when Google Play confirms', () => {
+  const now = Date.UTC(2026, 9, 13, 12); let s = E.fresh();
+  assert.equal(E.processRequest(s, { k: 'chest2' }, null, now).ok, false);
+  s = E.processRequest(s, { k: 'daily' }, null, now).save;
+  let r = E.processRequest(s, { k: 'chest2' }, null, now); assert.ok(r.ok); s = r.save;
+  assert.equal(E.processRequest(s, { k: 'chest2' }, null, now).ok, false);
+  const g0 = s.gold;
+  for (let i = 0; i < E.ADS.perDay; i++) { r = E.processRequest(s, { k: 'adgold' }, null, now); assert.ok(r.ok); s = r.save; }
+  assert.equal(s.gold - g0, E.ADS.perDay * E.ADS.gold);
+  assert.equal(E.processRequest(s, { k: 'adgold' }, null, now).ok, false);
+  assert.ok(E.processRequest(s, { k: 'adgold' }, null, now + 86400000).ok);   // a new day
+  assert.equal(E.processRequest(s, { k: 'noads' }, null, now).ok, false);
+  r = E.processRequest(s, { k: 'noads' }, null, now, { noAdsUntil: now + 30 * 86400000 }); assert.ok(r.ok); assert.equal(E.norm(r.save).na, now + 30 * 86400000);
+  r = E.processRequest(r.save, { k: 'noads' }, null, now, { noAdsUntil: 0 }); assert.equal(E.norm(r.save).na, undefined);
+  assert.ok(E.processRequest(E.processRequest(s, { k: 'reset' }, null, now).save, { k: 'adgold' }, null, now).ok === false);   // a new voyage doesn't reset the daily limit
+});

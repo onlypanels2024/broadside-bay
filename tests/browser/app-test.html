@@ -247,6 +247,7 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .btn:disabled{opacity:.5;cursor:default;box-shadow:none;transform:none}
 .btn:focus-visible,.item:focus-visible{outline:2px solid var(--parch);outline-offset:3px}
 .sub{font-size:13px;color:var(--muted);margin-top:12px}
+.adbtn{margin:10px auto 0;display:block;width:auto;max-width:100%;font-size:13px;letter-spacing:.05em;padding:9px 16px;border-color:rgba(232,196,110,.55)}
 .purse{display:inline-flex;gap:8px;align-items:baseline;font-family:var(--display);font-weight:800;font-size:22px;color:var(--brass-hi);font-variant-numeric:tabular-nums}
 .shop{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;text-align:left}
 .item{min-width:0;display:flex;flex-direction:column;gap:3px;padding:10px;border-radius:8px;border:1px solid rgba(214,178,98,.35);background:rgba(255,255,255,.04);
@@ -352,6 +353,8 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
       <button class="btn ghost dressbtn" id="goDress">Ship &amp; colours</button>
       <button class="linkbtn" id="goBoard" hidden>Leaderboards</button>
       <button class="linkbtn" id="replayTut" hidden>Replay the first voyage</button>
+      <button class="linkbtn" id="startnoads" hidden>Remove ads</button>
+      <div class="savenote" id="noadsnote" hidden></div>
     </div>
     <div class="sub" style="font-size:11px;opacity:.7">Music instrument recordings: FluidR3 GM soundfont by Frank Wen, CC BY 3.0.</div>
   </div>
@@ -369,6 +372,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
       <button class="btn ghost" id="menufleet" hidden>Fleet</button>
       <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
       <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
+      <button class="btn ghost" id="noadsbtn" hidden>Remove ads</button>
       <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
       <button class="btn ghost" id="notiftog" hidden>Notifications: <span id="notifv">Off</span></button>
       <button class="btn ghost" id="seatog">Sea sounds: <span id="seav">On</span></button>
@@ -409,6 +413,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <h2 id="shoptitle">Wave cleared</h2>
     <p id="shopnote">Spend your gold before you sail again.</p>
     <div class="purse"><span class="lbl">Gold</span><span id="purse">0</span></div>
+    <button class="btn ghost adbtn" id="adgoldbtn" hidden></button>
     <div class="rankline"><b id="shoprank">Deckhand</b><div class="xpbar"><div id="shopxp"></div></div><span id="shopxptxt"></span></div>
     <div class="tabs" role="tablist"><button class="tab on" id="tabUp" role="tab">Upgrades</button><button class="tab" id="tabYard" role="tab">Shipyard</button><button class="tab" id="tabPaint" role="tab">Paint</button></div>
     <div class="shop" id="shop"></div>
@@ -531,6 +536,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <p class="menunote" id="chestnote">Come back every day for a bigger chest.</p>
     <div class="days" id="days"></div>
     <button class="btn" id="chestbtn">Open chest</button>
+    <button class="btn ghost adbtn" id="chest2btn" hidden></button>
     <div class="rule"></div>
     <h2 style="font-size:22px">Today's quests</h2>
     <div class="qlist" id="qlist"></div>
@@ -1467,7 +1473,7 @@ function openWorldTick(dt){
   saveT-=dt;if(saveT<=0){saveT=10;saveOpen();}
   seaEventsTick(dt);
 }
-function reset(){
+function reset(){AD.waveVids=0;
   MODE='waves';ARENA=60;
   clearWorld();$('wavelbl').textContent='Wave';$('boss').classList.remove('left');$('map').hidden=true;$('dock').hidden=true;
   up={hull:0,sails:0,reload:0,triple:0,broadside:0};pw={speed:0,rapid:0,side:0};
@@ -1550,7 +1556,7 @@ function renderYard(){
   }
 }
 function renderShop(){
-  $('purse').textContent=gold;
+  $('purse').textContent=gold;renderAdGold();
   {const r=rankOf(xp),cur=RANKS[r].xp,nxt=RANKS[r+1]?RANKS[r+1].xp:null;$('shoprank').textContent=RANKS[r].n;
    $('shopxp').style.width=(nxt?Math.round((xp-cur)/(nxt-cur)*100):100)+'%';$('shopxptxt').textContent=nxt?`${xp} / ${nxt} XP`:`${xp} XP · top rank`;}
   if(shopTab==='yard'){renderYard();return;}
@@ -1772,6 +1778,84 @@ const dayOf=now=>Math.floor(now/86400000);
 function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
   const pool=QUESTS.map((q,i)=>i),out=[];while(out.length<3){const k=Math.floor(rnd()*pool.length);out.push(pool.splice(k,1)[0]);}return out.sort((x,y)=>x-y);}
 /*ENDDAILYDEF*/
+/* ---- video rewards, between-battle ads and the No ads subscription ----
+   The app fills in adsOn/noAdsOn/adReward/adInter/noAdsBuy/noAdsPrice with Google AdMob and Google Play;
+   the web version shows no ads (window.__fakeAds stands in for them in tests). */
+const ADS_GOLD=100,ADS_PER_DAY=5,AD_WAVE_MAX=2,AD_GAP=240000,AD_FREE_RUNS=3;
+const AD={busy:false,waveVids:0,day:-1,n:0,chest:-1,runs:0,last:0};
+try{AD.runs=+localStorage.getItem('bb-runs')||0;AD.last=+localStorage.getItem('bb-adlast')||0;}catch(e){}
+// Google's test ads until the game goes public (tapping your own real ads breaks AdMob's rules). Set to false for the public release.
+const AD_TEST=true;
+const AD_IDS={reward:'ca-app-pub-7319579555027884/2523081279',inter:'ca-app-pub-7319579555027884/9177698541'};
+const NOADS={sku:'noads_monthly',plan:'monthly'};
+const ADST={on:false,rw:false,inr:false,na:0,price:'',synced:0};
+try{ADST.na=+localStorage.getItem('bb-noads')||0;}catch(e){}
+const capPlug=n=>{const c=window.Capacitor;return c&&c.isNativePlatform&&c.isNativePlatform()&&c.Plugins&&c.Plugins[n]||null;};
+function adsOn(){return !!window.__fakeAds||ADST.on;}
+function noAdsOn(){return window.__fakeAds?!!window.__fakeAds.noAds:ADST.na>Date.now();}
+function adPrep(kind){const A=capPlug('AdMob');if(!A)return;
+  const p=kind==='rw'?A.prepareRewardVideoAd({adId:AD_IDS.reward,isTesting:AD_TEST}):A.prepareInterstitial({adId:AD_IDS.inter,isTesting:AD_TEST});
+  p.then(()=>{ADST[kind]=true;},()=>{ADST[kind]=false;setTimeout(()=>adPrep(kind),90000);});}
+async function adsInit(){const A=capPlug('AdMob');if(!A)return;
+  try{await A.initialize({maxAdContentRating:'Teen',initializeForTesting:AD_TEST});}catch(e){return;}
+  try{const ci=await A.requestConsentInfo();if(ci&&ci.isConsentFormAvailable&&ci.status==='REQUIRED')await A.showConsentForm();}catch(e){}
+  ADST.on=true;adPrep('rw');adPrep('inr');renderNoAds();
+  const NP=capPlug('NativePurchases');if(NP)NP.getProduct({productIdentifier:NOADS.sku,productType:'subs'}).then(r=>{if(r&&r.product&&r.product.priceString){ADST.price=r.product.priceString;renderNoAds();}}).catch(()=>{});}
+// shows an ad and waits until it is closed; game sound pauses meanwhile
+function adShow(kind){const A=capPlug('AdMob');if(!A||!ADST[kind]){adPrep(kind);return Promise.resolve(false);}
+  ADST[kind]=false;try{if(ac)ac.suspend();}catch(e){}
+  return new Promise(res=>{let got=false,fin=false;const hs=[];
+    const done=()=>{if(fin)return;fin=true;hs.forEach(h=>Promise.resolve(h).then(x=>x&&x.remove()).catch(()=>{}));try{if(ac)ac.resume();}catch(e){}adPrep(kind);res(got);};
+    if(kind==='rw'){hs.push(A.addListener('onRewardedVideoAdReward',()=>{got=true;}));hs.push(A.addListener('onRewardedVideoAdDismissed',done));hs.push(A.addListener('onRewardedVideoAdFailedToShow',done));
+      A.showRewardVideoAd().then(r=>{if(r)got=true;}).catch(done);}
+    else{hs.push(A.addListener('interstitialAdDismissed',done));hs.push(A.addListener('interstitialAdFailedToShow',done));A.showInterstitial().catch(done);}
+    setTimeout(done,180000);});}
+function adReward(){if(window.__fakeAds){window.__fakeAds.rewarded=(window.__fakeAds.rewarded|0)+1;return Promise.resolve(true);}
+  if(!ADST.rw){adPrep('rw');showBanner('No video ready yet. Try again in a minute.');return Promise.resolve(false);}
+  return adShow('rw').then(ok=>{if(!ok)showBanner('Watch the video to the end for the reward.');return ok;});}
+function adInter(){if(window.__fakeAds){window.__fakeAds.inter=(window.__fakeAds.inter|0)+1;return Promise.resolve();}return adShow('inr').then(()=>{});}
+function noAdsPrice(){return ADST.price||'€5';}
+function noAdsSet(na){ADST.na=na|0;try{localStorage.setItem('bb-noads',ADST.na)}catch(e){}renderNoAds();}
+// the referee keeps the paid-until time in this captain's save; when it runs out it asks Google Play again (renewals)
+async function noAdsSync(){const u=FB&&FB.user();if(!u||!u.google)return;let sv=null;try{sv=await FB.loadSave();}catch(e){}
+  const na=sv&&+sv.na||0;noAdsSet(na);
+  if(sv&&sv.na&&na<Date.now()&&Date.now()-ADST.synced>6*3600000){ADST.synced=Date.now();FB.request({k:'noads'});setTimeout(async()=>{try{const s2=await FB.loadSave();noAdsSet(s2&&+s2.na||0);}catch(e){}},15000);}}
+async function noAdsBuy(say){if(noAdsOn()){say('No ads is on. Thank you for supporting Broadside Bay! You can cancel any time in Google Play → Payments & subscriptions.');return;}
+  const NP=capPlug('NativePurchases'),u=FB&&FB.user();
+  if(!NP){say('Remove ads is only in the Android app.');return;}
+  if(!u||!u.google){say('Sign in with Google first (Open sea), so No ads follows you to any phone.');return;}
+  say('Opening Google Play…');
+  try{const t=await NP.purchaseProduct({productIdentifier:NOADS.sku,planIdentifier:NOADS.plan,productType:'subs'});
+    const tok=t&&t.transactionId;if(!tok){say('');return;}
+    FB.request({k:'noads',tok});noAdsSet(Date.now()+3600000);say('Thank you! Ads are off. Google Play confirms it in a moment.');
+    setTimeout(async()=>{try{const sv=await FB.loadSave();if(sv&&+sv.na)noAdsSet(+sv.na);}catch(e){}},15000);
+  }catch(e){const m=String(e&&e.message||e);say(/cancel/i.test(m)?'':'Google Play said: '+m.slice(0,120));}}
+function adVideosLeft(){const day=dayOf(serverNowMs());if(AD.day!==day){AD.day=day;AD.n=0;}
+  if(econServer()){const sv=dailySave()||{},a=sv.ad&&sv.ad.d===day?sv.ad:{n:0};return ADS_PER_DAY-Math.max(a.n|0,AD.n);}
+  return MODE==='waves'&&!coop?AD_WAVE_MAX-AD.waveVids:0;}
+const adGoldNow=()=>econServer()?ADS_GOLD:Math.min(300,50+25*wave);
+function renderAdGold(){const b=$('adgoldbtn'),left=adsOn()&&state==='shop'?adVideosLeft():0;b.hidden=left<=0;if(b.hidden)return;
+  b.textContent=(noAdsOn()?'Bonus gold: +':'▶ Watch a video: +')+adGoldNow()+' gold'+(left>1?` (${left} left${econServer()?' today':''})`:'');b.disabled=AD.busy;}
+$('adgoldbtn').onclick=async()=>{if(AD.busy||adVideosLeft()<=0)return;audio();AD.busy=true;renderAdGold();const g=adGoldNow();
+  const ok=noAdsOn()||await adReward();AD.busy=false;
+  if(ok){if(econServer()){AD.n++;econRequest({k:'adgold'});}else AD.waveVids++;addGold(g);chime(true);setTimeout(()=>chime(true),160);updHud();renderShop();showBanner('+'+g+' gold');}
+  renderAdGold();};
+function renderChest2(st){const b=$('chest2btn'),day=dayOf(serverNowMs()),sv=dailySave()||{},a=sv.ad&&sv.ad.d===day?sv.ad:{};
+  b.hidden=!(adsOn()&&econServer()&&!st.canChest&&!a.c&&AD.chest!==day);if(b.hidden)return;
+  const g=DAILY_CHEST[Math.min(st.streak,7)-1];b.textContent=(noAdsOn()?'Bonus: double today\'s chest, +':'▶ Watch a video to double it: +')+g+' gold';b.disabled=AD.busy;}
+$('chest2btn').onclick=async()=>{const st=dailyState(),day=st.day;if(AD.busy||st.canChest||AD.chest===day)return;audio();AD.busy=true;renderChest2(st);
+  const g=DAILY_CHEST[Math.min(st.streak,7)-1],ok=noAdsOn()||await adReward();AD.busy=false;
+  if(ok){AD.chest=day;addGold(g);econRequest({k:'chest2'});chime(true);setTimeout(()=>chime(true),160);updHud();showBanner('Chest doubled: +'+g+' gold');}
+  renderChest2(dailyState());};
+// a short ad between Wave battles: never in a captain's first battles, never mid-fight, at most every few minutes
+function battleEnded(){if(MODE!=='waves'||coop)return;AD.runs++;try{localStorage.setItem('bb-runs',AD.runs)}catch(e){}}
+function betweenBattles(go){if(!adsOn()||noAdsOn()||MODE!=='waves'||coop||AD.runs<=AD_FREE_RUNS||Date.now()-AD.last<AD_GAP){go();return;}
+  AD.last=Date.now();try{localStorage.setItem('bb-adlast',AD.last)}catch(e){}adInter().then(go,go);}
+function renderNoAds(){const on=adsOn(),txt=noAdsOn()?'No ads: on ✓':'Remove ads: '+noAdsPrice()+' a month';
+  $('noadsbtn').hidden=!on;$('noadsbtn').textContent=txt;$('startnoads').hidden=!on;$('startnoads').textContent=txt;}
+$('noadsbtn').onclick=()=>{audio();noAdsBuy(t=>{$('menunote').textContent=t;renderNoAds();});};
+$('startnoads').onclick=()=>{audio();noAdsBuy(t=>{const n=$('noadsnote');n.textContent=t;n.hidden=!t;renderNoAds();});};
+
 /* ---- daily chest and quests (online Open sea; the referee pays) ---- */
 function dailyOn(){return econServer()&&!!NET.srv;}          // the app: online Open sea with the referee
 function dailySave(){return NET.srv;}         // the app: the referee's copy of this captain's save
@@ -1810,6 +1894,7 @@ function renderDaily(){const st=dailyState();
     if(q.claimed){b.textContent='Claimed ✓';b.disabled=true;}else if(q.done){b.textContent='Claim';b.onclick=()=>claimQuest(q);}else{b.textContent='In progress';b.disabled=true;b.classList.add('ghost');}
     r.appendChild(b);const bar=document.createElement('div');bar.className='qbar';bar.innerHTML=`<i style="width:${Math.round(q.p/q.Q.n*100)}%"></i>`;r.appendChild(bar);ql.appendChild(r);}
   const left=86400000-(serverNowMs()%86400000),h=Math.floor(left/3600000),m=Math.floor(left%3600000/60000);
+  renderChest2(st);
   $('qreset').textContent=`New chest and quests in ${h} h ${m} min.`+(st.quests.some(q=>q.Q.ev==='captain')?' Captains sunk count only when the referee confirms them.':'');}
 function openDaily(from){if(!dailyOn())return;daily.from=from;audio();firing=false;joy=null;if(state==='play'&&!onlineAtSea())state='paused';
   ['menuov'].forEach(id=>$(id).hidden=true);renderDaily();$('dailyov').hidden=false;}
@@ -2041,7 +2126,7 @@ const TUT=[
   {t:'Buy an upgrade with your gold. Bigger sails make you faster.',el:'shop'},
 ];
 function tutDoneBefore(){try{return localStorage.getItem('bb-tut')==='1'}catch(e){return false}}
-function tutNote(){$('tutbox').hidden=tutDoneBefore();$('replayTut').hidden=!tutDoneBefore();}
+function tutNote(){$('tutbox').hidden=tutDoneBefore();$('replayTut').hidden=!tutDoneBefore();renderNoAds();}
 $('replayTut').onclick=()=>{audio();startTutorial();};
 $('skipTut').onclick=()=>{audio();try{localStorage.setItem('bb-tut','1')}catch(e){}tutNote();};
 $('goTut').onclick=()=>{audio();startTutorial();};
@@ -2276,7 +2361,7 @@ function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.cl
   menuPaused=!onlineAtSea();if(menuPaused)state='paused';
   $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
   $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
-  $('menureport').hidden=!onlineAtSea();$('menuerase').hidden=!eraseOn();eraseArm=false;$('menuerase').textContent='Delete my online data';$('menuerase').classList.remove('warn');$('menufriends').textContent=duelOn()?'Friends & duels':'Friends';$('menufriends').hidden=!friendsOn();$('menulog').hidden=!logOn();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
+  $('menureport').hidden=!onlineAtSea();renderNoAds();$('menuerase').hidden=!eraseOn();eraseArm=false;$('menuerase').textContent='Delete my online data';$('menuerase').classList.remove('warn');$('menufriends').textContent=duelOn()?'Friends & duels':'Friends';$('menufriends').hidden=!friendsOn();$('menulog').hidden=!logOn();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
   $('menuleave').textContent=MODE==='open'?'Main menu':'Leave battle';
   $('menuleavenote').textContent=MODE==='open'?'Your voyage is saved when you leave.':'';
   $('menuov').hidden=false;}
@@ -2357,7 +2442,7 @@ $('joinguest').onclick=async()=>{audio();const n=FB.cleanName($('guestname').val
   b.disabled=false;b.textContent='Sail as guest';};
 $('joinout').onclick=async()=>{closeOnline();await FB.signOut();refreshStart();showJoin();};
 $('goWaves').onclick=()=>{audio();musPlay();$('start').hidden=true;$('hint').hidden=false;reset();state='play'};
-$('again').onclick=()=>{audio();$('over').hidden=true;if(coop){toMenu();return;}if(MODE==='open'&&duel){endDuel();return;}if(MODE==='open')respawn();else if(MODE==='story')startStory(story.i);else{musPlay();reset();state='play';}};
+$('again').onclick=()=>{audio();$('over').hidden=true;if(coop){toMenu();return;}if(MODE==='open'&&duel){endDuel();return;}if(MODE==='open')respawn();else if(MODE==='story')startStory(story.i);else betweenBattles(()=>{musPlay();reset();state='play';});};
 $('overmenu').onclick=()=>{audio();toMenu();};$('shopmenu').onclick=()=>{audio();toMenu();};
 const stick=document.createElement('div'),knob=document.createElement('div');
 stick.style.cssText='position:fixed;width:116px;height:116px;margin:-58px 0 0 -58px;border-radius:50%;border:1px solid rgba(214,178,98,.6);background:rgba(6,22,32,.25);pointer-events:none;z-index:2';
@@ -2389,7 +2474,7 @@ function gameOver(){
     setTimeout(()=>{if(state!=='over')return;$('overeyebrow').textContent='Lost at sea';$('overtxt').textContent=(killerName?`Sunk by ${killerName}. `:'')+(lost?`You lost ${lost} gold from your hold. Your upgrades are safe.`:'Your upgrades are safe.');
       $('overlbl').textContent='Ships sunk so far';$('os').textContent=sunk;$('ob').textContent='';$('again').textContent='Return to port';$('over').hidden=false},1400);return;}
   if(MODE==='story'){setTimeout(()=>{if(state!=='over')return;storyEnd(false,'Your ship went down.');},1400);return;}
-  saveWaves();
+  saveWaves();battleEnded();
   if(earned>best){best=earned;try{localStorage.setItem('bb-best',best)}catch(e){}}
   setTimeout(()=>{if(state!=='over')return;$('overtxt').textContent=`She went down on wave ${wave}.`;$('overlbl').textContent='Gold plundered';$('again').textContent='Sail again';
     $('os').textContent=earned;$('ob').textContent=earned>=best&&earned>0?'A new record.':'Best: '+best;$('over').hidden=false},1400);
@@ -2412,7 +2497,7 @@ function goOnline(){if(!FB||NET.room||NET.banned)return;const u=FB.user();if(!u)
   const R=FB.openRoom();NET.room=R;NET.ok=true;NET.myId=R.uid;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;
   R.onConnection(c=>{NET.ok=c;netUiKey='';});
   R.onReward(r=>{NET.kills++;showBanner(r.d?'Duel won: +100 gold':'You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
-  NET.pending=new Map();NET.srv=null;if(notifOn&&NET.pushToken)FB.saveToken(NET.pushToken);NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();fleetChanged();achNotice();});
+  NET.pending=new Map();NET.srv=null;if(notifOn&&NET.pushToken)FB.saveToken(NET.pushToken);NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();fleetChanged();achNotice();if(sv&&(+sv.na||0)!==ADST.na&&!(ADST.na>Date.now()&&!sv.na&&ADST.na-Date.now()<3600000))noAdsSet(+sv.na||0);});
   NET.unworld=FB.watchWorld(w=>{NET.world=w;setWorldTier(worldTierWanted());});
   NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});setTimeout(loadPorts,1500);
   NET.unduel=FB.duelWatch(duelInbox);NET.uncoop=FB.coopInboxWatch(coopInbox);
@@ -2425,6 +2510,8 @@ function fleetChanged(){const f=fleetsAll()[myFleetId()],k=f?f.tag+f.col+f.em:''
   NET.last=null;renderFleet();}
 function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.unfleets){NET.unfleets();NET.unfleets=null;}if(NET.unworld){NET.unworld();NET.unworld=null;}if(NET.unfriends){NET.unfriends();NET.unfriends=null;}if(NET.unduel){NET.unduel();NET.unduel=null;}if(NET.uncoop){NET.uncoop();NET.uncoop=null;}NET.friends=null;NET.fleets={};fleetKey='';if(!NET.room)return;const R=NET.room;NET.room=null;NET.ok=false;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;netUiKey='';if(R.close)R.close();}
 refreshStart();
+adsInit();
+if(FB)FB.ready.then(()=>noAdsSync());
 if(FB)FB.ready.then(()=>{const u=FB.user();if(u&&!u.google){FB.signOut();}else if(u)goOnline();refreshStart();});
 function netShot(x,z,vx,vz){if(!NET.room)return;const st=NET.room.serverNow?NET.room.serverNow():Date.now();NET.shots.push({d:[++NET.shotSeq,+x.toFixed(1),+z.toFixed(1),+vx.toFixed(1),+vz.toFixed(1),st],t:clock});if(NET.shots.length>30)NET.shots.shift();}
 function netSend(){

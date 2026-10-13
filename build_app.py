@@ -309,6 +309,60 @@ rep("NET.unwatch=FB.watchSave(sv=>{","if(notifOn&&NET.pushToken)FB.saveToken(NET
 # ---- delete my online data (Google Play requires a way to do this inside the app)
 rep("function eraseOn(){return false;}","function eraseOn(){const u=FB&&FB.user();return !!(u&&u.google&&NET.room);}")
 rep("function eraseNow(){}","function eraseNow(){FB.request({k:'erase'});try{['bb-srv-cache','bb-open-wish'].forEach(k=>localStorage.removeItem(k));}catch(e){}setTimeout(async()=>{closeMenu();toMenu();closeOnline();await FB.signOut();refreshStart();showBanner('Your online captain has been deleted');},2500);}")
+# ---- ads (Google AdMob) and the No ads subscription (Google Play, checked by the referee)
+rep("""function adsOn(){return !!window.__fakeAds;}
+function noAdsOn(){return !!(window.__fakeAds&&window.__fakeAds.noAds);}
+function adReward(){const f=window.__fakeAds;if(f)f.rewarded=(f.rewarded|0)+1;return Promise.resolve(!!f);}
+function adInter(){const f=window.__fakeAds;if(f)f.inter=(f.inter|0)+1;return Promise.resolve();}
+function noAdsBuy(say){say('Remove ads is only in the Android app.');}
+function noAdsPrice(){return '€5';}""","""// Google's test ads until the game goes public (tapping your own real ads breaks AdMob's rules). Set to false for the public release.
+const AD_TEST=true;
+const AD_IDS={reward:'ca-app-pub-7319579555027884/2523081279',inter:'ca-app-pub-7319579555027884/9177698541'};
+const NOADS={sku:'noads_monthly',plan:'monthly'};
+const ADST={on:false,rw:false,inr:false,na:0,price:'',synced:0};
+try{ADST.na=+localStorage.getItem('bb-noads')||0;}catch(e){}
+const capPlug=n=>{const c=window.Capacitor;return c&&c.isNativePlatform&&c.isNativePlatform()&&c.Plugins&&c.Plugins[n]||null;};
+function adsOn(){return !!window.__fakeAds||ADST.on;}
+function noAdsOn(){return window.__fakeAds?!!window.__fakeAds.noAds:ADST.na>Date.now();}
+function adPrep(kind){const A=capPlug('AdMob');if(!A)return;
+  const p=kind==='rw'?A.prepareRewardVideoAd({adId:AD_IDS.reward,isTesting:AD_TEST}):A.prepareInterstitial({adId:AD_IDS.inter,isTesting:AD_TEST});
+  p.then(()=>{ADST[kind]=true;},()=>{ADST[kind]=false;setTimeout(()=>adPrep(kind),90000);});}
+async function adsInit(){const A=capPlug('AdMob');if(!A)return;
+  try{await A.initialize({maxAdContentRating:'Teen',initializeForTesting:AD_TEST});}catch(e){return;}
+  try{const ci=await A.requestConsentInfo();if(ci&&ci.isConsentFormAvailable&&ci.status==='REQUIRED')await A.showConsentForm();}catch(e){}
+  ADST.on=true;adPrep('rw');adPrep('inr');renderNoAds();
+  const NP=capPlug('NativePurchases');if(NP)NP.getProduct({productIdentifier:NOADS.sku,productType:'subs'}).then(r=>{if(r&&r.product&&r.product.priceString){ADST.price=r.product.priceString;renderNoAds();}}).catch(()=>{});}
+// shows an ad and waits until it is closed; game sound pauses meanwhile
+function adShow(kind){const A=capPlug('AdMob');if(!A||!ADST[kind]){adPrep(kind);return Promise.resolve(false);}
+  ADST[kind]=false;try{if(ac)ac.suspend();}catch(e){}
+  return new Promise(res=>{let got=false,fin=false;const hs=[];
+    const done=()=>{if(fin)return;fin=true;hs.forEach(h=>Promise.resolve(h).then(x=>x&&x.remove()).catch(()=>{}));try{if(ac)ac.resume();}catch(e){}adPrep(kind);res(got);};
+    if(kind==='rw'){hs.push(A.addListener('onRewardedVideoAdReward',()=>{got=true;}));hs.push(A.addListener('onRewardedVideoAdDismissed',done));hs.push(A.addListener('onRewardedVideoAdFailedToShow',done));
+      A.showRewardVideoAd().then(r=>{if(r)got=true;}).catch(done);}
+    else{hs.push(A.addListener('interstitialAdDismissed',done));hs.push(A.addListener('interstitialAdFailedToShow',done));A.showInterstitial().catch(done);}
+    setTimeout(done,180000);});}
+function adReward(){if(window.__fakeAds){window.__fakeAds.rewarded=(window.__fakeAds.rewarded|0)+1;return Promise.resolve(true);}
+  if(!ADST.rw){adPrep('rw');showBanner('No video ready yet. Try again in a minute.');return Promise.resolve(false);}
+  return adShow('rw').then(ok=>{if(!ok)showBanner('Watch the video to the end for the reward.');return ok;});}
+function adInter(){if(window.__fakeAds){window.__fakeAds.inter=(window.__fakeAds.inter|0)+1;return Promise.resolve();}return adShow('inr').then(()=>{});}
+function noAdsPrice(){return ADST.price||'€5';}
+function noAdsSet(na){ADST.na=na|0;try{localStorage.setItem('bb-noads',ADST.na)}catch(e){}renderNoAds();}
+// the referee keeps the paid-until time in this captain's save; when it runs out it asks Google Play again (renewals)
+async function noAdsSync(){const u=FB&&FB.user();if(!u||!u.google)return;let sv=null;try{sv=await FB.loadSave();}catch(e){}
+  const na=sv&&+sv.na||0;noAdsSet(na);
+  if(sv&&sv.na&&na<Date.now()&&Date.now()-ADST.synced>6*3600000){ADST.synced=Date.now();FB.request({k:'noads'});setTimeout(async()=>{try{const s2=await FB.loadSave();noAdsSet(s2&&+s2.na||0);}catch(e){}},15000);}}
+async function noAdsBuy(say){if(noAdsOn()){say('No ads is on. Thank you for supporting Broadside Bay! You can cancel any time in Google Play → Payments & subscriptions.');return;}
+  const NP=capPlug('NativePurchases'),u=FB&&FB.user();
+  if(!NP){say('Remove ads is only in the Android app.');return;}
+  if(!u||!u.google){say('Sign in with Google first (Open sea), so No ads follows you to any phone.');return;}
+  say('Opening Google Play…');
+  try{const t=await NP.purchaseProduct({productIdentifier:NOADS.sku,planIdentifier:NOADS.plan,productType:'subs'});
+    const tok=t&&t.transactionId;if(!tok){say('');return;}
+    FB.request({k:'noads',tok});noAdsSet(Date.now()+3600000);say('Thank you! Ads are off. Google Play confirms it in a moment.');
+    setTimeout(async()=>{try{const sv=await FB.loadSave();if(sv&&+sv.na)noAdsSet(+sv.na);}catch(e){}},15000);
+  }catch(e){const m=String(e&&e.message||e);say(/cancel/i.test(m)?'':'Google Play said: '+m.slice(0,120));}}""")
+rep("econSync();dailyNotice();fleetChanged();achNotice();});","econSync();dailyNotice();fleetChanged();achNotice();if(sv&&(+sv.na||0)!==ADST.na&&!(ADST.na>Date.now()&&!sv.na&&ADST.na-Date.now()<3600000))noAdsSet(+sv.na||0);});")
+rep("if(FB)FB.ready.then(","adsInit();\nif(FB)FB.ready.then(()=>noAdsSync());\nif(FB)FB.ready.then(")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

@@ -174,7 +174,7 @@
           ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && !root.child('banned').child($uid).exists()",
           ".validate": "newData.hasChildren(['k','t']) && newData.child('t').val() === now",
           "k": {
-            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|check|daily|quest|fleet|title|cos|starter|season|erase|reset)$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|check|daily|quest|fleet|title|cos|starter|season|erase|reset|adgold|chest2|noads)$/)"
           },
           "e": {
             ".validate": "newData.isString() && newData.val().matches(/^(sloop|galleon|boss|fireship|treasure|merchant|escort|kraken)$/)"
@@ -190,6 +190,9 @@
           },
           "lk": {
             ".validate": "newData.isString() && newData.val().matches(/^[0-9a-z]{7}$/)"
+          },
+          "tok": {
+            ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9._-]{20,600}$/)"
           },
           "dw": {
             ".validate": "newData.isString() && newData.val().matches(/^([0-9a-f]{64})?$/)"

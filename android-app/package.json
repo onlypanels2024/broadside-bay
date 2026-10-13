@@ -10,7 +10,9 @@
     "@capacitor/app": "^6.0.2",
     "@capacitor/haptics": "^6.0.2",
     "@capacitor/push-notifications": "^6.0.4",
-    "@capacitor/local-notifications": "^6.1.2"
+    "@capacitor/local-notifications": "^6.1.2",
+    "@capacitor-community/admob": "6.2.0",
+    "@capgo/native-purchases": "6.0.42"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
