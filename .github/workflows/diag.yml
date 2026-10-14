@@ -1,7 +1,7 @@
 # Read-only diagnostics: shows the referee's status flags and its recent error logs (never prints the key).
 name: Referee diagnostics
 permissions:
-  contents: read
+  contents: write
 on:
   workflow_dispatch:
 jobs:
@@ -28,9 +28,16 @@ jobs:
           json.dump(d,open(sys.argv[2],'w'))
           PY
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          exec > "$RUNNER_TEMP/out.txt" 2>&1
           cd functions && node -e "
           const admin=require('firebase-admin');admin.initializeApp({databaseURL:'https://overboard-2104-default-rtdb.europe-west1.firebasedatabase.app'});
           (async()=>{const s=(await admin.database().ref('status').get()).val();console.log('STATUS',JSON.stringify(s,null,1));
           const r=(await admin.database().ref('requests').limitToLast(5).get()).val();console.log('PENDING REQUESTS',JSON.stringify(r));process.exit(0)})().catch(e=>{console.log('ERR',e.message);process.exit(0)})"
           gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS" --quiet >/dev/null 2>&1 || true
           gcloud logging read 'resource.type="cloud_run_revision" AND (severity>=WARNING OR textPayload:"drawing")' --project overboard-2104 --freshness=12h --limit 25 --format='value(timestamp,severity,textPayload,jsonPayload.message,jsonPayload.err)' 2>&1 | cut -c1-400 || true
+      - name: Save the report to the diag-out branch
+        if: always()
+        run: |
+          cp "$RUNNER_TEMP/out.txt" /tmp/out.txt || echo none > /tmp/out.txt
+          git config user.name diag && git config user.email diag@users.noreply.github.com
+          git checkout --orphan diag-out && git rm -rqf . && cp /tmp/out.txt report.txt && git add report.txt && git commit -qm report && git push -f origin diag-out
