@@ -1,5 +1,9 @@
 {
   "database": { "rules": "database.rules.json" },
   "functions": [{ "source": "functions", "codebase": "referee", "runtime": "nodejs22" }],
-  "hosting": { "public": "docs", "cleanUrls": false }
+  "hosting": [
+    { "site": "broadsidebay", "public": "docs", "cleanUrls": false },
+    { "site": "overboard-2104", "public": "docs", "cleanUrls": false,
+      "redirects": [{ "source": "/:path*", "destination": "https://broadsidebay.web.app/:path", "type": 301 }] }
+  ]
 }
