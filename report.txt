@@ -1,0 +1,24 @@
+STATUS {
+ "checker": {
+  "at": 1791997647854,
+  "model": "gemini-3.1-flash-lite",
+  "ok": true
+ }
+}
+PENDING REQUESTS null
+RECENT CHECK 1MMTfKgKjt {"dchk":{"dw":"000000000000000001f00f881e0c1414300424042004200c21883010182007c0","ok":false,"t":1791997647863,"why":"a pixel art depiction of Adolf Hitler"},"last":"-P3vNWObrAJg3gaCuEaB","paint":{"lk":"3200302"}}
+AI TEST gary smiley {"rude":false,"what":"a simple pixel art face","model":"gemini-3.1-flash-lite"}
+AI TEST test smiley {"rude":false,"what":"a simple pixelated smiley face","model":"gemini-3.1-flash-lite"}
+SITE TRY broadsidebay
+[32m[1m✔  hosting:sites:[22m[39m Site [1mbroadsidebay[22m has been created in project [1moverboard-2104[22m.
+[32m[1m✔  hosting:sites:[22m[39m Site URL: https://broadsidebay.web.app
+To deploy to this site, follow the guide at https://firebase.google.com/docs/hosting/multisites.
+SITE OK broadsidebay
+
+┌────────────────┬────────────────────────────────┬─────────────────┐
+│ Site ID        │ Default URL                    │ App ID (if set) │
+├────────────────┼────────────────────────────────┼─────────────────┤
+│ broadsidebay   │ https://broadsidebay.web.app   │ --              │
+├────────────────┼────────────────────────────────┼─────────────────┤
+│ overboard-2104 │ https://overboard-2104.web.app │ --              │
+└────────────────┴────────────────────────────────┴─────────────────┘
