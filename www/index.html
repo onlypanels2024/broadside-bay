@@ -252,6 +252,7 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .adbtn{margin:10px auto 0;display:block;width:auto;max-width:100%;font-size:13px;letter-spacing:.05em;padding:9px 16px;border-color:rgba(232,196,110,.55)}
 .purse{display:inline-flex;gap:8px;align-items:baseline;font-family:var(--display);font-weight:800;font-size:22px;color:var(--brass-hi);font-variant-numeric:tabular-nums}
 .shop{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;text-align:left}
+.shopnote{grid-column:1/-1;margin:0 0 2px;font-size:13.5px;color:#cfe0e8;opacity:.85;text-align:center}
 .item{min-width:0;display:flex;flex-direction:column;gap:3px;padding:10px;border-radius:8px;border:1px solid rgba(214,178,98,.35);background:rgba(255,255,255,.04);
   color:var(--text);font-family:var(--body);cursor:pointer;text-align:left}
 .item:active{background:rgba(214,178,98,.12)}
@@ -1306,6 +1307,10 @@ const SHIP=()=>shipById(shipId);
 let sunk=0,popT=0,bossT=150,bossCount=0,edgeT=0,uniT=0,saveT=0,lastPortName='',openBuilt=false;
 let state='title',P,pship,enemies=[],sinking=[],balls=[],pickups=[],gold=0,earned=0,wave=0,waveTimer=0,shake=0,clock=0,bannerT=0,puTimer=18,turnHeel=0;
 let up={hull:0,sails:0,reload:0,triple:0,broadside:0},pw={speed:0,rapid:0,side:0};
+// each ship keeps its own upgrades: 'up' is the ship being sailed, shipUps holds the other ships' (a new ship has none)
+let shipUps={};
+const UP0=()=>({hull:0,sails:0,reload:0,triple:0,broadside:0});
+function cleanUps(o){const r={};if(o&&typeof o==='object')for(const id in o)if(owned[id]&&o[id]&&typeof o[id]==='object')r[id]=Object.assign(UP0(),o[id]);return r;}
 P={x:0,z:0,a:-Math.PI/2,v:0,hp:5,cool:0,side:0,inv:0,r:1.7};
 pship=makeShip(lookFor('brig',paintLook(paint)));
 const maxHp=()=>SHIP().hull+up.hull;
@@ -1316,11 +1321,13 @@ function setShip(id){
   pship=makeShip(lookFor(shipId,Object.assign(paintLook(paint),fleetFlag(myFleetTag()),cosShip(myCos()))));P.r=1.7*SHIP().scale;
   P.hp=Math.max(1,Math.round(maxHp()*frac));if(typeof updAim==='function')updAim();
 }
+function switchShip(id){if(id===shipId)return;if(Object.values(up).some(v=>v>0))shipUps[shipId]={...up};else delete shipUps[shipId];
+  up=Object.assign(UP0(),shipUps[id]||{});delete shipUps[id];setShip(id);}
 function careerFrom(sv){xp=sv?(sv.xp|0):0;owned=Object.assign({brig:true},(sv&&sv.ships&&typeof sv.ships==='object')?sv.ships:{});
   for(const k in owned)if(!SHIPS.some(x=>x.id===k))delete owned[k];
   paint=cleanPaint(sv&&sv.paint,xp);
   setShip(sv&&owned[sv.ship]?sv.ship:'brig');}
-const careerData=()=>({gold:gold|0,earned:earned|0,sunk:sunk|0,up:{...up},xp:xp|0,ships:{...owned},ship:shipId,paint:{...paint}});
+const careerData=()=>({gold:gold|0,earned:earned|0,sunk:sunk|0,up:{...up},ups:JSON.parse(JSON.stringify(shipUps)),xp:xp|0,ships:{...owned},ship:shipId,paint:{...paint}});
 const WAVE_KEY='bb-waves-v1';
 function saveWaves(){if(MODE!=='waves')return;try{localStorage.setItem(WAVE_KEY,JSON.stringify({gold:gold|0,xp:xp|0,ships:{...owned},ship:shipId,paint:{...paint}}))}catch(e){}}
 function loadWaves(){try{const v=JSON.parse(localStorage.getItem(WAVE_KEY)||'null');return v&&typeof v==='object'?v:null}catch(e){return null}}
@@ -1375,7 +1382,7 @@ function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typ
   for(const [k,t] of NET.pending)if(k<=last||Date.now()-t>20000)NET.pending.delete(k);
   if(NET.pending.size)return;
   gold=sv.gold|0;earned=sv.earned|0;sunk=sv.sunk|0;up=Object.assign({hull:0,sails:0,reload:0,triple:0,broadside:0},sv.up||{});
-  xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';
+  xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';shipUps=cleanUps(sv.ups);delete shipUps[want];
   const np=cleanPaint(sv.paint,xp),pc=!showcase&&(np.lk!==paint.lk||np.dw!==paint.dw);
   if(pc&&paint.dw&&!np.dw&&!(sv.dok&&sv.dok[paint.dw])){okDrawings=okDrawings.filter(d=>d!==paint.dw);try{localStorage.setItem('bb-dok',JSON.stringify(okDrawings))}catch(e){}showBanner('Your drawing was removed after a report');}
   if(pc)paint=np;if(want!==shipId||pc)setShip(want);
@@ -1445,7 +1452,7 @@ function startOpen(fresh,sv){
   MODE='open';
   if(sv===undefined)sv=fresh?null:loadOpen();NET.rs=0;
   up=Object.assign({hull:0,sails:0,reload:0,triple:0,broadside:0},(sv&&sv.up)||{});
-  gold=sv?(sv.gold|0):0;earned=sv?(sv.earned|0):0;sunk=sv?(sv.sunk|0):0;careerFrom(sv);
+  gold=sv?(sv.gold|0):0;earned=sv?(sv.earned|0):0;sunk=sv?(sv.sunk|0):0;careerFrom(sv);shipUps=cleanUps(sv&&sv.ups);delete shipUps[shipId];
   pw={speed:0,rapid:0,side:0};wave=0;bossT=150;popT=0;saveT=0;lastPortName='';shake=0;puTimer=rnd(10,16);
   placeAtPort(PORTS[0]);setAim('front');
   $('wavelbl').textContent='Sunk';$('boss').hidden=true;$('boss').classList.add('left');$('map').hidden=false;
@@ -1480,7 +1487,7 @@ function openWorldTick(dt){
 function reset(){AD.waveVids=0;
   MODE='waves';ARENA=60;
   clearWorld();$('wavelbl').textContent='Wave';$('boss').classList.remove('left');$('map').hidden=true;$('dock').hidden=true;
-  up={hull:0,sails:0,reload:0,triple:0,broadside:0};pw={speed:0,rapid:0,side:0};
+  up={hull:0,sails:0,reload:0,triple:0,broadside:0};pw={speed:0,rapid:0,side:0};shipUps={};
   const sv=loadWaves();careerFrom(sv);gold=sv?(sv.gold|0):0;setAim('front',true);
   Object.assign(P,{x:0,z:0,a:-Math.PI/2,v:0,hp:maxHp(),cool:0,side:0,inv:0});
   pship.visible=true;pship.userData.ground.forEach(m=>m.visible=true);
@@ -1548,9 +1555,9 @@ function renderYard(){
     const nm=document.createElement('div');nm.className='nm';nm.textContent=S.name;row.appendChild(nm);
     const btn=document.createElement('button');btn.className='shipbtn';btn.id='ship-'+S.id;
     if(cur){btn.textContent='Sailing ✓';btn.disabled=true;}
-    else if(have){btn.textContent='Sail this ship';btn.classList.add('ghost');btn.onclick=()=>{chime(true);setShip(S.id);econRequest({k:'ship',id:S.id});updHud();saveCareer();renderShop();};}
+    else if(have){btn.textContent='Sail this ship';btn.classList.add('ghost');btn.onclick=()=>{chime(true);switchShip(S.id);econRequest({k:'ship',id:S.id});updHud();saveCareer();renderShop();};}
     else if(!ok){btn.textContent='Rank: '+RANKS[S.rank-1].n;btn.disabled=true;}
-    else{btn.textContent=S.price+' gold';btn.disabled=gold<S.price;btn.onclick=()=>{if(gold<S.price)return;gold-=S.price;chime(true);setShip(S.id);econRequest({k:'ship',id:S.id});
+    else{btn.textContent=S.price+' gold';btn.disabled=gold<S.price;btn.onclick=()=>{if(gold<S.price)return;gold-=S.price;chime(true);switchShip(S.id);econRequest({k:'ship',id:S.id});
       P.hp=maxHp();updHud();saveCareer();showBanner(S.name+' bought');renderShop();};}
     row.appendChild(btn);
     const ds=document.createElement('div');ds.className='ds';ds.textContent=S.desc;row.appendChild(ds);
@@ -1565,6 +1572,7 @@ function renderShop(){
    $('shopxp').style.width=(nxt?Math.round((xp-cur)/(nxt-cur)*100):100)+'%';$('shopxptxt').textContent=nxt?`${xp} / ${nxt} XP`:`${xp} XP · top rank`;}
   if(shopTab==='yard'){renderYard();return;}
   const box=$('shop');box.innerHTML='';
+  {const n=document.createElement('p');n.className='shopnote';n.textContent='Upgrades for your '+SHIP().name+'. Each ship keeps its own.';box.appendChild(n);}
   for(const it of SHOP){
     const lvl=it.id==='repair'?0:up[it.id],maxed=it.max&&lvl>=it.max,price=it.price(lvl),full=it.id==='repair'&&P.hp>=maxHp();
     const b=document.createElement('button');b.className='item'+(maxed?' owned':'');b.id='buy-'+it.id;b.disabled=maxed||full||gold<price;
@@ -1593,14 +1601,15 @@ function openWish(){try{return JSON.parse(localStorage.getItem(WISH_KEY)||'null'
 function dressLoad(m){if(m==='waves')return loadWaves();if(!FB)return loadOpen();
   const base=srvCache()||{xp:0,ships:{brig:true},ship:'brig'},w=openWish();if(!w)return base;return Object.assign({},base,w.ship?{ship:w.ship}:{},w.paint?{paint:w.paint}:{});}
 function applyWish(){const w=openWish();try{localStorage.removeItem(WISH_KEY)}catch(e){}if(!w)return;
-  if(w.ship&&owned[w.ship]&&w.ship!==shipId){setShip(w.ship);econRequest({k:'ship',id:w.ship});}
+  if(w.ship&&owned[w.ship]&&w.ship!==shipId){switchShip(w.ship);econRequest({k:'ship',id:w.ship});}
   if(w.paint&&paintOk(w.paint,xp)){const np=cleanPaint(w.paint,xp);if(np.lk!==paint.lk||np.dw!==paint.dw){paint=np;setShip(shipId);econRequest({k:'look',lk:np.lk,dw:np.dw||''});}}
   updHud();}
 function dressStore(m){
   if(m==='waves'){const v=loadWaves()||{gold:0,xp:0,ships:{brig:true}};v.ship=shipId;v.paint={...paint};try{localStorage.setItem(WAVE_KEY,JSON.stringify(v))}catch(e){}}
   else if(FB){try{localStorage.setItem(WISH_KEY,JSON.stringify({ship:shipId,paint:{...paint}}))}catch(e){}}
-  else{const v=loadOpen()||{gold:0,earned:0,sunk:0,up:{hull:0,sails:0,reload:0,triple:0,broadside:0},xp:0,ships:{brig:true}};v.ship=shipId;v.paint={...paint};try{localStorage.setItem(SAVE_KEY,JSON.stringify(v))}catch(e){}}}
-function dressLoadMode(m){dress.mode=m;const sv=dressLoad(m);careerFrom(sv);}
+  else{const v=loadOpen()||{gold:0,earned:0,sunk:0,up:{hull:0,sails:0,reload:0,triple:0,broadside:0},xp:0,ships:{brig:true}};v.ship=shipId;v.up={...up};v.ups=JSON.parse(JSON.stringify(shipUps));v.paint={...paint};try{localStorage.setItem(SAVE_KEY,JSON.stringify(v))}catch(e){}}}
+function dressLoadMode(m){dress.mode=m;const sv=dressLoad(m);careerFrom(sv);
+  up=Object.assign(UP0(),m==='open'&&sv&&sv.up||{});shipUps=m==='open'?cleanUps(sv&&sv.ups):{};delete shipUps[shipId];}
 function openDress(ctx){
   dress.ctx=ctx;firing=false;joy=null;
   if(ctx==='start'){dressLoadMode(dress.mode);$('start').hidden=true;}else $('shopov').hidden=true;
@@ -1636,7 +1645,7 @@ function renderDress(){
     for(const S of SHIPS_BY_RANK){const b=document.createElement('button');b.className='shipchip'+(S.id===shipId?' on':'');b.id='dship-'+S.id;
       const have=!!owned[S.id];b.innerHTML=`<b>${S.name}</b><small>${S.id===shipId?'Sailing':have?'In your fleet':rk>=S.rank?S.price+' gold in harbour':'Rank: '+RANKS[S.rank-1].n}</small>`;
       if(!have){b.disabled=true;}
-      else b.onclick=()=>{if(S.id===shipId)return;audio();chime(true);setShip(S.id);dressStore(dress.mode);renderDress();dressSay(S.name+': hull '+S.hull+', '+S.side+' guns a side.');};
+      else b.onclick=()=>{if(S.id===shipId)return;audio();chime(true);switchShip(S.id);dressStore(dress.mode);renderDress();dressSay(S.name+': hull '+S.hull+', '+S.side+' guns a side.');};
       row.appendChild(b);}}
   // emblems
   const grid=$('emgrid');grid.innerHTML='';const bg=PAINT.s[d.s],col=PAINT.c[d.c];

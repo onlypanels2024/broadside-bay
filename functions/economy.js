@@ -52,6 +52,15 @@
   const inHarbour = (x, z) => num(x) && num(z) && PORTS.some(([px, pz]) => Math.hypot(x - px, z - pz) < SAFE_R);
   const rankIdx = xp => { let r = 0; RANK_XP.forEach((t, i) => { if (xp >= t) r = i; }); return r; };
 
+  // Change the ship being sailed: its upgrades are put away and the new ship's own come out (a new ship has none).
+  function useShip(s, id) {
+    if (s.ship === id) return;
+    const ups = { ...(s.ups || {}) };
+    if (Object.values(s.up).some(v => v > 0)) ups[s.ship] = { ...s.up }; else delete ups[s.ship];
+    s.up = { ...fresh().up, ...(ups[id] || {}) }; delete ups[id];
+    if (Object.keys(ups).length) s.ups = ups; else delete s.ups;
+    s.ship = id;
+  }
   function fresh() {
     return { gold: 0, earned: 0, sunk: 0, xp: 0, up: { hull: 0, sails: 0, reload: 0, triple: 0, broadside: 0 }, ships: { brig: true }, ship: 'brig' };
   }
@@ -65,6 +74,15 @@
     o.ships = { brig: true };
     if (s.ships && typeof s.ships === 'object') for (const k in s.ships) if (SHIPS[k] && s.ships[k] === true) o.ships[k] = true;
     o.ship = o.ships[s.ship] ? s.ship : 'brig';
+    // each ship keeps its own upgrades: 'up' is the ship being sailed, 'ups' holds the other owned ships'
+    o.ups = {};
+    if (s.ups && typeof s.ups === 'object') for (const id in s.ups) {
+      if (!o.ships[id] || id === o.ship || !s.ups[id] || typeof s.ups[id] !== 'object') continue;
+      const u = {}; let any = false;
+      for (const k in f.up) { const v = s.ups[id][k]; u[k] = num(v) ? Math.max(0, Math.min(UPGRADES[k].max, Math.floor(v))) : 0; if (u[k]) any = true; }
+      if (any) o.ups[id] = u;
+    }
+    if (!Object.keys(o.ups).length) delete o.ups;
     if (s.rl && typeof s.rl === 'object') o.rl = { ...s.rl }; else delete o.rl;
     const pt = s.paint && checkPaint(s.paint.lk, s.paint.dw, o.xp);
     if (pt) o.paint = pt; else delete o.paint;
@@ -258,11 +276,11 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
         const S = SHIPS[req.id];
         if (!S) return no('unknown ship');
         // switching to a ship you already own: in harbour, or before setting sail (from the main menu)
-        if (s.ships[req.id]) { if (atSea(player, now)) return no('not in harbour'); s.ship = req.id; return { save: s, ok: true }; }
+        if (s.ships[req.id]) { if (atSea(player, now)) return no('not in harbour'); useShip(s, req.id); return { save: s, ok: true }; }
         if (!docked(player)) return no('not in harbour');
         if (rankIdx(s.xp) + 1 < S.rank) return no('rank too low');
         if (s.gold < S.price) return no('not enough gold');
-        s.gold -= S.price; s.ships[req.id] = true; s.ship = req.id;
+        s.gold -= S.price; s.ships[req.id] = true; useShip(s, req.id);
         return { save: s, ok: true };
       }
       case 'look': {
@@ -400,6 +418,6 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
   const portNear = (x, z) => num(x) && num(z) ? PORTS.findIndex(([px, pz]) => Math.hypot(x - px, z - pz) < PORT_R) : -1;
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { useShip, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -184,7 +184,7 @@ rep("function econServer(){return MODE==='open'&&saveMode==='server'&&!!NET.room
 // What we tell other captains: online, only the referee's copy (the database refuses anything else).
 function netPaint(){if(!(NET.fb&&saveMode==='server'))return paint;const sp=NET.srv&&NET.srv.paint;return sp&&typeof sp.lk==='string'?sp:{};}""")
 rep("  xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';if(want!==shipId)setShip(want);",
-    "  xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';\n  const np=cleanPaint(sv.paint,xp),pc=!showcase&&(np.lk!==paint.lk||np.dw!==paint.dw);\n  if(pc&&paint.dw&&!np.dw&&!(sv.dok&&sv.dok[paint.dw])){okDrawings=okDrawings.filter(d=>d!==paint.dw);try{localStorage.setItem('bb-dok',JSON.stringify(okDrawings))}catch(e){}showBanner('Your drawing was removed after a report');}\n  if(pc)paint=np;if(want!==shipId||pc)setShip(want);")
+    "  xp=sv.xp|0;owned=Object.assign({brig:true},sv.ships||{});const want=owned[sv.ship]?sv.ship:'brig';shipUps=cleanUps(sv.ups);delete shipUps[want];\n  const np=cleanPaint(sv.paint,xp),pc=!showcase&&(np.lk!==paint.lk||np.dw!==paint.dw);\n  if(pc&&paint.dw&&!np.dw&&!(sv.dok&&sv.dok[paint.dw])){okDrawings=okDrawings.filter(d=>d!==paint.dw);try{localStorage.setItem('bb-dok',JSON.stringify(okDrawings))}catch(e){}showBanner('Your drawing was removed after a report');}\n  if(pc)paint=np;if(want!==shipId||pc)setShip(want);")
 # main-menu shipwright for online Open sea: show the last copy of the online save; remember the choice and
 # hand it to the referee when the captain sets sail
 rep("function dressLoad(m){return m==='waves'?loadWaves():loadOpen();}",
@@ -195,7 +195,7 @@ function openWish(){try{return JSON.parse(localStorage.getItem(WISH_KEY)||'null'
 function dressLoad(m){if(m==='waves')return loadWaves();if(!FB)return loadOpen();
   const base=srvCache()||{xp:0,ships:{brig:true},ship:'brig'},w=openWish();if(!w)return base;return Object.assign({},base,w.ship?{ship:w.ship}:{},w.paint?{paint:w.paint}:{});}
 function applyWish(){const w=openWish();try{localStorage.removeItem(WISH_KEY)}catch(e){}if(!w)return;
-  if(w.ship&&owned[w.ship]&&w.ship!==shipId){setShip(w.ship);econRequest({k:'ship',id:w.ship});}
+  if(w.ship&&owned[w.ship]&&w.ship!==shipId){switchShip(w.ship);econRequest({k:'ship',id:w.ship});}
   if(w.paint&&paintOk(w.paint,xp)){const np=cleanPaint(w.paint,xp);if(np.lk!==paint.lk||np.dw!==paint.dw){paint=np;setShip(shipId);econRequest({k:'look',lk:np.lk,dw:np.dw||''});}}
   updHud();}""")
 rep("  else{const v=loadOpen()||{gold:0,earned:0,sunk:0,",

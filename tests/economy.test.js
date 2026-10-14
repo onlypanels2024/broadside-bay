@@ -339,3 +339,34 @@ test('video rewards: gold a few times a day, chest doubled once after opening it
   r = E.processRequest(r.save, { k: 'noads' }, null, now, { noAdsUntil: 0 }); assert.equal(E.norm(r.save).na, undefined);
   assert.ok(E.processRequest(E.processRequest(s, { k: 'reset' }, null, now).save, { k: 'adgold' }, null, now).ok === false);   // a new voyage doesn't reset the daily limit
 });
+
+test('each ship keeps its own upgrades: a new ship starts with none, an old one gets its own back', () => {
+  const full = { hull: 3, sails: 3, reload: 3, triple: 1, broadside: 1 };
+  let s = rich({ up: { ...full }, ships: { brig: true }, ship: 'brig' });
+  // buy a frigate: it starts bare, the brig's upgrades are put away
+  let r = E.processRequest(s, { k: 'ship', id: 'frigate' }, inPort, NOW);
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.save.ship, 'frigate');
+  assert.deepStrictEqual(r.save.up, { hull: 0, sails: 0, reload: 0, triple: 0, broadside: 0 });
+  assert.deepStrictEqual(r.save.ups.brig, full);
+  // upgrade the frigate's sails once
+  r = E.processRequest(r.save, { k: 'up', id: 'sails' }, inPort, NOW);
+  assert.strictEqual(r.save.up.sails, 1);
+  // back to the brig: its own upgrades come back, the frigate's are kept
+  r = E.processRequest(r.save, { k: 'ship', id: 'brig' }, inPort, NOW);
+  assert.deepStrictEqual(r.save.up, full);
+  assert.deepStrictEqual(r.save.ups, { frigate: { hull: 0, sails: 1, reload: 0, triple: 0, broadside: 0 } });
+  // and to the frigate again
+  r = E.processRequest(r.save, { k: 'ship', id: 'frigate' }, inPort, NOW);
+  assert.strictEqual(r.save.up.sails, 1);
+  assert.deepStrictEqual(r.save.ups.brig, full);
+  // upgrades can't be smuggled onto ships you don't own, or above the maximum
+  const bad = E.norm({ ...r.save, ups: { manowar: full, brig: { hull: 99 } } });
+  assert.strictEqual(bad.ups.manowar, undefined);
+  assert.strictEqual(bad.ups.brig.hull, 3);
+  // a captain from before this change: the ship being sailed keeps its upgrades, other owned ships start bare
+  const old = E.norm({ ...E.fresh(), gold: 5000, xp: 9500, up: { ...full }, ships: { brig: true, frigate: true }, ship: 'frigate' });
+  assert.deepStrictEqual(old.up, full);
+  r = E.processRequest(old, { k: 'ship', id: 'brig' }, inPort, NOW);
+  assert.deepStrictEqual(r.save.up, { hull: 0, sails: 0, reload: 0, triple: 0, broadside: 0 });
+});
