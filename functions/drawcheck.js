@@ -5,6 +5,8 @@ const admin = require('firebase-admin');
 
 // Newest first; if one isn't available in this project the next is tried.
 const MODELS = ['gemini-3.1-flash-lite', 'gemini-3-flash', 'gemini-2.5-flash'];
+// Stronger models for a second look at anything the quick model calls rude.
+const SECOND = ['gemini-3-flash', 'gemini-2.5-flash'];
 
 const bit = (dw, i) => (parseInt(dw[i >> 2], 16) >> (3 - (i & 3))) & 1;
 
@@ -48,13 +50,24 @@ ${asText(dw)}
 ${reported ? 'Another player has REPORTED this drawing as rude, so look carefully, including at what the shape could represent.' : ''}
 Mark it rude if it shows or clearly suggests any of: genitals, breasts or sexual acts; an obscene gesture (such as a raised middle finger);
 a hate symbol (such as a swastika, SS runes, or symbols of hate groups); slurs, swear words or rude words/letters; drugs; gore.
-Pirate things (skulls, crossbones, swords, cannons, ships, anchors), faces, animals, hearts, stars, letters, initials, numbers and abstract shapes are fine.
+Pirate things (skulls, crossbones, swords, cannons, ships, anchors), faces (including smiley faces, faces with hair, hats, beards or moustaches), animals, hearts, stars, letters, initials, numbers and abstract shapes are fine.
+A 16x16 drawing is far too small to show a particular real person: never decide that a simple face or figure is a specific real person.
+Only mark it rude when it clearly is one of the things listed above. If you are not sure, it is NOT rude.
 Answer only with JSON: {"rude": true or false, "what": "a few words saying what it looks like"}`;
 }
 
 let workingModel = null;
-function aiCheck(dw, reported) {
-  return ask([{ inlineData: { mimeType: 'image/png', data: drawingPng(dw).toString('base64') } }, { text: prompt(dw, reported) }]);
+// The quick model looks first. If it says rude (and Google's own filter didn't block it), a stronger model
+// takes a second look and the drawing is only refused when both agree - this stops false alarms on faces.
+async function aiCheck(dw, reported) {
+  const parts = [{ inlineData: { mimeType: 'image/png', data: drawingPng(dw).toString('base64') } }, { text: prompt(dw, reported) }];
+  const first = await ask(parts);
+  if (!first.rude || first.what === 'blocked by safety filter') return first;
+  let second = null;
+  for (const model of SECOND) { if (model === first.model) continue; try { second = await askModel(model, parts); break; } catch (e) { /* try the next one */ } }
+  if (!second) return first;            // no second opinion available: keep the first answer
+  if (second.rude) return { ...second, model: first.model + '+' + second.model };
+  return { rude: false, what: second.what, model: first.model + '+' + second.model, overruled: first.what };
 }
 // Names players type (fleet names and tags).
 function aiCheckText(what, text) {
@@ -68,30 +81,35 @@ Pirate words (plunder, skull, blood, dead men, revenge, black, kraken) are fine.
 Answer only with JSON: {"rude": true or false, "what": "a few words saying why"}` }]);
 }
 async function ask(parts) {
+  let lastErr = null;
+  for (const model of workingModel ? [workingModel] : MODELS) {
+    try { const r = await askModel(model, parts); workingModel = model; return r; }
+    catch (e) { lastErr = e; if (!e.notFound) throw e; }
+  }
+  throw lastErr || new Error('no AI model available');
+}
+async function askModel(model, parts) {
   const project = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || 'overboard-2104';
   const token = (await admin.credential.applicationDefault().getAccessToken()).access_token;
   const body = {
     contents: [{ role: 'user', parts }],
     generationConfig: { temperature: 0, maxOutputTokens: 200, responseMimeType: 'application/json' },
   };
-  let lastErr = null;
-  for (const model of workingModel ? [workingModel] : MODELS) {
+  {
     const url = `https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/${model}:generateContent`;
     const res = await fetch(url, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (res.status === 404) { lastErr = new Error(model + ' not available'); continue; }
+    if (res.status === 404) { const e = new Error(model + ' not available'); e.notFound = true; throw e; }
     if (!res.ok) throw new Error('AI ' + res.status + ': ' + (await res.text()).slice(0, 300));
     const out = await res.json();
     // Google's own safety filter refusing to even look at it counts as rude
     const c0 = (out.candidates || [])[0] || {};
-    if ((out.promptFeedback && out.promptFeedback.blockReason) || c0.finishReason === 'SAFETY' || c0.finishReason === 'PROHIBITED_CONTENT') { workingModel = model; return { rude: true, what: 'blocked by safety filter', model }; }
+    if ((out.promptFeedback && out.promptFeedback.blockReason) || c0.finishReason === 'SAFETY' || c0.finishReason === 'PROHIBITED_CONTENT') return { rude: true, what: 'blocked by safety filter', model };
     const text = ((((out.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
     const m = text.match(/\{[\s\S]*\}/);
     if (!m) throw new Error('AI gave no answer: ' + text.slice(0, 200));
     const j = JSON.parse(m[0]);
-    workingModel = model;
     return { rude: j.rude === true, what: String(j.what || '').slice(0, 60), model };
   }
-  throw lastErr || new Error('no AI model available');
 }
 
 module.exports = { aiCheck, aiCheckText, drawingPng, asText, MODELS };

@@ -185,9 +185,10 @@ async function judgeDrawing(db, uid, dw, reported) {
   if (!rules.ok) return { ok: false, why: rules.why };
   try {
     const ai = await D.aiCheck(dw, reported);
-    logger.info('drawing checked', { uid, dw, rude: ai.rude, what: ai.what, model: ai.model, reported: !!reported });
+    logger.info('drawing checked', { uid, dw, rude: ai.rude, what: ai.what, model: ai.model, overruled: ai.overruled || null, reported: !!reported });
     await db.ref('status/checker').set({ ok: true, model: ai.model, at: Date.now() });
-    return ai.rude ? { ok: false, why: ai.what || 'not allowed' } : { ok: true, why: ai.what };
+    // the AI's description is only for our logs; players just see that it isn't allowed
+    return ai.rude ? { ok: false, why: 'not allowed', what: ai.what } : { ok: true, why: '' };
   } catch (e) {
     logger.error('drawing checker failed', { uid, err: String(e && e.message || e) });
     await db.ref('status/checker').set({ ok: false, err: String(e && e.message || e).slice(0, 300), at: Date.now() });
@@ -275,7 +276,7 @@ exports.refereeReport = onValueCreated({ ref: '/reports/{uid}/{rid}', timeoutSec
   let remove = count >= 3, why = remove ? 'reported by ' + count + ' captains' : '';
   if (!remove && count === 1) {   // one AI look per drawing is enough; more reports then count towards 3
     const v = await judgeDrawing(db, rep.tg, dw, true);
-    if (!v.ok && !v.offline) { remove = true; why = v.why; }
+    if (!v.ok && !v.offline) { remove = true; why = v.what || v.why; }
   }
   if (!remove) return;
   await db.ref(`ref/baddw/${dw}`).set({ at: Date.now(), why, by: rep.tg });

@@ -33,6 +33,9 @@ jobs:
           const admin=require('firebase-admin');admin.initializeApp({databaseURL:'https://overboard-2104-default-rtdb.europe-west1.firebasedatabase.app'});
           (async()=>{const s=(await admin.database().ref('status').get()).val();console.log('STATUS',JSON.stringify(s,null,1));
           const r=(await admin.database().ref('requests').limitToLast(5).get()).val();console.log('PENDING REQUESTS',JSON.stringify(r));const sv=(await admin.database().ref('saves').get()).val()||{};const now=Date.now();for(const [u,x] of Object.entries(sv)){if(x&&x.dchk&&now-(x.dchk.t||0)<6*3600e3)console.log('RECENT CHECK',u.slice(0,10),JSON.stringify({dchk:x.dchk,dok:x.dok,last:x.last,chk:x.chk,lk:x.lk,look:x.look,paint:x.paint,dw:x.dw}));}process.exit(0)})().catch(e=>{console.log('ERR',e.message);process.exit(0)})"
+          node -e "
+          const admin=require('firebase-admin');try{admin.initializeApp()}catch(e){}const D=require('./drawcheck');
+          (async()=>{for(const [n,dw] of [['gary smiley','000000000000000001f00f881e0c1414300424042004200c21883010182007c0'],['test smiley','00000000000000000000042000000000000000000810042003c0000000000000']]){try{console.log('AI TEST',n,JSON.stringify(await D.aiCheck(dw,false)))}catch(e){console.log('AI TEST',n,'ERR',e.message)}}process.exit(0)})()"
           gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS" --quiet >/dev/null 2>&1 || true
           gcloud logging read 'resource.type="cloud_run_revision" AND (severity>=WARNING OR textPayload:"drawing")' --project overboard-2104 --freshness=12h --limit 25 --format='value(timestamp,severity,textPayload,jsonPayload.message,jsonPayload.err)' 2>&1 | cut -c1-400 || true
       - name: Save the report to the diag-out branch
