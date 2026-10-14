@@ -1,4 +1,179 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Broadside Bay</title>
-<style>body{font:16px/1.6 system-ui,sans-serif;max-width:760px;margin:0 auto;padding:24px 16px;background:#071a24;color:#eef5f7}a{color:#f1d897}</style></head>
-<body><h1>Broadside Bay</h1><p>A pirate ship battle game for Android: sail the Caribbean, sink pirates, fight other captains online.</p>
-<p><a href="privacy.html">Privacy policy</a> · <a href="delete.html">Delete your data</a></p></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Broadside Bay: Pirate Battles</title>
+<meta name="description" content="Pirate ship battles on your phone. Sail a shared open sea, sink rival pirates, battle the kraken and build a fleet with friends. Made in Malta.">
+<meta property="og:title" content="Broadside Bay: Pirate Battles">
+<meta property="og:description" content="Pirate ship battles on your phone. Become a tester and play before anyone else.">
+<meta property="og:image" content="https://overboard-2104.web.app/img/share.jpg">
+<meta property="og:url" content="https://overboard-2104.web.app/">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#06161f">
+<link rel="icon" href="img/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Barlow+Semi+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#06161f;--deep:#0a2330;--panel:#0e2c3b;--line:rgba(241,216,151,.22);--gold:#f1d897;--gold2:#d9a441;--cream:#f6e7c1;--text:#e6eef2;--muted:#9fb6c1}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--ink);color:var(--text);font:18px/1.55 'Barlow Semi Condensed',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--gold)}
+img,video{display:block;max-width:100%}
+.wrap{max-width:1140px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:Cinzel,serif;color:var(--cream);margin:0;line-height:1.1}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:14px 26px;border-radius:12px;font:700 18px 'Barlow Semi Condensed',sans-serif;letter-spacing:.04em;text-transform:uppercase;text-decoration:none;transition:transform .15s,box-shadow .15s}
+.btn:hover{transform:translateY(-2px)}
+.btn-gold{background:linear-gradient(#f6dc8f,#d9a441);color:#1d1406;box-shadow:0 6px 24px rgba(217,164,65,.35)}
+.btn-line{border:1.5px solid var(--gold);color:var(--gold)}
+
+/* nav */
+nav{position:fixed;inset:0 0 auto;z-index:20;background:rgba(6,22,31,.78);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:18px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--cream);font:800 19px Cinzel,serif;margin-right:auto}
+.brand img{width:36px;height:36px;border-radius:9px}
+nav .links a{color:var(--text);text-decoration:none;font-weight:600;margin-left:22px}
+nav .links a:hover{color:var(--gold)}
+nav .btn{padding:9px 16px;font-size:15px}
+@media(max-width:760px){nav .links{display:none}.brand{white-space:nowrap;font-size:17px}nav .btn{padding:8px 12px;font-size:13px;white-space:nowrap}.eyebrow{letter-spacing:.18em}}
+
+/* hero */
+.hero{position:relative;min-height:100vh;display:flex;align-items:center;padding:110px 0 70px;background:url(img/hero.jpg) center/cover;overflow:hidden}
+.hero:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(6,22,31,.96) 0%,rgba(6,22,31,.82) 42%,rgba(6,22,31,.25) 75%,rgba(6,22,31,.1)),linear-gradient(0deg,var(--ink),transparent 30%)}
+.hero .wrap{position:relative;display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
+.eyebrow{font:700 14px 'Barlow Semi Condensed';letter-spacing:.28em;color:var(--gold2);text-transform:uppercase}
+.hero h1{font-size:clamp(46px,7vw,86px);font-weight:800;margin:14px 0 16px;text-shadow:0 4px 30px rgba(0,0,0,.5)}
+.hero p.lead{font-size:clamp(19px,2.2vw,24px);max-width:540px;color:#dfe9ee;margin:0 0 30px}
+.cta{display:flex;flex-wrap:wrap;gap:14px}
+.badges{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+.badge{border:1px solid var(--line);background:rgba(14,44,59,.6);padding:6px 14px;border-radius:999px;font-size:15px;color:var(--muted)}
+.phone{justify-self:center;width:min(300px,78vw);aspect-ratio:9/16;border-radius:38px;padding:10px;background:linear-gradient(145deg,#2a3b44,#0b151b);box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08) inset}
+.phone video{width:100%;height:100%;object-fit:cover;border-radius:30px;background:#000}
+@media(max-width:860px){.hero .wrap{grid-template-columns:1fr;text-align:left}.hero:before{background:linear-gradient(0deg,var(--ink) 5%,rgba(6,22,31,.85) 55%,rgba(6,22,31,.6))}.phone{margin-top:10px}}
+
+/* sections */
+section{padding:90px 0}
+.head{text-align:center;max-width:680px;margin:0 auto 50px}
+.head h2{font-size:clamp(32px,4.5vw,48px);margin:10px 0 14px}
+.head p{color:var(--muted);margin:0}
+
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}
+.card{background:linear-gradient(180deg,var(--panel),var(--deep));border:1px solid var(--line);border-radius:18px;padding:26px}
+.card .ic{font-size:30px;line-height:1;margin-bottom:14px}
+.card h3{font-size:20px;margin-bottom:8px}
+.card p{margin:0;color:#c4d4db;font-size:17px}
+
+.shots{background:linear-gradient(180deg,var(--ink),#082331 50%,var(--ink))}
+.strip{display:flex;gap:20px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 20px 24px;margin:0 -20px;scrollbar-width:thin;scrollbar-color:var(--gold2) transparent}
+.strip figure{flex:0 0 min(260px,70vw);margin:0;scroll-snap-align:center}
+.strip img{border-radius:22px;box-shadow:0 18px 40px rgba(0,0,0,.5);border:1px solid var(--line)}
+.strip figcaption{text-align:center;margin-top:12px;color:var(--muted);font-size:16px}
+
+.ships{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:34px}
+.ships span{font:600 15px Cinzel,serif;color:var(--cream);padding:10px 16px;border:1px solid var(--line);border-radius:10px;background:rgba(14,44,59,.5)}
+.ships span b{color:var(--gold2);font:700 13px 'Barlow Semi Condensed';margin-right:6px}
+
+.join{position:relative;border:1px solid var(--line);border-radius:26px;padding:clamp(28px,5vw,60px);background:radial-gradient(circle at 85% 0%,rgba(217,164,65,.18),transparent 55%),linear-gradient(160deg,#0f3344,#071b25);overflow:hidden}
+.join h2{font-size:clamp(30px,4vw,44px);margin:10px 0 12px}
+.join>p{color:#c4d4db;max-width:640px;margin:0 0 30px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:26px}
+.step{background:rgba(6,22,31,.55);border:1px solid var(--line);border-radius:16px;padding:22px}
+.step .n{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--gold2);color:#1d1406;font:800 18px Cinzel,serif;margin-bottom:12px}
+.step h3{font-size:19px;margin-bottom:6px}
+.step p{margin:0 0 14px;color:#c4d4db;font-size:16px}
+.step .btn{padding:10px 18px;font-size:15px}
+.note{font-size:15px;color:var(--muted);margin:0}
+
+.free{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:10px}
+.free .card{text-align:center}
+
+footer{border-top:1px solid var(--line);padding:40px 0 50px;color:var(--muted);font-size:16px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:18px 30px;align-items:center;justify-content:space-between}
+footer a{color:var(--muted);text-decoration:none;margin-right:20px}
+footer a:hover{color:var(--gold)}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <a class="brand" href="#"><img src="img/icon.png" alt="">Broadside Bay</a>
+  <div class="links"><a href="#features">Features</a><a href="#screens">Screens</a><a href="#ships">Ships</a></div>
+  <a class="btn btn-gold" href="#join">Become a tester</a>
+</div></nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">Caribbean, 1718 · Made in Malta</div>
+      <h1>Broadside Bay</h1>
+      <p class="lead">Pirate ship battles on your phone. Take the helm, fire a full broadside, slay the kraken and rule the open sea with your friends.</p>
+      <div class="cta">
+        <a class="btn btn-gold" href="#join">⚓ Join the test crew</a>
+        <a class="btn btn-line" href="#screens">See the game</a>
+      </div>
+      <div class="badges"><span class="badge">Android</span><span class="badge">Free to play</span><span class="badge">Online multiplayer</span><span class="badge">Coming soon to Google Play</span></div>
+    </div>
+    <div class="phone"><video src="img/trailer.mp4" poster="img/trailer.jpg" autoplay muted loop playsinline controls preload="metadata"></video></div>
+  </div>
+</header>
+
+<section id="features"><div class="wrap">
+  <div class="head"><div class="eyebrow">What's on board</div><h2>A whole sea of adventure</h2><p>Quick battles when you have five minutes, a living world when you have an evening.</p></div>
+  <div class="features">
+    <div class="card"><div class="ic">⚓</div><h3>A shared open sea</h3><p>Sail with captains from around the world. Sink pirates for gold, duel rivals or team up. Harbours are safe havens to repair, upgrade and buy bigger ships.</p></div>
+    <div class="card"><div class="ic">💥</div><h3>Real naval combat</h3><p>Fire your bow cannons or turn and unleash a full broadside. Grab power-ups for speed, rapid fire and side cannons. A fair-play referee checks every hit.</p></div>
+    <div class="card"><div class="ic">🐙</div><h3>The kraken rises</h3><p>Every few minutes the kraken surfaces and every captain online can join the fight. Dig up buried treasure, raid convoys and dodge fire ships.</p></div>
+    <div class="card"><div class="ic">🏴‍☠️</div><h3>Fleets, friends &amp; duels</h3><p>Found a fleet, fly its flag and battle other fleets to hold the island ports. Challenge any captain to a fair 1-on-1 duel in the arena.</p></div>
+    <div class="card"><div class="ic">🎨</div><h3>Your ship, your colours</h3><p>Paint your hull, sails and flag, pick an emblem or draw your own, and show off figureheads, pets, glowing wakes and fireball shots.</p></div>
+    <div class="card"><div class="ic">🌦️</div><h3>A living sea</h3><p>Day turns to night, storms roll in with lightning and towering waves, fog drifts over the islands and gulls cry over the beaches.</p></div>
+    <div class="card"><div class="ic">📖</div><h3>Play solo too</h3><p>Five story missions, endless Wave battles with a boss every five waves, and a quick first voyage that teaches you everything.</p></div>
+    <div class="card"><div class="ic">🏆</div><h3>Something new every day</h3><p>Daily chests and quests, weekly and season leaderboards, achievements and titles, plus weekend events like Double Gold and Kraken Weekend.</p></div>
+  </div>
+</div></section>
+
+<section id="screens" class="shots"><div class="wrap">
+  <div class="head"><div class="eyebrow">Screenshots</div><h2>See it in action</h2><p>Swipe through real moments from the game.</p></div>
+  <div class="strip">
+    <figure><img src="img/s2.jpg" alt="A pirate battle among the islands" loading="lazy"><figcaption>Battles among the islands</figcaption></figure>
+    <figure><img src="img/s3.jpg" alt="Fighting the kraken" loading="lazy"><figcaption>Slay the kraken</figcaption></figure>
+    <figure><img src="img/s6.jpg" alt="Firing a full broadside" loading="lazy"><figcaption>Fire a full broadside</figcaption></figure>
+    <figure><img src="img/s5.jpg" alt="Wave battles and story missions" loading="lazy"><figcaption>Wave battles &amp; story</figcaption></figure>
+    <figure><img src="img/s4.jpg" alt="Sailing through a storm" loading="lazy"><figcaption>Storms, fog, day &amp; night</figcaption></figure>
+    <figure><img src="img/s1.jpg" alt="The main menu" loading="lazy"><figcaption>Open sea, waves, story &amp; more</figcaption></figure>
+  </div>
+</div></section>
+
+<section id="ships"><div class="wrap">
+  <div class="head"><div class="eyebrow">Rise through the ranks</div><h2>From Deckhand to Admiral</h2><p>Earn gold and experience to command bigger, faster and deadlier ships.</p></div>
+  <div class="ships">
+    <span><b>I</b>Brig</span><span><b>II</b>Schooner</span><span><b>III</b>Corvette</span><span><b>IV</b>Frigate</span><span><b>V</b>War Galleon</span><span><b>VI</b>Man-o'-War</span>
+  </div>
+  <div class="free" style="margin-top:60px">
+    <div class="card"><div class="ic">🪙</div><h3>Free to play</h3><p>The whole game is free. No pay-to-win ships.</p></div>
+    <div class="card"><div class="ic">🎬</div><h3>Optional bonuses</h3><p>Watch a short video if you want extra gold or a second daily chest.</p></div>
+    <div class="card"><div class="ic">🚫</div><h3>No ads option</h3><p>Prefer no adverts? Remove them with a small monthly subscription.</p></div>
+  </div>
+</div></section>
+
+<section id="join" style="padding-top:20px"><div class="wrap">
+  <div class="join">
+    <div class="eyebrow">Testers wanted</div>
+    <h2>Play before anyone else</h2>
+    <p>Broadside Bay is in its final testing voyage before launch on Google Play. Join the test crew, play for free on your Android phone and help us make it even better.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Join the crew</h3><p>Join our testers group with your Google account. It takes one tap.</p><a class="btn btn-gold" href="https://groups.google.com/g/broadside-bay-testers" target="_blank" rel="noopener">Join the group</a></div>
+      <div class="step"><div class="n">2</div><h3>Become a tester</h3><p>Open the Google Play testing page and tap “Become a tester”.</p><a class="btn btn-line" href="https://play.google.com/apps/testing/com.broadsidebay.game" target="_blank" rel="noopener">Testing page</a></div>
+      <div class="step"><div class="n">3</div><h3>Install &amp; set sail</h3><p>Download Broadside Bay from Google Play and start your first voyage.</p><a class="btn btn-line" href="https://play.google.com/store/apps/details?id=com.broadsidebay.game" target="_blank" rel="noopener">Google Play</a></div>
+    </div>
+    <p class="note">Use the same Google account for all three steps. Questions? Write to <a href="mailto:showfee.app@gmail.com">showfee.app@gmail.com</a></p>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <div>© 2026 Broadside Bay · Made in Malta 🇲🇹</div>
+  <div><a href="https://www.facebook.com/profile.php?id=61595267285855" target="_blank" rel="noopener">Facebook</a><a href="privacy.html">Privacy policy</a><a href="delete.html">Delete your data</a><a href="mailto:showfee.app@gmail.com">Contact</a></div>
+</div></footer>
+
+</body>
+</html>
