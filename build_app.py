@@ -357,7 +357,7 @@ async function noAdsBuy(say){if(noAdsOn()){say('No ads is on. Thank you for supp
   if(!u||!u.google){say('Sign in with Google first (Open sea), so No ads follows you to any phone.');return;}
   say('Opening Google Play…');
   try{const t=await NP.purchaseProduct({productIdentifier:NOADS.sku,planIdentifier:NOADS.plan,productType:'subs'});
-    const tok=t&&t.transactionId;if(!tok){say('');return;}
+    const tok=t&&(t.purchaseToken||t.transactionId);if(!tok){say('');return;}
     FB.request({k:'noads',tok});noAdsSet(Date.now()+3600000);say('Thank you! Ads are off. Google Play confirms it in a moment.');
     setTimeout(async()=>{try{const sv=await FB.loadSave();if(sv&&+sv.na)noAdsSet(+sv.na);}catch(e){}},15000);
   }catch(e){const m=String(e&&e.message||e);say(/cancel/i.test(m)?'':'Google Play said: '+m.slice(0,120));}}""")
