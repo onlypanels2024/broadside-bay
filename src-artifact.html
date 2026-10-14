@@ -76,6 +76,8 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .dressnote{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.4}
 #pad{position:static;inset:auto;height:auto;display:block;width:min(288px,100%);aspect-ratio:1;margin:12px auto 0;border-radius:8px;touch-action:none;border:1px solid var(--line);cursor:crosshair}
 .padtools{display:flex;gap:6px;justify-content:center;margin-top:10px}
+#padmsg.err{color:#ff8a7a;font-weight:700;font-size:15px;background:rgba(160,30,20,.25);border:1px solid rgba(255,120,100,.55);border-radius:10px;padding:8px 10px;animation:padshake .45s}
+@keyframes padshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
 .tool{font:700 14px var(--body);padding:8px 14px;border-radius:8px;cursor:pointer;border:1px solid rgba(214,178,98,.35);background:transparent;color:var(--muted)}
 .tool.on{background:rgba(214,178,98,.16);color:var(--brass-hi);border-color:var(--brass)}
 .replist{display:flex;flex-direction:column;gap:8px;margin-top:12px;text-align:left}
@@ -1608,8 +1610,8 @@ padC.addEventListener('pointermove',e=>{if(!pad.down)return;const keep=pad.mode;
 function padTool(m){pad.mode=m;$('padpen').classList.toggle('on',m===1);$('paderase').classList.toggle('on',m===0);}
 $('padpen').onclick=()=>padTool(1);$('paderase').onclick=()=>padTool(0);
 $('padclear').onclick=()=>{pad.bits.fill(0);padDraw();};
-$('padflip').onclick=()=>{for(let y=0;y<16;y++)for(let x=0;x<8;x++){const a=y*16+x,b=y*16+15-x;pad.bits[b]=pad.bits[a];}padDraw();$('padmsg').textContent='Copied the left half onto the right.';};
-function openPad(){const d=decodeLk(paint.lk);padFrom(d.e===DRAW_E?paint.dw:myDrawing);padTool(1);$('padmsg').textContent='';
+$('padflip').onclick=()=>{for(let y=0;y<16;y++)for(let x=0;x<8;x++){const a=y*16+x,b=y*16+15-x;pad.bits[b]=pad.bits[a];}padDraw();padNote('Copied the left half onto the right.');};
+function openPad(){const d=decodeLk(paint.lk);padFrom(d.e===DRAW_E?paint.dw:myDrawing);padTool(1);padNote('');
   $('dressov').hidden=true;$('drawov').hidden=false;padDraw();}
 $('padcancel').onclick=()=>{audio();$('drawov').hidden=true;$('dressov').hidden=false;};
 // Asks whether a drawing is allowed. Here only the built-in rules run; the app asks the online referee (AI check).
@@ -1617,13 +1619,15 @@ function drawCheck(dw){return Promise.resolve({ok:true});}
 const CHECK_SAY={'checker offline':"The drawing checker isn't working right now. Try again in a few minutes.",'too many drawings checked this hour':"You've checked a lot of drawings this hour. Try again later.",
   'hate symbol':"That looks like a hate symbol, so it can't go on a ship.",'this drawing has been removed before':'That drawing was removed after reports, so it can\'t be used.'};
 let padBusy=false;
-$('paduse').onclick=async()=>{audio();if(padBusy)return;const n=pad.bits.reduce((a,b)=>a+b,0);if(n<3){$('padmsg').textContent='Fill in a few more squares first.';return;}
+function padNote(t){const m=$('padmsg');m.classList.remove('err');m.textContent=t;}
+function padErr(t){const m=$('padmsg');m.textContent=t;m.classList.remove('err');void m.offsetWidth;m.classList.add('err');try{navigator.vibrate&&navigator.vibrate(120)}catch(e){}}
+$('paduse').onclick=async()=>{audio();if(padBusy)return;const n=pad.bits.reduce((a,b)=>a+b,0);if(n<3){padErr('Fill in a few more squares first.');return;}
   const hx=padHex();myDrawing=hx;try{localStorage.setItem('bb-drawing',hx)}catch(e){}
-  const rules=drawRules(hx);if(!rules.ok){$('padmsg').textContent=CHECK_SAY[rules.why]||'That drawing is not allowed.';noise(.2,200,.3);return;}
-  if(!okDrawings.includes(hx)){padBusy=true;const b=$('paduse');b.disabled=true;b.textContent='Checking…';$('padmsg').textContent='The referee is checking your drawing…';
+  const rules=drawRules(hx);if(!rules.ok){padErr(CHECK_SAY[rules.why]||'That drawing is not allowed.');noise(.2,200,.3);return;}
+  if(!okDrawings.includes(hx)){padBusy=true;const b=$('paduse');b.disabled=true;b.textContent='Checking…';padNote('The referee is checking your drawing…');
     let v;try{v=await drawCheck(hx);}catch(e){v={ok:false,why:'checker offline'};}
     padBusy=false;b.disabled=false;b.textContent='Use this emblem';
-    if(!v.ok){$('padmsg').textContent=CHECK_SAY[v.why]||("That drawing isn't allowed"+(v.why&&v.why!=='not allowed'?' (it looks like '+v.why+')':'')+'. Try something else.');noise(.2,200,.3);return;}
+    if(!v.ok){padErr(CHECK_SAY[v.why]||"That drawing isn't allowed. Try changing it a little.");noise(.2,200,.3);return;}
     rememberOk(hx);}
   $('drawov').hidden=true;$('dressov').hidden=false;chime(true);setPaintSlot('e',DRAW_E,hx);dressSay('Your emblem is on the sails.');};
 
