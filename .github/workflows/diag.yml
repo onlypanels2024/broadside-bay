@@ -1,0 +1,36 @@
+# Read-only diagnostics: shows the referee's status flags and its recent error logs (never prints the key).
+name: Referee diagnostics
+permissions:
+  contents: read
+on:
+  workflow_dispatch:
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+        working-directory: functions
+      - name: Status and logs
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/raw.txt"
+          python3 - "$RUNNER_TEMP/raw.txt" "$RUNNER_TEMP/sa.json" <<'PY'
+          import json,sys,base64
+          raw=open(sys.argv[1]).read().strip()
+          for c in (raw,):
+              pass
+          try: d=json.loads(raw)
+          except Exception: d=json.loads(base64.b64decode(raw).decode())
+          json.dump(d,open(sys.argv[2],'w'))
+          PY
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          cd functions && node -e "
+          const admin=require('firebase-admin');admin.initializeApp({databaseURL:'https://overboard-2104-default-rtdb.europe-west1.firebasedatabase.app'});
+          (async()=>{const s=(await admin.database().ref('status').get()).val();console.log('STATUS',JSON.stringify(s,null,1));
+          const r=(await admin.database().ref('requests').limitToLast(5).get()).val();console.log('PENDING REQUESTS',JSON.stringify(r));process.exit(0)})().catch(e=>{console.log('ERR',e.message);process.exit(0)})"
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS" --quiet >/dev/null 2>&1 || true
+          gcloud logging read 'resource.type="cloud_run_revision" AND (severity>=WARNING OR textPayload:"drawing")' --project overboard-2104 --freshness=12h --limit 25 --format='value(timestamp,severity,textPayload,jsonPayload.message,jsonPayload.err)' 2>&1 | cut -c1-400 || true
