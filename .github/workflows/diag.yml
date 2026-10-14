@@ -36,6 +36,8 @@ jobs:
           node -e "
           const admin=require('firebase-admin');try{admin.initializeApp()}catch(e){}const D=require('./drawcheck');
           (async()=>{for(const [n,dw] of [['gary smiley','000000000000000001f00f881e0c1414300424042004200c21883010182007c0'],['test smiley','00000000000000000000042000000000000000000810042003c0000000000000']]){try{console.log('AI TEST',n,JSON.stringify(await D.aiCheck(dw,false)))}catch(e){console.log('AI TEST',n,'ERR',e.message)}}process.exit(0)})()"
+          for SITE in broadsidebay broadside-bay broadsidebay-game; do echo "SITE TRY $SITE"; npx --yes firebase-tools@14 hosting:sites:create $SITE --project overboard-2104 --non-interactive 2>&1 | grep -iE "site|error|already|created|available" | head -4; if npx --yes firebase-tools@14 hosting:sites:list --project overboard-2104 --non-interactive 2>/dev/null | grep -q " $SITE "; then echo "SITE OK $SITE"; break; fi; done
+          npx --yes firebase-tools@14 hosting:sites:list --project overboard-2104 --non-interactive 2>&1 | tail -8
           gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS" --quiet >/dev/null 2>&1 || true
           gcloud logging read 'resource.type="cloud_run_revision" AND (severity>=WARNING OR textPayload:"drawing")' --project overboard-2104 --freshness=12h --limit 25 --format='value(timestamp,severity,textPayload,jsonPayload.message,jsonPayload.err)' 2>&1 | cut -c1-400 || true
       - name: Save the report to the diag-out branch
