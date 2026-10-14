@@ -28,6 +28,9 @@ jobs:
           if [ -f google-services.json ]; then cp google-services.json android/app/; else echo "::warning::google-services.json missing - Google sign-in will not work in this build"; fi
           # include the Google provider of the sign-in plugin
           sed -i 's/^ext {/ext {\n    rgcfaIncludeGoogle = true/' android/variables.gradle
+          # Google Play's automatic protection needs Android 7.0 (API 24) or newer
+          sed -i 's/minSdkVersion = [0-9]*/minSdkVersion = 24/' android/variables.gradle
+          grep -n minSdkVersion android/variables.gradle
       - name: Turn with the phone (portrait and landscape)
         run: |
           sed -i 's/android:name=".MainActivity"/android:name=".MainActivity"\n            android:screenOrientation="fullUser"/' android/app/src/main/AndroidManifest.xml
