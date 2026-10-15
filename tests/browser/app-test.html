@@ -799,14 +799,15 @@ function drawEmblem(g,id,col,bg,dw){
   else if(id==='crown'){g.beginPath();g.moveTo(38,88);g.lineTo(38,48);g.lineTo(52,64);g.lineTo(64,40);g.lineTo(76,64);g.lineTo(90,48);g.lineTo(90,88);g.closePath();g.fill();
     for(const [x,y] of [[38,44],[64,36],[90,44]]){g.beginPath();g.arc(x,y,5,0,TAU);g.fill();}
     g.fillStyle=bg;for(const x of [50,64,78]){g.beginPath();g.arc(x,79,3.6,0,TAU);g.fill();}}
-  else if(id==='draw'&&DW_RE.test(dw||'')){for(let i=0;i<256;i++)if(dwBit(dw,i))g.fillRect(36+(i&15)*3.5,36+(i>>4)*3.5,3.6,3.6);}
+  else if(id==='draw'&&DW_RE.test(dw||'')){
+    // one shape for the whole drawing, so squares don't overlap (overlaps showed as grid lines on see-through sails)
+    g.beginPath();for(let i=0;i<256;i++)if(dwBit(dw,i))g.rect(36+(i&15)*3.5,36+(i>>4)*3.5,3.5,3.5);g.fill();}
   g.restore();
 }
 function sailTex(base,stripe,emblem,ecol,dw,fresh){const key=base+stripe+emblem+(ecol||'');if(!fresh&&sailCache[key])return sailCache[key];
   const t=canvasTex((g,s)=>{g.fillStyle=base;g.fillRect(0,0,s,s);
     for(let i=0;i<9000;i++){g.fillStyle=Math.random()<.5?'rgba(0,0,0,.05)':'rgba(255,255,255,.05)';g.fillRect(Math.random()*s,Math.random()*s,1,1);}
-    g.fillStyle='rgba(0,0,0,.09)';for(let x=28;x<s;x+=32)g.fillRect(x,0,2,s);
-    g.fillStyle='rgba(0,0,0,.08)';g.fillRect(0,s*.32,s,3);g.fillRect(0,s*.66,s,3);
+    // plain cloth: no seam lines (they looked like a grid over the emblem)
     if(stripe){g.fillStyle=stripe;g.globalAlpha=.9;g.fillRect(0,s*.44,s,s*.12);g.globalAlpha=1;}
     g.save();g.scale(s/128,s/128);g.globalAlpha=.92;drawEmblem(g,emblem,ecol,base,dw);g.restore();
     const dg=g.createLinearGradient(0,0,0,s);dg.addColorStop(0,'rgba(0,0,0,.12)');dg.addColorStop(.2,'rgba(0,0,0,0)');dg.addColorStop(.85,'rgba(60,40,20,0)');dg.addColorStop(1,'rgba(60,40,20,.28)');g.fillStyle=dg;g.fillRect(0,0,s,s);
