@@ -1,0 +1,43 @@
+# Downloads free CC0 model packs (Kenney) on GitHub's machines and commits them to the assets-in branch.
+name: Fetch free model packs
+on:
+  push:
+    branches: [assets-fetch]
+    paths: [".github/workflows/assets-fetch.yml"]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Kenney Pirate Kit (CC0)
+        run: |
+          set -e
+          mkdir -p out && cd out
+          for kit in pirate-kit; do
+            page=$(curl -sL "https://kenney.nl/assets/$kit")
+            url=$(echo "$page" | grep -oE 'https://kenney\.nl/media/pages/assets/[^"]+\.zip' | head -1)
+            echo "kit=$kit url=$url"
+            [ -n "$url" ] || { echo "no zip link found"; echo "$page" | grep -io 'zip[^"]*' | head; exit 1; }
+            curl -sL "$url" -o "$kit.zip"; ls -la "$kit.zip"
+            mkdir -p "$kit" && unzip -q "$kit.zip" -d "$kit"
+            rm "$kit.zip"
+          done
+          find . -type f | sed 's/^/  /' | head -400 > ../listing.txt
+          wc -l ../listing.txt
+      - name: Keep only GLB models, previews and licence
+        run: |
+          set -e
+          mkdir -p keep
+          cd out
+          find . -type f \( -iname '*.glb' -o -iname 'license*' -o -iname 'preview*.png' -o -iname '*.png' -path '*Preview*' \) -exec cp --parents {} ../keep/ \;
+          cd ../keep && find . -type f | wc -l && du -sh .
+      - name: Commit to assets-in branch
+        run: |
+          set -e
+          git init -q repo && cd repo
+          git config user.name "assets-bot" && git config user.email "assets-bot@users.noreply.github.com"
+          git checkout -q -b assets-in
+          mkdir -p kenney && cp -r ../keep/. kenney/ && cp ../listing.txt kenney/
+          git add -A && git commit -q -m "Kenney Pirate Kit (CC0) models"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" assets-in
