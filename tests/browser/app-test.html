@@ -138,6 +138,8 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .seg.on{background:linear-gradient(#e2574a,#9c231a);border-color:#e9786d}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
 .netrow{display:flex;gap:8px;flex-wrap:wrap;max-width:calc(100vw - 168px)}
+.hudnote{display:inline-block;margin-top:6px;max-width:calc(100vw - 168px);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:6px;color:var(--brass-hi);background:var(--glass);border:1px solid var(--line);transition:opacity .4s}
+.hudnote.fade{opacity:0}
 .qchip{pointer-events:auto;cursor:pointer;font-family:var(--body);color:var(--brass-hi);border:1px solid rgba(214,178,98,.55);background:var(--glass);position:relative}
 .qchip .dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:#ff5a3a;box-shadow:0 0 8px #ff5a3a}
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px}
@@ -336,6 +338,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
   </div>
   <div class="rankrow" id="rankrow" hidden><span class="rk" id="rkname">Deckhand</span><div class="xpbar"><div id="xpfill"></div></div></div>
   <div class="netrow"><span class="chip online off" id="online" hidden><i></i><span id="onlinetxt">Offline</span></span><button class="chip qchip" id="chatbtn" hidden aria-label="Quick chat">💬</button><button class="chip qchip" id="qchip" hidden><span id="qchiptxt">Quests</span><b class="dot" id="qdot" hidden></b></button></div>
+  <div class="hudnote" id="hudnote" hidden></div>
   <div class="chips" id="chips"></div>
   <div class="objective" id="objective" hidden></div>
   <div class="boss" id="boss" hidden><div class="name" id="bossname">The Iron Maw</div><div class="bossbar"><div class="bossfill" id="bossfill"></div></div></div>
@@ -1602,6 +1605,7 @@ function spawnWave(){
   const count=1+wave-Math.floor(wave/5),gal=Math.floor((wave-1)/2);
   for(let i=0;i<count;i++)spawnShip(i<gal?'galleon':(wave>=4&&i===count-1)?'fireship':'sloop');
 }
+let hudNoteT=0;function hudNote(t){const n=$('hudnote');n.textContent=t;n.hidden=false;n.classList.remove('fade');clearTimeout(hudNoteT);hudNoteT=setTimeout(()=>{n.classList.add('fade');hudNoteT=setTimeout(()=>{n.hidden=true;},450);},4500);}
 function showBanner(s,bossy,sub){const b=$('banner');b.textContent=s;if(sub){const m=document.createElement('small');m.textContent=sub;b.appendChild(m);}b.classList.toggle('bossy',!!bossy);b.classList.add('show');bannerT=sub?3.8:1.7;}
 function updHud(){const m=maxHp();let h='';for(let i=0;i<m;i++)h+=`<span class="seg${i<P.hp?' on':''}"></span>`;$('hp').innerHTML=h;$('wave').textContent=MODE==='open'?sunk:wave;$('gold').textContent=gold;}
 let chipKey='';
@@ -2971,8 +2975,8 @@ let treasure=null,convoy=null,convoyT=90;
 function startTreasure(){const c=islands.filter(i=>!i.port&&Math.hypot(i.x-P.x,i.z-P.z)>50&&Math.hypot(i.x-P.x,i.z-P.z)<210);
   if(treasure||!c.length){if(econServer())econKill('map');else addGold(40);updHud();
     if(treasure){const I=treasure.isl,a=Math.atan2(-(I.z-P.z),I.x-P.x),dirs=['east','north-east','north','north-west','west','south-west','south','south-east'],dir=dirs[((Math.round(a/(Math.PI/4))%8)+8)%8],mins=Math.max(1,Math.ceil(treasure.t/60));
-      treasure.pulse=3;showBanner('Spare map: +40 gold',false,`You already follow a map. Your X is to the ${dir}, ${mins} min left.`);}
-    else showBanner('Faded map: +40 gold',false,'This one is too faded to read.');return;}
+      treasure.pulse=3;hudNote(`Spare map: +40 gold. Your X is ${dir}, ${mins} min left`);}
+    else hudNote('Faded map: +40 gold');return;}
   const isl=c[Math.floor(Math.random()*c.length)];treasure={isl,t:360,dig:0};showBanner('Treasure map! X marks the spot');}
 $('dig').onclick=()=>{audio();if(treasure&&!treasure.dig){treasure.dig=.001;chime();}};
 function spawnConvoy(){const sp=spawnSpot(110,150);if(!sp)return;
