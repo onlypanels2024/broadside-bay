@@ -945,7 +945,7 @@ const G={
   lateenYard:new THREE.CylinderGeometry(.045,.045,5.3,6),ram:new THREE.ConeGeometry(.2,1.1,10),win:new THREE.BoxGeometry(.04,.2,.16),
   oar:new THREE.CylinderGeometry(.03,.05,1.6,5),batten:new THREE.CylinderGeometry(.025,.025,2.1,5),
   funnel:new THREE.CylinderGeometry(.26,.3,1.8,14),funnelTop:new THREE.CylinderGeometry(.27,.27,.25,14),
-  paddle:new THREE.CylinderGeometry(.85,.85,.45,18,1,false,0,Math.PI),bridge:new THREE.BoxGeometry(.95,.7,1.15),roof:new THREE.BoxGeometry(1.1,.08,1.3),winStrip:new THREE.BoxGeometry(.05,.2,1.0),
+  paddle:new THREE.CylinderGeometry(.85,.85,.45,18,1,false,-Math.PI/2,Math.PI),bridge:new THREE.BoxGeometry(.95,.7,1.15),roof:new THREE.BoxGeometry(1.1,.08,1.3),winStrip:new THREE.BoxGeometry(.05,.2,1.0),
   turret:new THREE.CylinderGeometry(.38,.42,.28,16),turretBox:new THREE.BoxGeometry(.55,.28,.5),barrelL:new THREE.CylinderGeometry(.05,.06,.95,8),
   light:new THREE.CylinderGeometry(.13,.1,.22,12),lens:new THREE.CircleGeometry(.12,14),pole:new THREE.CylinderGeometry(.035,.045,1.3,6),radarBar:new THREE.BoxGeometry(.9,.06,.12),
   armour:new THREE.BoxGeometry(.55,.3,.06),crate:new THREE.BoxGeometry(.32,.32,.32),barrel:new THREE.CylinderGeometry(.16,.16,.36,10),
@@ -975,6 +975,38 @@ function addPet(add,kind,x,y){
     [1,-1].forEach(s2=>add(new THREE.BoxGeometry(.16,.05,.03),M.parrotB,x-.02,y+.13,s2*.1).rotation.z=.6);add(new THREE.BoxGeometry(.04,.2,.06),M.parrotG,x-.1,y-.02,0).rotation.z=.4;}
   else if(kind===2){add(new THREE.SphereGeometry(.13,10,8),M.fur,x,y+.12,0);add(new THREE.SphereGeometry(.1,10,8),M.fur,x+.02,y+.3,0);add(new THREE.SphereGeometry(.06,8,6),M.furL,x+.09,y+.28,0);
     [1,-1].forEach(s2=>add(new THREE.SphereGeometry(.04,8,6),M.furL,x,y+.33,s2*.1));add(new THREE.TorusGeometry(.12,.025,6,12,Math.PI*1.3),M.fur,x-.16,y+.1,0).rotation.y=Math.PI/2;}}
+/* ---- sculpted ship parts: castles that follow the hull, railings, and shaped modern fittings ---- */
+const partCache={};
+// a raised deck (stern castle or forecastle) lofted along the hull: sides lean in a little, the top rises toward its outer end
+function castleGeo(x0,x1,h,rise,outerIsStern){const key='c'+[x0,x1,h,rise,outerIsStern].join();if(partCache[key])return partCache[key];
+  const N=12,P=[],U=[],T=[];const sl=[];
+  for(let i=0;i<=N;i++){const x=x0+(x1-x0)*i/N,e=edge(x),w=e.w*.985,t=outerIsStern?1-i/N:i/N,yb=e.yt-.1,yt=yb+h+rise*t*t;sl.push([[x,yb,-w],[x,yt,-w*.9],[x,yt,w*.9],[x,yb,w]]);}
+  const tri=(a,b,c)=>{for(const v of [a,b,c]){P.push(...v);U.push(v[0]*.6+v[2]*.5,v[1]*1.3);}};
+  const quad=(a,b,c,d)=>{tri(a,b,c);tri(a,c,d);};
+  for(let i=0;i<N;i++){const A=sl[i],B=sl[i+1];quad(A[0],B[0],B[1],A[1]);quad(A[1],B[1],B[2],A[2]);quad(A[2],B[2],B[3],A[3]);}
+  quad(sl[0][3],sl[0][2],sl[0][1],sl[0][0]);quad(sl[N][0],sl[N][1],sl[N][2],sl[N][3]);
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.computeVertexNormals();
+  g.userData.top=x=>{const i=Math.max(0,Math.min(N,Math.round((x-x0)/(x1-x0)*N)));return sl[i][1][1];};g.userData.sl=sl;return partCache[key]=g;}
+// a railing: posts plus a top rail, following a list of points, merged into one mesh
+const RPOST=new THREE.CylinderGeometry(.022,.026,.24,5);
+function railGeo(pts,key){if(partCache[key])return partCache[key];const list=[],m=new THREE.Matrix4();
+  for(let i=0;i<pts.length;i++){const p=pts[i];m.makeTranslation(p.x,p.y-.12,p.z);list.push({geo:RPOST,m:m.clone()});}
+  const path=new THREE.CatmullRomCurve3(pts.map(p=>p.clone()));const tube=new THREE.TubeGeometry(path,Math.max(8,pts.length*3),.03,5,false);list.push({geo:tube,m:new THREE.Matrix4()});
+  const g=mergeInto(list);tube.dispose();return partCache[key]=g;}
+const lathe=(pts,seg=18)=>new THREE.LatheGeometry(pts.map(([r,y])=>new THREE.Vector2(r,y)),seg);
+function roundBox(w,d,h,r,bevel){const s=new THREE.Shape(),x=-w/2,y=-d/2;s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+d-r);s.quadraticCurveTo(x+w,y+d,x+w-r,y+d);
+  s.lineTo(x+r,y+d);s.quadraticCurveTo(x,y+d,x,y+d-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);
+  const g=new THREE.ExtrudeGeometry(s,{depth:h,bevelEnabled:!!bevel,bevelSize:bevel||0,bevelThickness:bevel||0,bevelSegments:2,curveSegments:6});g.rotateX(-Math.PI/2);return g;}
+const SP={
+  funnel:lathe([[.24,0],[.25,1.3],[.27,1.55],[.33,1.72],[.34,1.8],[.3,1.8],[.25,1.6],[.2,1.6]]),funnelBand:lathe([[.262,0],[.275,0],[.285,.22],[.27,.22]]),
+  bridge:roundBox(1.0,1.2,.62,.24,.03),bridgeWin:roundBox(1.06,1.26,.18,.26),bridgeRoof:roundBox(1.25,1.45,.06,.3,.02),
+  turret:lathe([[0,0],[.46,0],[.47,.12],[.42,.24],[.3,.34],[0,.38]]),mantlet:roundBox(.34,.42,.22,.08,.02),
+  barrel:lathe([[.055,0],[.05,.75],[.07,.78],[.07,.9],[.05,.92],[0,.92]],10),
+  lightBody:lathe([[0,0],[.1,0],[.14,.06],[.15,.24],[.12,.26],[0,.26]],14),
+  paddleBox:(()=>{const s=new THREE.Shape();s.moveTo(-.95,0);s.absarc(0,0,.95,Math.PI,0,true);s.lineTo(-.95,0);const g=new THREE.ExtrudeGeometry(s,{depth:.42,bevelEnabled:true,bevelSize:.04,bevelThickness:.04,bevelSegments:2,curveSegments:16});g.translate(0,0,-.21);return g;})(),
+  ray:new THREE.BoxGeometry(.05,.8,.03),
+  radarDish:(()=>{const g=new THREE.CylinderGeometry(.5,.5,.08,16,1,true,-.7,1.4);g.rotateX(Math.PI/2);return g;})(),
+};
 const lampGlowM=new THREE.SpriteMaterial({map:softTex,color:L('#ffb85a'),transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
 function makeShip(o){
   const g=new THREE.Group(),inner=new THREE.Group();g.add(inner);
@@ -990,8 +1022,15 @@ function makeShip(o){
   const sub=(px,py,sc)=>{const gg=new THREE.Group();gg.position.set(px,py,0);gg.scale.setScalar(sc);inner.add(gg);return (geo,m,x,y,z)=>add(geo,m,x,y,z,gg);};
   if(o.fig)addFigurehead(sub(LB+.05,edge(LB).yt-.05,2.3),o.fig,0,0);
   if(o.pet)addPet(sub(-LS+.75,edge(-LS+.75).yt+.08+.5*((o.castleH||1)-1),2.4),o.pet,0,0);
-  const sc=edge(-1.9),cH=o.castleH||1;const castle=add(G.castle,castleM,-1.95,sc.yt+.12+.25*(cH-1),0);castle.scale.z=sc.w*1.8;castle.scale.y=cH;
-  if(o.forecastle){const fe=edge(2.2);const fc=add(G.castle,castleM,2.15,fe.yt+.1,0);fc.scale.set(.85,.8,fe.w*1.7);}
+  const cH=o.castleH||1,SX0=-LS+.04,SX1=-1.22,cg=castleGeo(SX0,SX1,.5*cH-.03,.14,true);add(cg,castleM,0,0,0);
+  // stern face trim and a railing round the castle top
+  {const sl=cg.userData.sl,pts=[];for(let i=sl.length-1;i>=0;i--)pts.push(new THREE.Vector3(sl[i][0][0],sl[i][2][1]+.24,sl[i][2][2]*.97));for(let i=0;i<sl.length;i++)pts.push(new THREE.Vector3(sl[i][0][0],sl[i][1][1]+.24,sl[i][1][2]*.97));
+    add(railGeo(pts,'rs'+cH),M.mast,0,0,0);}
+  let FX0=null;if(o.forecastle){FX0=1.5;const fg=castleGeo(FX0,LB-.3,.36,.12,false);add(fg,castleM,0,0,0);
+    const sl=fg.userData.sl,pts=[];for(let i=0;i<sl.length;i++)pts.push(new THREE.Vector3(sl[i][0][0],sl[i][2][1]+.24,sl[i][2][2]*.97));for(let i=sl.length-1;i>=0;i--)pts.push(new THREE.Vector3(sl[i][0][0],sl[i][1][1]+.24,sl[i][1][2]*.97));
+    add(railGeo(pts,'rf'),M.mast,0,0,0);}
+  // waist railings along both sides between the castles
+  [1,-1].forEach(sd=>{const pts=[],xe=FX0!=null?FX0:LB-.5;for(let x=SX1;x<=xe+1e-6;x+=(xe-SX1)/10){const e=edge(x);pts.push(new THREE.Vector3(x,e.yt+.2,sd*e.w*.93));}add(railGeo(pts,'rw'+sd+(FX0!=null?'f':'')),M.mast,0,0,0);});
   const ropes=[];
   const bowTip=new THREE.Vector3(LB+1.55,edge(LB).yt+.75,0);
   add(G.sprit,M.mast,LB+.6,edge(LB).yt+.45,0).rotation.z=-Math.PI/2+.38;
@@ -1007,7 +1046,8 @@ function makeShip(o){
     if(o.tiers>=3){add(G.topmast,MM,mx,b+6.3,0);if(ss==='square')add(G.sailTop,sailM,mx+.1,b+5.35,0);}
     const top=new THREE.Vector3(mx,b+5.6,0);
     [1,-1].forEach(sd=>[-.4,-1].forEach(dx=>{const e=edge(mx+dx);ropes.push(new THREE.Vector3(mx,b+4.9,0),new THREE.Vector3(mx+dx,e.yt+.25,sd*e.w*.97));}));
-    if(i===0){ropes.push(top,bowTip);
+    if(i===0&&o.sailStyle==='none')ropes.push(top,bowTip);
+    else if(i===0){ropes.push(top,bowTip);
       const jg=new THREE.BufferGeometry();const c=new THREE.Vector3(LB-.3,edge(LB-.3).yt+.3,0),m=new THREE.Vector3(mx+.1,b+4.3,0);
       jg.setAttribute('position',new THREE.Float32BufferAttribute([bowTip.x,bowTip.y,0,m.x,m.y,0,c.x,c.y,0,(bowTip.x+m.x+c.x)/3+.0,(bowTip.y+m.y+c.y)/3,.35],3));
       jg.setAttribute('uv',new THREE.Float32BufferAttribute([1,0,0,1,0,0,.4,.4],2));jg.setIndex([0,3,1,1,3,2,2,3,0]);jg.computeVertexNormals();add(jg,sailM,0,0,0);}
@@ -1023,18 +1063,19 @@ function makeShip(o){
   guns.visible=!!o.guns;
   const fx={tops:[],radar:null};
   if(o.armour)for(let x=-2.1;x<=2.31;x+=.52){const {w}=edge(x);[1,-1].forEach(sd=>add(G.armour,M.steel,x,.12,sd*(w*.93+.03)));}
-  if(o.paddles){const {yt,w}=edge(0);[1,-1].forEach(sd=>{const pw=add(G.paddle,castleM,0,yt-.55,sd*(w+.24));pw.rotation.x=Math.PI/2;pw.rotation.y=sd>0?0:Math.PI;});}
+  if(o.paddles){const {yt,w}=edge(0);[1,-1].forEach(sd=>{add(SP.paddleBox,castleM,0,yt-.45,sd*(w+.25));
+    for(let k=0;k<7;k++){const a=Math.PI*(k+.5)/7,r=add(SP.ray,M.brass,Math.cos(a)*.48,yt-.45+Math.sin(a)*.48,sd*(w+.5));r.rotation.z=a-Math.PI/2;}});}
   const fn=o.funnels|0;if(fn){const fM=std({color:L(o.funnelCol||'#1a1a1a'),roughness:.6,metalness:.3});fx.mat=fM;
-    (fn===1?[-.35]:[.35,-.55]).forEach(x=>{const y=edge(x).yt-.08;add(G.funnel,fM,x,y+.9,0);add(G.funnelTop,M.port,x,y+1.85,0);fx.tops.push(new THREE.Vector3(x,y+2,0));});}
-  let roofY=null;if(o.bridge){const x=-.95,y=edge(x).yt-.08;add(G.bridge,castleM,x,y+.35,0);add(G.roof,M.steel,x,y+.74,0);add(G.winStrip,M.glass,x+.49,y+.45,0);roofY=y+.78;}
-  if(o.turrets){[[1.95,1],[-1.2,-1]].slice(0,o.turrets).forEach(([x,dir])=>{const y=edge(x).yt-.08;add(G.turret,M.steel,x,y+.14,0);add(G.turretBox,M.steel,x+.05*dir,y+.42,0);
-    [.1,-.1].forEach(z=>add(G.barrelL,M.iron,x+.55*dir,y+.44,z).rotation.z=-Math.PI/2*dir);});}
-  if(o.searchlight){const x=roofY!=null?-.75:LB-.35,y=roofY!=null?roofY+.12:edge(LB-.35).yt+.2;const l=add(G.light,M.steel,x,y,0);l.rotation.z=-Math.PI/2;
+    (fn===1?[-.35]:[.35,-.55]).forEach(x=>{const y=edge(x).yt-.08;const f=add(SP.funnel,fM,x,y,0);f.rotation.z=.12;add(SP.funnelBand,M.port,x+.17,y+1.38,0).rotation.z=.12;fx.tops.push(new THREE.Vector3(x+.24,y+1.95,0));});}
+  let roofY=null;if(o.bridge){const x=-.85,y=edge(x).yt-.08;add(SP.bridge,castleM,x,y,0);add(SP.bridgeWin,M.glass,x,y+.36,0);add(SP.bridgeRoof,M.lhWhite,x,y+.64,0);roofY=y+.74;}
+  if(o.turrets){[[1.95,1],[-.15,-1]].slice(0,o.turrets).forEach(([x,dir])=>{const y=edge(x).yt-.08;add(SP.turret,M.steel,x,y,0);add(SP.mantlet,M.steel,x+.3*dir,y+.12,0);
+    [.1,-.1].forEach(z=>add(SP.barrel,M.iron,x+.38*dir,y+.24,z).rotation.z=-Math.PI/2*dir);});}
+  if(o.searchlight){const x=roofY!=null?-.75:LB-.35,y=roofY!=null?roofY+.12:edge(LB-.35).yt+.2;const l=add(SP.lightBody,M.steel,x-.13,y,0);l.rotation.z=-Math.PI/2;
     const ln=add(G.lens,std({color:L('#fff6d8'),emissive:L('#fff1c0'),emissiveIntensity:3}),x+.12,y,0);ln.rotation.y=Math.PI/2;ln.castShadow=false;
     const gw=new THREE.Sprite(lampGlowM);gw.position.set(x+.2,y,0);gw.scale.setScalar(1.3);gw.renderOrder=5;inner.add(gw);}
-  if(o.radar){const x=roofY!=null?-1.1:-.4,y=roofY!=null?roofY:edge(-.4).yt-.08;add(G.pole,M.steel,x,y+.65,0);fx.radar=add(G.radarBar,M.steel,x,y+1.32,0);}
+  if(o.radar){const x=roofY!=null?-1.1:-.4,y=roofY!=null?roofY:edge(-.4).yt-.08;add(G.pole,M.steel,x,y+.65,0);fx.radar=add(SP.radarDish,M.steel,x,y+1.36,0);}
   if(o.ram){const fe=edge(LB);add(G.ram,M.iron,LB+.75,fe.yt-.85,0).rotation.z=-Math.PI/2;}
-  if(o.gallery){const se=edge(-1.9),cy=se.yt+.12+.25*((o.castleH||1)-1);for(let i=0;i<4;i++)add(G.win,M.lamp,-2.6,cy,(-.75+i*.5)*se.w).castShadow=false;}
+  if(o.gallery){const e=edge(SX0),cy=e.yt-.1+(.5*cH+.1)*.55;for(let i=0;i<4;i++)add(G.win,M.lamp,SX0-.02,cy,(-.66+i*.44)*e.w).castShadow=false;}
   if(o.oars){[-1.2,-.72,-.24,.24,.72,1.2].forEach(x=>{const {yt,w}=edge(x);[1,-1].forEach(sd=>{const oar=add(G.oar,M.mast,x,yt-.1-.8*.4,sd*(w+.8*.9));oar.rotation.x=sd*1.98;});});}
   if(o.cargo){[[.55,.35],[.85,-.3],[-.55,.4],[-.9,-.35]].forEach(([x,z],i)=>{const {yt,w}=edge(x);
     if(i%2)add(G.crate,M.barrel,x,yt-.08+.17,z*w).rotation.y=.4*i;else add(G.barrel,M.barrel,x,yt-.08+.18,z*w);});}
