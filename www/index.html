@@ -277,6 +277,7 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 #banner{position:fixed;left:0;right:0;top:34%;padding-inline:16px;text-align:center;font-family:var(--display);font-weight:800;font-size:38px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--parch);text-shadow:0 2px 14px rgba(0,0,0,.75);pointer-events:none;z-index:2;opacity:0;transition:opacity .5s}
 #banner.show{opacity:1}
+#banner small{display:block;margin-top:8px;font-family:var(--body);font-weight:700;font-size:16px;letter-spacing:.03em;text-transform:none}
 #banner.bossy{color:#ffb4a6}
 .boss.left{align-self:flex-start;width:min(340px,calc(100vw - 170px))}
 #map{position:fixed;inset:auto;left:auto;right:16px;top:calc(env(safe-area-inset-top,0px) + 70px);width:116px;height:116px;border-radius:50%;border:1px solid var(--line);
@@ -1461,7 +1462,7 @@ function econServer(){return MODE==='open'&&saveMode==='server'&&!!NET.room;}
 function netPaint(){if(!(NET.fb&&saveMode==='server'))return paint;const sp=NET.srv&&NET.srv.paint;return sp&&typeof sp.lk==='string'?sp:{};}
 function econRequest(r){if(!econServer())return;const k=FB.request(r);if(k)NET.pending.set(k,Date.now());}
 // Online kill rewards include the coins the wreck drops (coins online are just for show).
-const ONLINE_KILL={sloop:{g:70,xp:20},galleon:{g:210,xp:50},fireship:{g:120,xp:35},boss:{g:550,xp:250},treasure:{g:400,xp:60},merchant:{g:500,xp:80},escort:{g:300,xp:70},kraken:{g:900,xp:400}};
+const ONLINE_KILL={sloop:{g:70,xp:20},galleon:{g:210,xp:50},fireship:{g:120,xp:35},boss:{g:550,xp:250},treasure:{g:400,xp:60},merchant:{g:500,xp:80},escort:{g:300,xp:70},kraken:{g:900,xp:400},map:{g:40,xp:0}};
 // Show the reward straight away, then follow the referee's answer: while requests are waiting we keep
 // the local numbers; once all are answered we take the referee's numbers (correcting anything refused).
 function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typeof sv.last==='string'?sv.last:'';
@@ -1603,7 +1604,7 @@ function spawnWave(){
   const count=1+wave-Math.floor(wave/5),gal=Math.floor((wave-1)/2);
   for(let i=0;i<count;i++)spawnShip(i<gal?'galleon':(wave>=4&&i===count-1)?'fireship':'sloop');
 }
-function showBanner(s,bossy){const b=$('banner');b.textContent=s;b.classList.toggle('bossy',!!bossy);b.classList.add('show');bannerT=1.7;}
+function showBanner(s,bossy,sub){const b=$('banner');b.textContent=s;if(sub){const m=document.createElement('small');m.textContent=sub;b.appendChild(m);}b.classList.toggle('bossy',!!bossy);b.classList.add('show');bannerT=sub?3.8:1.7;}
 function updHud(){const m=maxHp();let h='';for(let i=0;i<m;i++)h+=`<span class="seg${i<P.hp?' on':''}"></span>`;$('hp').innerHTML=h;$('wave').textContent=MODE==='open'?sunk:wave;$('gold').textContent=gold;}
 let chipKey='';
 function updChips(){const k=(pw.speed>0?'s'+Math.ceil(pw.speed):'')+(pw.rapid>0?'r'+Math.ceil(pw.rapid):'')+(pw.side>0&&!up.broadside?'d'+Math.ceil(pw.side):'');if(k===chipKey)return;chipKey=k;
@@ -2970,7 +2971,10 @@ function clearFires(){lobs.forEach(l=>scene.remove(l.m));lobs=[];fires=[];}
 /* ================= sea events: treasure maps, merchant convoys, the kraken ================= */
 let treasure=null,convoy=null,convoyT=90;
 function startTreasure(){const c=islands.filter(i=>!i.port&&Math.hypot(i.x-P.x,i.z-P.z)>50&&Math.hypot(i.x-P.x,i.z-P.z)<210);
-  if(treasure||!c.length){addGold(econServer()?0:40);showBanner(treasure?'You already carry a map':'The map is too faded to read');return;}
+  if(treasure||!c.length){if(econServer())econKill('map');else addGold(40);updHud();
+    if(treasure){const I=treasure.isl,a=Math.atan2(-(I.z-P.z),I.x-P.x),dirs=['east','north-east','north','north-west','west','south-west','south','south-east'],dir=dirs[((Math.round(a/(Math.PI/4))%8)+8)%8],mins=Math.max(1,Math.ceil(treasure.t/60));
+      treasure.pulse=3;showBanner('Spare map: +40 gold',false,`You already follow a map. Your X is to the ${dir}, ${mins} min left.`);}
+    else showBanner('Faded map: +40 gold',false,'This one is too faded to read.');return;}
   const isl=c[Math.floor(Math.random()*c.length)];treasure={isl,t:360,dig:0};showBanner('Treasure map! X marks the spot');}
 $('dig').onclick=()=>{audio();if(treasure&&!treasure.dig){treasure.dig=.001;chime();}};
 function spawnConvoy(){const sp=spawnSpot(110,150);if(!sp)return;
@@ -3066,7 +3070,7 @@ function krakenTick(dt){
 function krakenHurt(b){boom(b.x,b.z,false);noise(.15,900,.25);kraken.flash=.25;kraken.mine++;kraken.hp=Math.max(0,kraken.hp-1);if(MODE==='open')krakenHitShared(kraken.slot);}
 function seaEventsTick(dt){
   // treasure
-  if(treasure){treasure.t-=dt;const I=treasure.isl,d=Math.hypot(P.x-I.x,P.z-I.z),near=d<I.r*1.3+8;
+  if(treasure){treasure.t-=dt;if(treasure.pulse>0)treasure.pulse-=dt;const I=treasure.isl,d=Math.hypot(P.x-I.x,P.z-I.z),near=d<I.r*1.3+8;
     if(treasure.t<=0){treasure=null;showBanner('Your treasure map crumbled away');$('dig').hidden=true;}
     else{if($('dig').hidden===near)$('dig').hidden=!near;
       if(treasure.dig>0){if(!near){treasure.dig=0;$('diglbl').textContent='Dig for treasure';}
@@ -3082,7 +3086,8 @@ function seaEventsTick(dt){
 }
 
 function seaEventsMap(g,tx,tz,S,edge){
-  if(treasure){const x=tx(treasure.isl.x),y=tz(treasure.isl.z);g.strokeStyle='#ffd36a';g.lineWidth=2.2;g.beginPath();g.moveTo(x-4,y-4);g.lineTo(x+4,y+4);g.moveTo(x+4,y-4);g.lineTo(x-4,y+4);g.stroke();edge(treasure.isl.x,treasure.isl.z,'#ffd36a',3);}
+  if(treasure){const x=tx(treasure.isl.x),y=tz(treasure.isl.z);g.strokeStyle='#ffd36a';g.lineWidth=2.2;g.beginPath();g.moveTo(x-4,y-4);g.lineTo(x+4,y+4);g.moveTo(x+4,y-4);g.lineTo(x-4,y+4);g.stroke();edge(treasure.isl.x,treasure.isl.z,'#ffd36a',3);
+    if(treasure.pulse>0){const k=(3-treasure.pulse)%1;g.globalAlpha=1-k;g.beginPath();g.arc(x,y,5+k*14,0,TAU);g.stroke();g.globalAlpha=1;}}
   if(convoy&&convoy.m){const x=tx(convoy.m.x),y=tz(convoy.m.z);g.fillStyle='#ffd36a';g.beginPath();g.moveTo(x,y-4.5);g.lineTo(x+4.5,y);g.lineTo(x,y+4.5);g.lineTo(x-4.5,y);g.closePath();g.fill();g.strokeStyle='#5a3d0a';g.lineWidth=1;g.stroke();edge(convoy.m.x,convoy.m.z,'#ffd36a',2.6);}
   if(kraken.on&&!kraken.dead){const x=tx(kraken.x),y=tz(kraken.z);g.fillStyle='#c35bff';g.beginPath();g.arc(x,y,5.5,0,TAU);g.fill();g.fillStyle='#1b0b22';g.beginPath();g.arc(x-1.8,y-1,1.1,0,TAU);g.arc(x+1.8,y-1,1.1,0,TAU);g.fill();edge(kraken.x,kraken.z,'#c35bff',4.2);}
 }

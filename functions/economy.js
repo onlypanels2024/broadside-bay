@@ -34,6 +34,8 @@
     merchant: { g: 500, xp: 80, pts: 0, gap: 150000 },
     escort: { g: 300, xp: 70, pts: 0, gap: 150000 },
     kraken: { g: 900, xp: 400, pts: 0, gap: 240000 },
+    // a spare treasure map (picked up while already following one) is traded for a little gold
+    map: { g: 40, xp: 0, pts: 0, gap: 30000 },
   };
   // How fast pirates can realistically be sunk: a bucket of 12 "sloop points" refilled at 8 per minute,
   // and at most one boss every 2 minutes (bosses appear every 4).

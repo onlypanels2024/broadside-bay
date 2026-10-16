@@ -164,7 +164,7 @@ rep("function econServer(){return false;}\nfunction econRequest(r){}\nfunction e
 """function econServer(){return MODE==='open'&&saveMode==='server'&&!!NET.room;}
 function econRequest(r){if(!econServer())return;const k=FB.request(r);if(k)NET.pending.set(k,Date.now());}
 // Online kill rewards include the coins the wreck drops (coins online are just for show).
-const ONLINE_KILL={sloop:{g:70,xp:20},galleon:{g:210,xp:50},fireship:{g:120,xp:35},boss:{g:550,xp:250},treasure:{g:400,xp:60},merchant:{g:500,xp:80},escort:{g:300,xp:70},kraken:{g:900,xp:400}};
+const ONLINE_KILL={sloop:{g:70,xp:20},galleon:{g:210,xp:50},fireship:{g:120,xp:35},boss:{g:550,xp:250},treasure:{g:400,xp:60},merchant:{g:500,xp:80},escort:{g:300,xp:70},kraken:{g:900,xp:400},map:{g:40,xp:0}};
 // Show the reward straight away, then follow the referee's answer: while requests are waiting we keep
 // the local numbers; once all are answered we take the referee's numbers (correcting anything refused).
 function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typeof sv.last==='string'?sv.last:'';

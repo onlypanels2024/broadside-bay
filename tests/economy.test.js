@@ -370,3 +370,11 @@ test('each ship keeps its own upgrades: a new ship starts with none, an old one 
   r = E.processRequest(old, { k: 'ship', id: 'brig' }, inPort, NOW);
   assert.deepStrictEqual(r.save.up, { hull: 0, sails: 0, reload: 0, triple: 0, broadside: 0 });
 });
+
+test('a spare treasure map pays 40 gold, no XP, at most once every 30 seconds', () => {
+  let r = E.processRequest(null, { k: 'kill', e: 'map' }, atSea, NOW);
+  assert.strictEqual(r.ok, true);assert.deepStrictEqual([r.save.gold, r.save.xp, r.save.sunk], [40, 0, 0]);
+  const s = r.save;
+  assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'map' }, seaAt(NOW + 10000), NOW + 10000).ok, false);
+  assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'map' }, seaAt(NOW + 31000), NOW + 31000).ok, true);
+});
