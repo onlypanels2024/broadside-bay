@@ -453,14 +453,14 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
 </div>
 <div class="overlay sheet" id="designov" hidden>
   <div class="card dress" role="dialog" aria-labelledby="designh">
-    <div class="dresshead"><div><div class="eyebrow">Preview · only you</div><h2 id="designh">Ship Designer</h2></div><button class="btn small" id="designdone">Done</button></div>
+    <div class="dresshead"><div><div class="eyebrow">Developer tools</div><h2 id="designh">Ship Designer</h2></div><button class="btn small" id="designdone">Done</button></div>
     <div class="dsec"><div class="lbl">Ship name</div><input class="dname" id="dname" maxlength="24" placeholder="Name your ship"></div>
     <div id="dopts"></div>
     <div class="dacts"><button class="btn ghost" id="drandom">Surprise me</button><button class="btn ghost" id="dsave">Save design</button><button class="btn" id="dshare">Send to Claude</button></div>
     <p class="dressmsg" id="dmsg" aria-live="polite"></p>
     <div id="dcodebox" hidden><div class="lbl">Design code (copy and send it)</div><div class="dcode" id="dcode"></div></div>
     <div class="dsec" id="dsavedsec" hidden><div class="lbl">Your saved designs</div><div class="dsaved" id="dsaved"></div></div>
-    <div class="dressnote">Looks only: speed and firepower come from the ship class, so designs stay fair online.</div>
+    <div class="dressnote">Mix classic and modern parts freely. Send a finished design to Claude and it becomes a real ship in the game.</div>
   </div>
 </div>
 <div class="overlay" id="drawov" hidden>
@@ -738,6 +738,12 @@ const collarTex=canvasTex((g,s)=>{for(let i=0;i<260;i++){const a=Math.random()*T
   g.globalCompositeOperation='destination-out';const r=g.createRadialGradient(s/2,s/2,s*.2,s/2,s/2,s*.36);r.addColorStop(0,'rgba(0,0,0,1)');r.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=r;g.fillRect(0,0,s,s);},128);
 const foamTex=canvasTex((g,s)=>{for(let i=0;i<40;i++){const x=s/2+rnd(-s*.3,s*.3),y=s/2+rnd(-s*.3,s*.3),r=rnd(4,14);g.fillStyle=`rgba(255,255,255,${rnd(.2,.6)})`;g.beginPath();g.arc(x,y,r,0,TAU);g.fill();}
   g.globalCompositeOperation='destination-in';const r=g.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);r.addColorStop(0,'rgba(0,0,0,1)');r.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=r;g.fillRect(0,0,s,s);},128);
+// riveted metal plates for ironclad and steel hulls
+const plateTex=canvasTex((g,s)=>{g.fillStyle='#d8d8d8';g.fillRect(0,0,s,s);const n=4,c=s/n;
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++){const v=200+Math.random()*40|0;g.fillStyle=`rgb(${v},${v},${v})`;g.fillRect(i*c+1,j*c+1,c-2,c-2);
+    g.fillStyle='rgba(40,40,40,.55)';for(let k=0;k<6;k++){g.beginPath();g.arc(i*c+4+k*(c-8)/5,j*c+4,1.6,0,TAU);g.fill();g.beginPath();g.arc(i*c+4+k*(c-8)/5,j*c+c-4,1.6,0,TAU);g.fill();}}
+  g.strokeStyle='rgba(30,30,30,.7)';g.lineWidth=2;for(let i=0;i<=n;i++){g.beginPath();g.moveTo(i*c,0);g.lineTo(i*c,s);g.moveTo(0,i*c);g.lineTo(s,i*c);g.stroke();}},256);
+plateTex.wrapS=plateTex.wrapT=THREE.RepeatWrapping;plateTex.repeat.set(1.5,1.5);
 const sailCache={};
 /* ---- ship paint: colours, emblems, a captain's own drawing ---- */
 // Order of the 7-letter paint code: hull, trim, sails, stripe, emblem colour, flag, emblem. Each letter is a base-36 index.
@@ -883,7 +889,7 @@ const M={
   coin:std({color:L('#ffcf55'),metalness:1,roughness:.22}),parch:std({color:L('#e9d9a8'),roughness:.9}),ribbon:std({color:L('#a3271c'),roughness:.6}),
   barrel:std({map:woodTex,color:L('#9a6a3e'),roughness:.75}),
   wall:std({color:L('#e3d6bc'),roughness:.9}),roof:std({color:L('#8c3a24'),roughness:.8}),
-  lhWhite:std({color:L('#f1ede4'),roughness:.6}),lhRed:std({color:L('#a8302a'),roughness:.6}),
+  lhWhite:std({color:L('#f1ede4'),roughness:.6}),steel:std({color:L('#7d848a'),metalness:.7,roughness:.4}),glass:std({color:L('#10202a'),emissive:L('#2a6a8a'),emissiveIntensity:.35,metalness:.6,roughness:.15}),lhRed:std({color:L('#a8302a'),roughness:.6}),
 };
 
 /* ================= ship model ================= */
@@ -935,8 +941,15 @@ const G={
   port:new THREE.BoxGeometry(.32,.26,.06),lamp:new THREE.SphereGeometry(.1,10,8),
   castle:new THREE.BoxGeometry(1.25,.5,1),
   lateenYard:new THREE.CylinderGeometry(.045,.045,5.3,6),ram:new THREE.ConeGeometry(.2,1.1,10),win:new THREE.BoxGeometry(.04,.2,.16),
-  oar:new THREE.CylinderGeometry(.03,.05,1.6,5),crate:new THREE.BoxGeometry(.32,.32,.32),barrel:new THREE.CylinderGeometry(.16,.16,.36,10),
+  oar:new THREE.CylinderGeometry(.03,.05,1.6,5),batten:new THREE.CylinderGeometry(.025,.025,2.1,5),
+  funnel:new THREE.CylinderGeometry(.26,.3,1.8,14),funnelTop:new THREE.CylinderGeometry(.27,.27,.25,14),
+  paddle:new THREE.CylinderGeometry(.85,.85,.45,18,1,false,0,Math.PI),bridge:new THREE.BoxGeometry(.95,.7,1.15),roof:new THREE.BoxGeometry(1.1,.08,1.3),winStrip:new THREE.BoxGeometry(.05,.2,1.0),
+  turret:new THREE.CylinderGeometry(.38,.42,.28,16),turretBox:new THREE.BoxGeometry(.55,.28,.5),barrelL:new THREE.CylinderGeometry(.05,.06,.95,8),
+  light:new THREE.CylinderGeometry(.13,.1,.22,12),lens:new THREE.CircleGeometry(.12,14),pole:new THREE.CylinderGeometry(.035,.045,1.3,6),radarBar:new THREE.BoxGeometry(.9,.06,.12),
+  armour:new THREE.BoxGeometry(.55,.3,.06),crate:new THREE.BoxGeometry(.32,.32,.32),barrel:new THREE.CylinderGeometry(.16,.16,.36,10),
 };
+// a junk (battened) sail running fore and aft
+const JUNK=(()=>{const g=new THREE.PlaneGeometry(2.0,4.0,6,8),p=g.attributes.position;for(let i=0;i<p.count;i++){const y=p.getY(i);p.setX(i,p.getX(i)-.18*(y/2));p.setZ(i,.12*Math.sin((p.getX(i)+1)*1.5));}g.computeVertexNormals();return g;})();
 // a triangular (lateen) sail running fore and aft along the mast
 const LATEEN=(()=>{const g=new THREE.BufferGeometry(),P=[.15,.7,0, .15,5.2,0, -2.4,.9,0, -.9,2.6,.25];
   g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute([1,0,1,1,0,0,.55,.45],2));
@@ -980,14 +993,16 @@ function makeShip(o){
   const ropes=[];
   const bowTip=new THREE.Vector3(LB+1.55,edge(LB).yt+.75,0);
   add(G.sprit,M.mast,LB+.6,edge(LB).yt+.45,0).rotation.z=-Math.PI/2+.38;
-  const masts=o.masts||[.2];let flag=null;
+  const masts=o.masts||[.2];let flag=null;const MM=o.mastMat==='steel'?M.steel:M.mast;
+  if(o.hullMat==='iron'||o.hullMat==='steel'){hullM.map=plateTex;hullM.metalness=o.hullMat==='iron'?.55:.35;hullM.roughness=o.hullMat==='iron'?.55:.42;}
   masts.forEach((mx,i)=>{const {yt,w}=edge(mx),b=yt-.1;
-    add(G.mast,M.mast,mx,b+2.9,0);
-    if(o.sailStyle==='lateen'){add(LATEEN,sailM,mx,b,0);const yd=add(G.lateenYard,M.mast,mx-1.17,b+3.05,0);yd.rotation.z=-.533;}
-    else{add(G.yardLo,M.mast,mx+.18,b+3.2,0).rotation.x=Math.PI/2;add(G.yardHi,M.mast,mx+.12,b+4.75,0).rotation.x=Math.PI/2;
+    add(G.mast,MM,mx,b+2.9,0);const ss=o.sailStyle||'square';
+    if(ss==='lateen'){add(LATEEN,sailM,mx,b,0);const yd=add(G.lateenYard,MM,mx-1.17,b+3.05,0);yd.rotation.z=-.533;}
+    else if(ss==='junk'){add(JUNK,sailM,mx-.95,b+3.0,0);for(let k=0;k<6;k++)add(G.batten,MM,mx-.95-.18*((k*.75-1.9)/2),b+1.1+k*.75,.02).rotation.z=Math.PI/2;}
+    else if(ss==='square'){add(G.yardLo,MM,mx+.18,b+3.2,0).rotation.x=Math.PI/2;add(G.yardHi,MM,mx+.12,b+4.75,0).rotation.x=Math.PI/2;
       add(G.sailLo,sailM,mx+.2,b+2.2,0);add(G.sailHi,sailM,mx+.14,b+4.08,0);}
-    if(o.nest!==false)add(G.nest,M.mast,mx,b+3.55,0);
-    if(o.tiers>=3){add(G.topmast,M.mast,mx,b+6.3,0);if(o.sailStyle!=='lateen')add(G.sailTop,sailM,mx+.1,b+5.35,0);}
+    if(o.nest!==false)add(G.nest,MM,mx,b+3.55,0);
+    if(o.tiers>=3){add(G.topmast,MM,mx,b+6.3,0);if(ss==='square')add(G.sailTop,sailM,mx+.1,b+5.35,0);}
     const top=new THREE.Vector3(mx,b+5.6,0);
     [1,-1].forEach(sd=>[-.4,-1].forEach(dx=>{const e=edge(mx+dx);ropes.push(new THREE.Vector3(mx,b+4.9,0),new THREE.Vector3(mx+dx,e.yt+.25,sd*e.w*.97));}));
     if(i===0){ropes.push(top,bowTip);
@@ -1004,6 +1019,18 @@ function makeShip(o){
     add(G.port,M.port,x,yt-.32,sd*(w-.01));const gn=add(G.gun,M.iron,x,yt-.32,sd*(w+.22),guns);gn.rotation.y=0;
     if(o.decks>=2){add(G.port,M.port,x,yt-.62,sd*(w-.03));add(G.gun,M.iron,x,yt-.62,sd*(w+.2),guns);}});});
   guns.visible=!!o.guns;
+  const fx={tops:[],radar:null};
+  if(o.armour)for(let x=-2.1;x<=2.31;x+=.52){const {w}=edge(x);[1,-1].forEach(sd=>add(G.armour,M.steel,x,.12,sd*(w*.93+.03)));}
+  if(o.paddles){const {yt,w}=edge(0);[1,-1].forEach(sd=>{const pw=add(G.paddle,castleM,0,yt-.55,sd*(w+.24));pw.rotation.x=Math.PI/2;pw.rotation.y=sd>0?0:Math.PI;});}
+  const fn=o.funnels|0;if(fn){const fM=std({color:L(o.funnelCol||'#1a1a1a'),roughness:.6,metalness:.3});fx.mat=fM;
+    (fn===1?[-.35]:[.35,-.55]).forEach(x=>{const y=edge(x).yt-.08;add(G.funnel,fM,x,y+.9,0);add(G.funnelTop,M.port,x,y+1.85,0);fx.tops.push(new THREE.Vector3(x,y+2,0));});}
+  let roofY=null;if(o.bridge){const x=-.95,y=edge(x).yt-.08;add(G.bridge,castleM,x,y+.35,0);add(G.roof,M.steel,x,y+.74,0);add(G.winStrip,M.glass,x+.49,y+.45,0);roofY=y+.78;}
+  if(o.turrets){[[1.95,1],[-1.2,-1]].slice(0,o.turrets).forEach(([x,dir])=>{const y=edge(x).yt-.08;add(G.turret,M.steel,x,y+.14,0);add(G.turretBox,M.steel,x+.05*dir,y+.42,0);
+    [.1,-.1].forEach(z=>add(G.barrelL,M.iron,x+.55*dir,y+.44,z).rotation.z=-Math.PI/2*dir);});}
+  if(o.searchlight){const x=roofY!=null?-.75:LB-.35,y=roofY!=null?roofY+.12:edge(LB-.35).yt+.2;const l=add(G.light,M.steel,x,y,0);l.rotation.z=-Math.PI/2;
+    const ln=add(G.lens,std({color:L('#fff6d8'),emissive:L('#fff1c0'),emissiveIntensity:3}),x+.12,y,0);ln.rotation.y=Math.PI/2;ln.castShadow=false;
+    const gw=new THREE.Sprite(lampGlowM);gw.position.set(x+.2,y,0);gw.scale.setScalar(1.3);gw.renderOrder=5;inner.add(gw);}
+  if(o.radar){const x=roofY!=null?-1.1:-.4,y=roofY!=null?roofY:edge(-.4).yt-.08;add(G.pole,M.steel,x,y+.65,0);fx.radar=add(G.radarBar,M.steel,x,y+1.32,0);}
   if(o.ram){const fe=edge(LB);add(G.ram,M.iron,LB+.75,fe.yt-.85,0).rotation.z=-Math.PI/2;}
   if(o.gallery){const se=edge(-1.9),cy=se.yt+.12+.25*((o.castleH||1)-1);for(let i=0;i<4;i++)add(G.win,M.lamp,-2.6,cy,(-.75+i*.5)*se.w).castShadow=false;}
   if(o.oars){[-1.2,-.72,-.24,.24,.72,1.2].forEach(x=>{const {yt,w}=edge(x);[1,-1].forEach(sd=>{const oar=add(G.oar,M.mast,x,yt-.1-.8*.4,sd*(w+.8*.9));oar.rotation.x=sd*1.98;});});}
@@ -1018,7 +1045,7 @@ function makeShip(o){
   const shadowM=new THREE.MeshBasicMaterial({map:softTex,color:L('#02303f'),transparent:true,opacity:.55,depthWrite:false});
   const collarM=new THREE.MeshBasicMaterial({map:collarTex,color:0xffffff,transparent:true,opacity:.75,depthWrite:false});
   const sh=new THREE.Mesh(GROUND,shadowM),co=new THREE.Mesh(GROUND,collarM);sh.renderOrder=1;co.renderOrder=2;scene.add(sh,co);
-  g.userData={inner,hullM,sailM,sTex,guns,flag,ground:[sh,co],own:[hullM,deckM,castleM,sailM,shadowM,collarM].concat(o.own?[flagM,sTex,fTex]:[]),ownGeo:[rg]};
+  g.userData={inner,hullM,sailM,sTex,guns,flag,ground:[sh,co],own:[hullM,deckM,castleM,sailM,shadowM,collarM].concat(o.own?[flagM,sTex,fTex]:[]),ownGeo:[rg]};g.userData.fx=fx;if(fx.mat)g.userData.own.push(fx.mat);
   scene.add(g);return g;
 }
 // Ships show their damage: torn sails at 2/3 hull, more holes and fire at 1/3.
@@ -1183,6 +1210,10 @@ const gulls=[];
 function makeGull(){const g=new THREE.Group(),b=new THREE.Mesh(GULL_B,M.gull);b.scale.set(1,.9,2.6);b.castShadow=true;g.add(b);
   const wings=[1,-1].map(sd=>{const w=new THREE.Group();const m=new THREE.Mesh(GULL_W,M.gull),t=new THREE.Mesh(GULL_T,M.gullTip);m.castShadow=true;w.add(m,t);w.scale.x=sd;g.add(w);return w;});
   g.scale.setScalar(1.15);scene.add(g);return{g,wings,a:rnd(0,TAU),r:rnd(6,12),h:rnd(6.5,9.5),sp:rnd(.35,.6)*(Math.random()<.5?1:-1),ph:rnd(0,TAU),cx:P.x,cz:P.z,glide:0};}
+let shipFxT=0;
+function shipFx(g,dt){const f=g&&g.userData&&g.userData.fx;if(!f)return;if(f.radar)f.radar.rotation.y+=dt*2.2;
+  if(f.tops.length){shipFxT-=dt;if(shipFxT<=0){shipFxT=.12;const v=new THREE.Vector3();for(const t of f.tops){v.copy(t);g.userData.inner.localToWorld(v);
+    spark(v.x,v.y,v.z,{tex:smokeTex,color:'#3c3a38',op:.6,s:rnd(.6,1)*g.scale.x,life:rnd(1.4,2.2),vx:rnd(-.4,.4)-1,vy:rnd(1.2,2),vz:rnd(-.4,.4),grow:2.2,spin:rnd(-.5,.5)});}}}}
 function gullsTick(dt){
   const show=state!=='over'&&!(WX.rain>.5)&&WX.night<.7;
   if(!gulls.length){if(!show)return;for(let i=0;i<5;i++)gulls.push(makeGull());}
@@ -1767,7 +1798,16 @@ const DOPT=[
   {k:'len',l:'Hull length',o:[['Short',.85],['Normal',1],['Long',1.18],['Extra long',1.32,1]]},
   {k:'wid',l:'Hull width',o:[['Slim',.82],['Normal',1],['Wide',1.2],['Extra wide',1.35,1]]},
   {k:'masts',l:'Masts',o:[['1',1],['2',2],['3',3],['4',4,1]]},
-  {k:'sailStyle',l:'Sail style',o:[['Square','square'],['Triangle (lateen)','lateen',1]]},
+  {k:'sailStyle',l:'Sail style',o:[['Square','square'],['Triangle (lateen)','lateen',1],['Junk (battened)','junk',1],['No sails','none',1]]},
+  {k:'mastMat',l:'Masts made of',o:[['Wood','wood'],['Steel','steel',1]]},
+  {k:'hullMat',l:'Hull made of',o:[['Wood','wood'],['Ironclad plates','iron',1],['Modern steel','steel',1]]},
+  {k:'armour',l:'Armour belt',o:[['None',0],['Steel plates',1,1]]},
+  {k:'funnels',l:'Steam funnels',o:[['None',0],['1',1,1],['2',2,1]]},
+  {k:'paddles',l:'Paddle wheels',o:[['None',0],['Side paddles',1,1]]},
+  {k:'bridge',l:'Bridge (wheelhouse)',o:[['None',0],['Yes',1,1]]},
+  {k:'turrets',l:'Gun turrets',o:[['None',0],['1',1,1],['2',2,1]]},
+  {k:'searchlight',l:'Searchlight',o:[['None',0],['Yes',1,1]]},
+  {k:'radar',l:'Radar mast',o:[['None',0],['Yes',1,1]]},
   {k:'tiers',l:'Sails per mast',o:[['2',2],['3',3]]},
   {k:'cond',l:'Sail condition',o:[['New',0],['Patched',1,1],['Ghostly tatters',2,1]]},
   {k:'glow',l:'Glowing sails',o:[['None',null],['Ghost green','#3dff9a',1],['Ember red','#ff4a1a',1],['Royal blue','#3a7bff',1],['Gold','#ffcf55',1]]},
@@ -1789,18 +1829,19 @@ const DOPT=[
 const DCOL=[
   {k:'side',l:'Hull',c:PAINT.h.filter(Boolean),free:5},{k:'trim',l:'Trim',c:PAINT.t.filter(Boolean),free:5},{k:'band',l:'Hull stripe',c:[null].concat(PAINT.t.filter(Boolean)),free:5},
   {k:'deck',l:'Deck',c:['#b48a5c','#8a6a48','#d4b48a','#5a4636','#cfc4ae'],free:3},{k:'sail',l:'Sails',c:PAINT.s,free:5},{k:'stripe',l:'Sail stripe',c:PAINT.p,free:5},
-  {k:'ecol',l:'Emblem colour',c:PAINT.c,free:4},{k:'flag',l:'Flag',c:PAINT.f,free:5},{k:'lamp',l:'Lantern colour',c:['#ffd27a','#ff5a3a','#7fd3ff','#7dff9a','#c58bff'],free:1},
+  {k:'ecol',l:'Emblem colour',c:PAINT.c,free:4},{k:'funnelCol',l:'Funnel colour',c:['#1a1a1a','#a3271c','#e8e2d4','#c99a3e','#1f3346','#2f7a45'],free:1},{k:'flag',l:'Flag',c:PAINT.f,free:5},{k:'lamp',l:'Lantern colour',c:['#ffd27a','#ff5a3a','#7fd3ff','#7dff9a','#c58bff'],free:1},
 ];
-const DSG0=()=>({v:2,name:'',size:1.15,len:1,wid:1,masts:2,sailStyle:'square',tiers:2,cond:0,glow:null,nest:1,castle:1,gallery:0,fore:0,ram:0,guns:3,decks:1,oars:0,cargo:0,fig:0,pet:0,lamps:0,emb:1,
+const DSG0=()=>({v:3,name:'',size:1.15,len:1,wid:1,masts:2,sailStyle:'square',mastMat:'wood',hullMat:'wood',armour:0,funnels:0,funnelCol:'#1a1a1a',paddles:0,bridge:0,turrets:0,searchlight:0,radar:0,tiers:2,cond:0,glow:null,nest:1,castle:1,gallery:0,fore:0,ram:0,guns:3,decks:1,oars:0,cargo:0,fig:0,pet:0,lamps:0,emb:1,
   side:'#6e4527',trim:'#b8923f',band:null,deck:'#b48a5c',sail:'#ece2cb',stripe:'#1f5c74',ecol:'#8a6b2a',flag:'#1f5c74',lamp:'#ffd27a'});
 const DVIEW=[['Creator (you)','me'],['Season 2 player','free'],['Player with No ads','paid']];
-let dview='me';
+let dview='me';// always the creator here
 let dsg=DSG0(),designOn=false;
 const MAST_POS={1:[.2],2:[1.0,-.75],3:[1.4,.1,-1.2],4:[1.6,.6,-.4,-1.35]};
 function designLook(d){const n=d.guns|0,span=n<2?0:Math.min(1.95,(n-1)*.28),ports=[];for(let i=0;i<n;i++)ports.push(n<2?0:-span+2*span*i/(n-1));
   return {own:true,side:d.side,bottom:'#1c1712',trim:d.trim,band:d.band,deck:d.deck,sail:d.sail,stripe:d.stripe,emblem:EMBLEMS[d.emb]||null,ecol:d.ecol,flag:d.flag,
     masts:MAST_POS[d.masts]||MAST_POS[2],tiers:d.tiers,castleH:d.castle,forecastle:!!d.fore,ports,decks:d.decks,fig:d.fig,pet:d.pet,lamp:d.lamp,guns:true,scale:d.size,
-    sailStyle:d.sailStyle,nest:!!d.nest,gallery:!!d.gallery,ram:!!d.ram,oars:!!d.oars,cargo:!!d.cargo,glow:d.glow,lamps4:!!d.lamps};}
+    sailStyle:d.sailStyle,nest:!!d.nest,gallery:!!d.gallery,ram:!!d.ram,oars:!!d.oars,cargo:!!d.cargo,glow:d.glow,lamps4:!!d.lamps,
+    mastMat:d.mastMat,hullMat:d.hullMat,armour:!!d.armour,funnels:d.funnels,funnelCol:d.funnelCol,paddles:!!d.paddles,bridge:!!d.bridge,turrets:d.turrets,searchlight:!!d.searchlight,radar:!!d.radar};}
 function buildDesign(){sinking=sinking.filter(x=>x.g!==pship);disposeGroup(pship);pship=makeShip(designLook(dsg));pship.userData.inner.scale.set(dsg.len,1,dsg.wid);if(dsg.cond)tearSails(pship,dsg.cond);}
 const dLocked=prem=>prem&&dview==='free';
 function designUnlocked(){try{return localStorage.getItem(DSG_ON)==='1'}catch(e){return false}}
@@ -1813,18 +1854,14 @@ function closeDesigner(){designOn=false;$('designov').hidden=true;showcase=false
   setShip(shipId);$('start').hidden=false;refreshStart();}
 function renderDesigner(){
   $('dname').value=dsg.name||'';const box=$('dopts');box.innerHTML='';
-  {const sec=document.createElement('div');sec.className='dsec';sec.innerHTML='<div class="lbl">View as</div>';const row=document.createElement('div');row.className='modeseg';
-    DVIEW.forEach(([n,v])=>{const b=document.createElement('button');b.textContent=n;b.id='dv-'+v;b.className=dview===v?'on':'';b.onclick=()=>{audio();dview=v;renderDesigner();
-      $('dmsg').textContent=v==='me'?'Everything unlocked. ★ marks No ads extras.':v==='free'?'What every player gets in Season 2. Locked items need No ads.':'Everything a No ads subscriber can use.';};row.appendChild(b);});
-    sec.appendChild(row);box.appendChild(sec);}
   const say=t=>{$('dmsg').textContent=t;};
   for(const O of DOPT){const sec=document.createElement('div');sec.className='dsec';const cur=O.o.find(x=>x[1]===dsg[O.k]);
     sec.innerHTML=`<div class="lbl">${O.l} <span>${cur?cur[0]:''}</span></div>`;const row=document.createElement('div');row.className='chiprow';
-    O.o.forEach(([name,val,prem])=>{const b=document.createElement('button'),lock=dLocked(prem);b.className='dopt'+(dsg[O.k]===val?' on':'')+(lock?' locked':'')+(prem?' prem':'');b.textContent=name;b.id='do-'+O.k+'-'+String(val).replace(/[.#]/g,'_');
+    O.o.forEach(([name,val,prem])=>{const b=document.createElement('button'),lock=dLocked(prem);b.className='dopt'+(dsg[O.k]===val?' on':'');b.textContent=name;b.id='do-'+O.k+'-'+String(val).replace(/[.#]/g,'_');
       b.onclick=()=>{audio();if(lock){say(O.l+': '+name+' comes with No ads.');return;}dsg[O.k]=val;buildDesign();renderDesigner();};row.appendChild(b);});
     sec.appendChild(row);box.appendChild(sec);}
   for(const C of DCOL){const sec=document.createElement('div');sec.className='dsec';sec.innerHTML=`<div class="lbl">${C.l}</div>`;const row=document.createElement('div');row.className='swrow';
-    C.c.forEach((c,i)=>{const prem=i>=C.free,lock=dLocked(prem);const b=document.createElement('button');b.className='sw'+(dsg[C.k]===c?' on':'')+(c===null?' none':'')+(lock?' locked':'')+(prem&&dview!=='free'?' prem':'');b.style.background=c||'transparent';b.setAttribute('aria-label',C.l+' colour'+(prem?' (No ads)':''));
+    C.c.forEach((c,i)=>{const prem=i>=C.free,lock=dLocked(prem);const b=document.createElement('button');b.className='sw'+(dsg[C.k]===c?' on':'')+(c===null?' none':'');b.style.background=c||'transparent';b.setAttribute('aria-label',C.l+' colour'+(prem?' (No ads)':''));
       b.onclick=()=>{audio();if(lock){say('This colour comes with No ads.');return;}dsg[C.k]=c;buildDesign();renderDesigner();};row.appendChild(b);});
     sec.appendChild(row);box.appendChild(sec);}
   const list=designSaved(),sv=$('dsaved');$('dsavedsec').hidden=!list.length;sv.innerHTML='';
@@ -3170,7 +3207,7 @@ function render(dt){
   cam.lookAt(look);
   sky.position.copy(cam.position);
   sunL.position.set(P.x+SUN.x*70,SUN.y*70,P.z+SUN.z*70);sunL.target.position.set(P.x,0,P.z-6);
-  gullsTick(dt);
+  gullsTick(dt);shipFx(pship,dt);
   if(joy){stick.hidden=false;stick.style.left=joy.ox+'px';stick.style.top=joy.oy+'px';knob.style.transform=`translate(${joy.dx}px,${joy.dy}px)`;}else stick.hidden=true;
   R.render(scene,cam);
   drawMap();

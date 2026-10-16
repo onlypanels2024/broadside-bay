@@ -1,5 +1,6 @@
-# Ship Designer: hidden unlock (7 taps on the title), options rebuild the ship, save/load, design code, and Done restores the real ship.
-import json,os,sys
+# Ship Designer (developer tools): hidden unlock (7 taps on the title), every option rebuilds the ship, save/load,
+# design code, and Done brings back the real ship.
+import json,os
 from playwright.sync_api import sync_playwright
 U='http://127.0.0.1:8766/tests/browser/app-test.html';O=os.environ.get('OUT','tests/browser/')
 with sync_playwright() as pw:
@@ -14,27 +15,26 @@ with sync_playwright() as pw:
   A.evaluate("for(let i=0;i<7;i++)document.querySelector('#start h1').click()");A.wait_for_timeout(300)
   print('visible after 7 taps:',A.is_visible('#goDesign'))
   A.click('#goDesign');A.wait_for_timeout(1200)
-  A.screenshot(path=O+'d_designer_default.png')
-  A.fill('#dname','Black Widow')
-  for k,v in [('size','1_4'),('masts','3'),('tiers','3'),('castle','1_6'),('fore','1'),('guns','5'),('decks','2'),('fig','6'),('pet','1'),('gallery','1'),('ram','1'),('cargo','1'),('lamps','1')]:
-    A.click(f'#do-{k}-{v}');A.wait_for_timeout(150)
-  A.locator('.dsec:has-text("Hull") .swrow .sw').nth(3).click()
-  A.locator('.dsec:has-text("Sails") .swrow .sw').nth(4).click()
-  A.locator('.dsec:has-text("Sail stripe") .swrow .sw').nth(2).click()
-  A.wait_for_timeout(1500);A.screenshot(path=O+'d_designer_custom.png')
+  print('no locks or stars:',A.locator('.dopt.locked,.dopt.prem,.sw.locked,.sw.prem').count()==0)
+  def pick(pairs):
+    for k,v in pairs:A.click(f'#do-{k}-{v}');A.wait_for_timeout(120)
+  def sw(label,i):A.locator(f'.dsec:has(> .lbl:text-is("{label}")) .swrow .sw').nth(i).click();A.wait_for_timeout(120)
+  # a dark pirate ship from classic parts
+  A.fill('#dname','Midnight Wraith')
+  pick([('size','1_4'),('masts','3'),('tiers','3'),('castle','1_6'),('gallery','1'),('cond','2'),('fig','5'),('emb','2'),('lamps','1')])
+  sw('Hull',3);sw('Sails',4);sw('Flag',1);sw('Trim',5)
+  A.wait_for_timeout(1500);A.screenshot(path=O+'d_dark_pirate.png')
   A.click('#dsave');A.wait_for_timeout(300);print('msg:',A.inner_text('#dmsg'))
-  for k,v in [('sailStyle','lateen'),('cond','2'),('glow','_3dff9a'),('oars','1'),('fig','5'),('masts','2')]:
-    A.click(f'#do-{k}-{v}');A.wait_for_timeout(150)
-  A.wait_for_timeout(1200);A.screenshot(path=O+'d_designer_ghost.png')
-  A.click('#dv-free');A.wait_for_timeout(300)
-  print('locked chips in player view:',A.locator('.dopt.locked').count(),'locked swatches:',A.locator('.sw.locked').count())
-  A.click('#do-masts-4');A.wait_for_timeout(200);print('locked tap says:',A.inner_text('#dmsg'),'| masts still',E('dsg.masts'))
-  A.wait_for_timeout(200);A.screenshot(path=O+'d_designer_playerview.png')
-  A.click('#dv-me');A.wait_for_timeout(200)
-  A.click('#drandom');A.wait_for_timeout(1500);A.screenshot(path=O+'d_designer_random.png')
+  # a cross-breed: classic hull with modern steam parts
+  A.fill('#dname','Iron Corsair')
+  pick([('cond','0'),('gallery','0'),('hullMat','iron'),('mastMat','steel'),('sailStyle','junk'),('masts','2'),('tiers','2'),('funnels','1'),('paddles','1'),('bridge','1'),('turrets','2'),('searchlight','1'),('radar','1'),('armour','1'),('fig','0')])
+  sw('Hull',4);sw('Funnel colour',1)
+  A.wait_for_timeout(2500);A.screenshot(path=O+'d_crossbreed.png')
+  # a full steamship: no sails
+  pick([('sailStyle','none'),('funnels','2'),('hullMat','steel'),('masts','1')])
+  A.wait_for_timeout(2500);A.screenshot(path=O+'d_steamship.png')
   A.click('#dshare');A.wait_for_timeout(500);code=A.inner_text('#dcode');print('code ok:',code.startswith('BBSHIP1:'),len(code))
-  A.click('#dsaved button:has-text("Load")');A.wait_for_timeout(800);print('loaded name:',A.input_value('#dname'))
-  print('design:',E("JSON.stringify({m:dsg.masts,g:dsg.guns,s:dsg.size})"))
+  A.click('#dsaved button:has-text("Load")');A.wait_for_timeout(800);print('loaded name:',A.input_value('#dname'),'design:',E("JSON.stringify({m:dsg.masts,c:dsg.cond,h:dsg.hullMat})"))
   A.click('#designdone');A.wait_for_timeout(800);print('back on menu:',A.is_visible('#start'),'ship:',E("shipId"),'designOn:',E("designOn"))
   A.reload();A.wait_for_timeout(2000);print('still unlocked after reload:',A.is_visible('#goDesign'))
   print('errors',errs)
