@@ -30,7 +30,7 @@ jobs:
           set -e
           mkdir -p keep
           cd out
-          find . -type f \( -iname '*.glb' -o -iname 'license*' -o -iname 'preview*.png' -o -iname '*.png' -path '*Preview*' \) -exec cp --parents {} ../keep/ \;
+          find . -type f \( -iname '*.glb' -o -iname 'license*' -o -path '*GLB format/Textures/*' -o -iname '*.png' -path '*Preview*' \) -exec cp --parents {} ../keep/ \;
           cd ../keep && find . -type f | wc -l && du -sh .
       - name: Commit to assets-in branch
         run: |
