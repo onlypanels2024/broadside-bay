@@ -2800,7 +2800,7 @@ function startTreasure(){const c=islands.filter(i=>!i.port&&Math.hypot(i.x-P.x,i
     if(treasure){const I=treasure.isl,a=Math.atan2(-(I.z-P.z),I.x-P.x),dirs=['east','north-east','north','north-west','west','south-west','south','south-east'],dir=dirs[((Math.round(a/(Math.PI/4))%8)+8)%8],mins=Math.max(1,Math.ceil(treasure.t/60));
       treasure.pulse=3;hudNote(`Spare map: +40 gold. Your X is ${dir}, ${mins} min left`);}
     else hudNote('Faded map: +40 gold');return;}
-  const isl=c[Math.floor(Math.random()*c.length)];treasure={isl,t:360,dig:0};showBanner('Treasure map! X marks the spot');}
+  const isl=c[Math.floor(Math.random()*c.length)];treasure={isl,t:360,dig:0};hudNote('Treasure map! Sail to the X on your map');}
 $('dig').onclick=()=>{audio();if(treasure&&!treasure.dig){treasure.dig=.001;chime();}};
 function spawnConvoy(){const sp=spawnSpot(110,150);if(!sp)return;
   let dest=PORTS.map(p=>({p,d:Math.hypot(p.x-sp.x,p.z-sp.z)})).filter(o=>o.d>140).sort((a,b)=>a.d-b.d)[0];if(!dest)return;dest=dest.p;
@@ -2896,7 +2896,7 @@ function krakenHurt(b){boom(b.x,b.z,false);noise(.15,900,.25);kraken.flash=.25;k
 function seaEventsTick(dt){
   // treasure
   if(treasure){treasure.t-=dt;if(treasure.pulse>0)treasure.pulse-=dt;const I=treasure.isl,d=Math.hypot(P.x-I.x,P.z-I.z),near=d<I.r*1.3+8;
-    if(treasure.t<=0){treasure=null;showBanner('Your treasure map crumbled away');$('dig').hidden=true;}
+    if(treasure.t<=0){treasure=null;hudNote('Your treasure map crumbled away');$('dig').hidden=true;}
     else{if($('dig').hidden===near)$('dig').hidden=!near;
       if(treasure.dig>0){if(!near){treasure.dig=0;$('diglbl').textContent='Dig for treasure';}
         else{treasure.dig+=dt;$('diglbl').textContent='Digging… '+Math.max(1,Math.ceil(3-treasure.dig));if(Math.random()<dt*8)spark(I.x+rnd(-2,2),1,I.z+rnd(-2,2),{tex:smokeTex,color:'#d9c49a',op:.6,s:1.2,life:.6,grow:1.5});
