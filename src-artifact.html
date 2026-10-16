@@ -68,6 +68,9 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .sw.locked,.emt.locked{opacity:.38}
 .sw.locked::before,.emt.locked::before{content:"";position:absolute;right:-3px;bottom:-3px;width:14px;height:14px;border-radius:50%;background:#0b2230 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='3.5' y='7' width='9' height='7' rx='1.5' fill='%23d6b262'/%3E%3Cpath d='M5.5 7V5a2.5 2.5 0 0 1 5 0v2' stroke='%23d6b262' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") center/11px no-repeat;border:1px solid rgba(214,178,98,.6)}
 .dopt{flex:0 0 auto;padding:8px 12px;border-radius:9px;cursor:pointer;font:700 13px var(--body);border:1px solid rgba(214,178,98,.3);background:rgba(255,255,255,.04);color:var(--parch)}
+.dopt.prem::after{content:" ★";color:var(--brass-hi)}
+.dopt.locked{opacity:.4}.dopt.locked::after{content:" 🔒"}
+.sw.prem::after{content:"★";position:absolute;right:-4px;top:-6px;font-size:11px;color:var(--brass-hi);text-shadow:0 1px 2px #000}
 .dopt.on{border-color:var(--brass-hi);background:rgba(214,178,98,.18);color:var(--brass-hi)}
 .dname{width:100%;box-sizing:border-box;padding:9px 11px;border-radius:9px;border:1px solid rgba(214,178,98,.35);background:rgba(0,0,0,.25);color:var(--parch);font:600 15px var(--body)}
 .dacts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.dacts .btn{margin:0;flex:1 1 auto}
@@ -890,7 +893,13 @@ const G={
   gun:(()=>{const g=new THREE.CylinderGeometry(.09,.12,.8,10);g.rotateX(Math.PI/2);return g;})(),
   port:new THREE.BoxGeometry(.32,.26,.06),lamp:new THREE.SphereGeometry(.1,10,8),
   castle:new THREE.BoxGeometry(1.25,.5,1),
+  lateenYard:new THREE.CylinderGeometry(.045,.045,5.3,6),ram:new THREE.ConeGeometry(.2,1.1,10),win:new THREE.BoxGeometry(.04,.2,.16),
+  oar:new THREE.CylinderGeometry(.03,.05,1.6,5),crate:new THREE.BoxGeometry(.32,.32,.32),barrel:new THREE.CylinderGeometry(.16,.16,.36,10),
 };
+// a triangular (lateen) sail running fore and aft along the mast
+const LATEEN=(()=>{const g=new THREE.BufferGeometry(),P=[.15,.7,0, .15,5.2,0, -2.4,.9,0, -.9,2.6,.25];
+  g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute([1,0,1,1,0,0,.55,.45],2));
+  g.setIndex([0,1,3,1,2,3,2,0,3]);g.computeVertexNormals();return g;})();
 const flagMats={};
 const TRAIL_COL=['#ffffff','#ffd65a','#c58bff','#5be3a0'];
 const ballMat=i=>[M.ball,M.fireball,M.purpleball,M.goldball][i|0]||M.ball;
@@ -899,6 +908,11 @@ function addFigurehead(add,kind,x,y){const B=M.brass;
   if(kind===1){add(new THREE.CylinderGeometry(.12,.2,.55,10),B,x,y+.05,0).rotation.z=-.5;add(new THREE.SphereGeometry(.13,10,8),B,x+.16,y+.36,0);add(new THREE.ConeGeometry(.16,.3,8),B,x-.2,y-.25,0).rotation.z=2.4;}
   else if(kind===2){add(new THREE.SphereGeometry(.24,12,10),B,x+.08,y+.2,0);const mn=add(new THREE.TorusGeometry(.22,.09,8,16),B,x+.02,y+.2,0);mn.rotation.y=Math.PI/2;add(new THREE.BoxGeometry(.18,.12,.14),B,x+.3,y+.14,0);}
   else if(kind===3){add(new THREE.SphereGeometry(.17,10,8),B,x+.1,y+.26,0);add(new THREE.ConeGeometry(.07,.2,8),B,x+.3,y+.24,0).rotation.z=-Math.PI/2;[1,-1].forEach(s2=>{const w=add(new THREE.BoxGeometry(.5,.05,.42),B,x-.05,y+.15,s2*.3);w.rotation.x=s2*.5;});}
+  else if(kind===5){const W=M.lhWhite;add(new THREE.SphereGeometry(.22,12,10),W,x+.08,y+.24,0);add(new THREE.BoxGeometry(.2,.1,.2),W,x+.16,y+.06,0);
+    [1,-1].forEach(s2=>add(new THREE.SphereGeometry(.055,8,6),M.port,x+.26,y+.27,s2*.08));}
+  else if(kind===6){add(new THREE.ConeGeometry(.16,.6,8),B,x+.32,y+.22,0).rotation.z=-Math.PI/2;add(new THREE.SphereGeometry(.18,10,8),B,x+.02,y+.2,0);
+    [1,-1].forEach(s2=>{const h=add(new THREE.ConeGeometry(.045,.3,6),B,x-.06,y+.42,s2*.1);h.rotation.z=.7;h.rotation.x=s2*.3;});
+    for(let i=0;i<4;i++)add(new THREE.ConeGeometry(.05,.16,6),B,x-.12-i*.12,y+.24-i*.05,0).rotation.z=.5;}
   else if(kind===4){for(let i=0;i<5;i++)add(new THREE.SphereGeometry(.16-i*.015,10,8),B,x+.08-i*.1,y+.05+Math.sin(i*1.4)*.14+i*.05,0);add(new THREE.ConeGeometry(.1,.22,8),B,x+.24,y+.12,0).rotation.z=-Math.PI/2;}}
 function addPet(add,kind,x,y){
   if(kind===1){add(new THREE.SphereGeometry(.12,10,8),M.parrotR,x,y+.12,0).scale.set(.9,1.3,.9);add(new THREE.SphereGeometry(.08,10,8),M.parrotR,x+.03,y+.3,0);add(new THREE.ConeGeometry(.035,.08,6),M.beak,x+.11,y+.29,0).rotation.z=-Math.PI/2;
@@ -928,10 +942,11 @@ function makeShip(o){
   const masts=o.masts||[.2];let flag=null;
   masts.forEach((mx,i)=>{const {yt,w}=edge(mx),b=yt-.1;
     add(G.mast,M.mast,mx,b+2.9,0);
-    add(G.yardLo,M.mast,mx+.18,b+3.2,0).rotation.x=Math.PI/2;add(G.yardHi,M.mast,mx+.12,b+4.75,0).rotation.x=Math.PI/2;
-    add(G.sailLo,sailM,mx+.2,b+2.2,0);add(G.sailHi,sailM,mx+.14,b+4.08,0);
-    add(G.nest,M.mast,mx,b+3.55,0);
-    if(o.tiers>=3){add(G.topmast,M.mast,mx,b+6.3,0);add(G.sailTop,sailM,mx+.1,b+5.35,0);}
+    if(o.sailStyle==='lateen'){add(LATEEN,sailM,mx,b,0);const yd=add(G.lateenYard,M.mast,mx-1.17,b+3.05,0);yd.rotation.z=-.533;}
+    else{add(G.yardLo,M.mast,mx+.18,b+3.2,0).rotation.x=Math.PI/2;add(G.yardHi,M.mast,mx+.12,b+4.75,0).rotation.x=Math.PI/2;
+      add(G.sailLo,sailM,mx+.2,b+2.2,0);add(G.sailHi,sailM,mx+.14,b+4.08,0);}
+    if(o.nest!==false)add(G.nest,M.mast,mx,b+3.55,0);
+    if(o.tiers>=3){add(G.topmast,M.mast,mx,b+6.3,0);if(o.sailStyle!=='lateen')add(G.sailTop,sailM,mx+.1,b+5.35,0);}
     const top=new THREE.Vector3(mx,b+5.6,0);
     [1,-1].forEach(sd=>[-.4,-1].forEach(dx=>{const e=edge(mx+dx);ropes.push(new THREE.Vector3(mx,b+4.9,0),new THREE.Vector3(mx+dx,e.yt+.25,sd*e.w*.97));}));
     if(i===0){ropes.push(top,bowTip);
@@ -948,6 +963,14 @@ function makeShip(o){
     add(G.port,M.port,x,yt-.32,sd*(w-.01));const gn=add(G.gun,M.iron,x,yt-.32,sd*(w+.22),guns);gn.rotation.y=0;
     if(o.decks>=2){add(G.port,M.port,x,yt-.62,sd*(w-.03));add(G.gun,M.iron,x,yt-.62,sd*(w+.2),guns);}});});
   guns.visible=!!o.guns;
+  if(o.ram){const fe=edge(LB);add(G.ram,M.iron,LB+.75,fe.yt-.85,0).rotation.z=-Math.PI/2;}
+  if(o.gallery){const se=edge(-1.9),cy=se.yt+.12+.25*((o.castleH||1)-1);for(let i=0;i<4;i++)add(G.win,M.lamp,-2.6,cy,(-.75+i*.5)*se.w).castShadow=false;}
+  if(o.oars){[-1.2,-.72,-.24,.24,.72,1.2].forEach(x=>{const {yt,w}=edge(x);[1,-1].forEach(sd=>{const oar=add(G.oar,M.mast,x,yt-.1-.8*.4,sd*(w+.8*.9));oar.rotation.x=sd*1.98;});});}
+  if(o.cargo){[[.55,.35],[.85,-.3],[-.55,.4],[-.9,-.35]].forEach(([x,z],i)=>{const {yt,w}=edge(x);
+    if(i%2)add(G.crate,M.barrel,x,yt-.08+.17,z*w).rotation.y=.4*i;else add(G.barrel,M.barrel,x,yt-.08+.18,z*w);});}
+  if(o.glow){sailM.emissive=L(o.glow);sailM.emissiveMap=sTex;sailM.emissiveIntensity=.7;}
+  if(o.lamps4)[.5,-.5].forEach(z=>{const l=add(G.lamp,o.lamp?std({color:L(o.lamp),emissive:L(o.lamp),emissiveIntensity:2.4}):M.lamp,LB-.4,edge(LB-.4).yt+.4,z*.7);l.castShadow=false;
+    const gw=new THREE.Sprite(lampGlowM);gw.position.copy(l.position);gw.scale.setScalar(1.4);gw.renderOrder=5;inner.add(gw);});
   [.55,-.55].forEach(z=>{const l=add(G.lamp,o.lamp?std({color:L(o.lamp),emissive:L(o.lamp),emissiveIntensity:2.4}):M.lamp,-LS-.05,edge(-LS).yt+.55,z);l.castShadow=false;
     const gw=new THREE.Sprite(lampGlowM);gw.position.copy(l.position);gw.scale.setScalar(1.6);gw.renderOrder=5;inner.add(gw);});
   g.scale.setScalar(o.scale||1);
@@ -1666,33 +1689,49 @@ function renderDress(){
 // Unlock: tap the "Broadside Bay" title on the main menu 7 times. A design is looks only: hull size and shape,
 // masts, sail rows, castles, gun ports, figurehead, pet and colours. It never changes speed or firepower.
 const DSG_KEY='bb-designs',DSG_ON='bb-designer';
+// Each choice: [name, value, premium]. Premium = unlocked by the No ads subscription when the designer opens to players (Season 2).
+// The creator (you) can use everything; "View as" shows what players will see.
 const DOPT=[
-  {k:'size',l:'Size',o:[['Small',.95],['Medium',1.15],['Large',1.4],['Huge',1.75]]},
-  {k:'len',l:'Hull length',o:[['Short',.85],['Normal',1],['Long',1.18]]},
-  {k:'wid',l:'Hull width',o:[['Slim',.82],['Normal',1],['Wide',1.2]]},
-  {k:'masts',l:'Masts',o:[['1',1],['2',2],['3',3],['4',4]]},
+  {k:'size',l:'Size',o:[['Small',.95],['Medium',1.15],['Large',1.4],['Huge',1.75,1]]},
+  {k:'len',l:'Hull length',o:[['Short',.85],['Normal',1],['Long',1.18],['Extra long',1.32,1]]},
+  {k:'wid',l:'Hull width',o:[['Slim',.82],['Normal',1],['Wide',1.2],['Extra wide',1.35,1]]},
+  {k:'masts',l:'Masts',o:[['1',1],['2',2],['3',3],['4',4,1]]},
+  {k:'sailStyle',l:'Sail style',o:[['Square','square'],['Triangle (lateen)','lateen',1]]},
   {k:'tiers',l:'Sails per mast',o:[['2',2],['3',3]]},
-  {k:'castle',l:'Stern castle',o:[['Low',.7],['Normal',1],['Tall',1.6],['Towering',2.2]]},
+  {k:'cond',l:'Sail condition',o:[['New',0],['Patched',1,1],['Ghostly tatters',2,1]]},
+  {k:'glow',l:'Glowing sails',o:[['None',null],['Ghost green','#3dff9a',1],['Ember red','#ff4a1a',1],['Royal blue','#3a7bff',1],['Gold','#ffcf55',1]]},
+  {k:'nest',l:"Crow's nest",o:[['Yes',1],['No',0]]},
+  {k:'castle',l:'Stern castle',o:[['Low',.7],['Normal',1],['Tall',1.6],['Towering',2.2,1]]},
+  {k:'gallery',l:'Stern windows',o:[['None',0],['Lit windows',1,1]]},
   {k:'fore',l:'Front castle',o:[['None',0],['Yes',1]]},
-  {k:'guns',l:'Guns a side',o:[['2',2],['3',3],['4',4],['5',5],['6',6],['8',8]]},
-  {k:'decks',l:'Gun decks',o:[['1',1],['2',2]]},
-  {k:'fig',l:'Figurehead',o:[['None',0],['Mermaid',1],['Lion',2],['Eagle',3],['Sea serpent',4]]},
-  {k:'pet',l:'Pet',o:[['None',0],['Parrot',1],['Monkey',2]]},
-  {k:'emb',l:'Emblem',o:EMBLEMS.map((e,i)=>[EMBLEM_NAMES[i],i])},
+  {k:'ram',l:'Iron ram',o:[['None',0],['Yes',1,1]]},
+  {k:'guns',l:'Guns a side',o:[['2',2],['3',3],['4',4],['5',5],['6',6],['8',8,1]]},
+  {k:'decks',l:'Gun decks',o:[['1',1],['2',2,1]]},
+  {k:'oars',l:'Oars',o:[['None',0],['Rowing oars',1,1]]},
+  {k:'cargo',l:'Deck cargo',o:[['None',0],['Barrels & crates',1]]},
+  {k:'fig',l:'Figurehead',o:[['None',0],['Mermaid',1],['Lion',2,1],['Eagle',3,1],['Sea serpent',4,1],['Skull',5,1],['Dragon',6,1]]},
+  {k:'pet',l:'Pet',o:[['None',0],['Parrot',1,1],['Monkey',2,1]]},
+  {k:'lamps',l:'Lanterns',o:[['2 at the stern',0],['4, bow and stern',1,1]]},
+  {k:'emb',l:'Emblem',o:EMBLEMS.map((e,i)=>[EMBLEM_NAMES[i],i,i>5?1:0])},
 ];
+// colours: the first `free` swatches are free, the rest need No ads
 const DCOL=[
-  {k:'side',l:'Hull',c:PAINT.h.filter(Boolean)},{k:'trim',l:'Trim',c:PAINT.t.filter(Boolean)},{k:'band',l:'Hull stripe',c:[null].concat(PAINT.t.filter(Boolean))},
-  {k:'deck',l:'Deck',c:['#b48a5c','#8a6a48','#d4b48a','#5a4636','#cfc4ae']},{k:'sail',l:'Sails',c:PAINT.s},{k:'stripe',l:'Sail stripe',c:PAINT.p},
-  {k:'ecol',l:'Emblem colour',c:PAINT.c},{k:'flag',l:'Flag',c:PAINT.f},{k:'lamp',l:'Lanterns',c:['#ffd27a','#ff5a3a','#7fd3ff','#7dff9a','#c58bff']},
+  {k:'side',l:'Hull',c:PAINT.h.filter(Boolean),free:5},{k:'trim',l:'Trim',c:PAINT.t.filter(Boolean),free:5},{k:'band',l:'Hull stripe',c:[null].concat(PAINT.t.filter(Boolean)),free:5},
+  {k:'deck',l:'Deck',c:['#b48a5c','#8a6a48','#d4b48a','#5a4636','#cfc4ae'],free:3},{k:'sail',l:'Sails',c:PAINT.s,free:5},{k:'stripe',l:'Sail stripe',c:PAINT.p,free:5},
+  {k:'ecol',l:'Emblem colour',c:PAINT.c,free:4},{k:'flag',l:'Flag',c:PAINT.f,free:5},{k:'lamp',l:'Lantern colour',c:['#ffd27a','#ff5a3a','#7fd3ff','#7dff9a','#c58bff'],free:1},
 ];
-const DSG0=()=>({v:1,name:'',size:1.15,len:1,wid:1,masts:2,tiers:2,castle:1,fore:0,guns:3,decks:1,fig:0,pet:0,emb:1,
+const DSG0=()=>({v:2,name:'',size:1.15,len:1,wid:1,masts:2,sailStyle:'square',tiers:2,cond:0,glow:null,nest:1,castle:1,gallery:0,fore:0,ram:0,guns:3,decks:1,oars:0,cargo:0,fig:0,pet:0,lamps:0,emb:1,
   side:'#6e4527',trim:'#b8923f',band:null,deck:'#b48a5c',sail:'#ece2cb',stripe:'#1f5c74',ecol:'#8a6b2a',flag:'#1f5c74',lamp:'#ffd27a'});
+const DVIEW=[['Creator (you)','me'],['Season 2 player','free'],['Player with No ads','paid']];
+let dview='me';
 let dsg=DSG0(),designOn=false;
 const MAST_POS={1:[.2],2:[1.0,-.75],3:[1.4,.1,-1.2],4:[1.6,.6,-.4,-1.35]};
 function designLook(d){const n=d.guns|0,span=n<2?0:Math.min(1.95,(n-1)*.28),ports=[];for(let i=0;i<n;i++)ports.push(n<2?0:-span+2*span*i/(n-1));
   return {own:true,side:d.side,bottom:'#1c1712',trim:d.trim,band:d.band,deck:d.deck,sail:d.sail,stripe:d.stripe,emblem:EMBLEMS[d.emb]||null,ecol:d.ecol,flag:d.flag,
-    masts:MAST_POS[d.masts]||MAST_POS[2],tiers:d.tiers,castleH:d.castle,forecastle:!!d.fore,ports,decks:d.decks,fig:d.fig,pet:d.pet,lamp:d.lamp,guns:true,scale:d.size};}
-function buildDesign(){sinking=sinking.filter(x=>x.g!==pship);disposeGroup(pship);pship=makeShip(designLook(dsg));pship.userData.inner.scale.set(dsg.len,1,dsg.wid);}
+    masts:MAST_POS[d.masts]||MAST_POS[2],tiers:d.tiers,castleH:d.castle,forecastle:!!d.fore,ports,decks:d.decks,fig:d.fig,pet:d.pet,lamp:d.lamp,guns:true,scale:d.size,
+    sailStyle:d.sailStyle,nest:!!d.nest,gallery:!!d.gallery,ram:!!d.ram,oars:!!d.oars,cargo:!!d.cargo,glow:d.glow,lamps4:!!d.lamps};}
+function buildDesign(){sinking=sinking.filter(x=>x.g!==pship);disposeGroup(pship);pship=makeShip(designLook(dsg));pship.userData.inner.scale.set(dsg.len,1,dsg.wid);if(dsg.cond)tearSails(pship,dsg.cond);}
+const dLocked=prem=>prem&&dview==='free';
 function designUnlocked(){try{return localStorage.getItem(DSG_ON)==='1'}catch(e){return false}}
 function designSaved(){try{return (JSON.parse(localStorage.getItem(DSG_KEY)||'[]')||[]).filter(x=>x&&typeof x==='object')}catch(e){return []}}
 function designCode(d){return 'BBSHIP1:'+btoa(unescape(encodeURIComponent(JSON.stringify(d))));}
@@ -1703,14 +1742,19 @@ function closeDesigner(){designOn=false;$('designov').hidden=true;showcase=false
   setShip(shipId);$('start').hidden=false;refreshStart();}
 function renderDesigner(){
   $('dname').value=dsg.name||'';const box=$('dopts');box.innerHTML='';
+  {const sec=document.createElement('div');sec.className='dsec';sec.innerHTML='<div class="lbl">View as</div>';const row=document.createElement('div');row.className='modeseg';
+    DVIEW.forEach(([n,v])=>{const b=document.createElement('button');b.textContent=n;b.id='dv-'+v;b.className=dview===v?'on':'';b.onclick=()=>{audio();dview=v;renderDesigner();
+      $('dmsg').textContent=v==='me'?'Everything unlocked. ★ marks No ads extras.':v==='free'?'What every player gets in Season 2. Locked items need No ads.':'Everything a No ads subscriber can use.';};row.appendChild(b);});
+    sec.appendChild(row);box.appendChild(sec);}
+  const say=t=>{$('dmsg').textContent=t;};
   for(const O of DOPT){const sec=document.createElement('div');sec.className='dsec';const cur=O.o.find(x=>x[1]===dsg[O.k]);
     sec.innerHTML=`<div class="lbl">${O.l} <span>${cur?cur[0]:''}</span></div>`;const row=document.createElement('div');row.className='chiprow';
-    O.o.forEach(([name,val])=>{const b=document.createElement('button');b.className='dopt'+(dsg[O.k]===val?' on':'');b.textContent=name;b.id='do-'+O.k+'-'+String(val).replace('.','_');
-      b.onclick=()=>{audio();dsg[O.k]=val;buildDesign();renderDesigner();};row.appendChild(b);});
+    O.o.forEach(([name,val,prem])=>{const b=document.createElement('button'),lock=dLocked(prem);b.className='dopt'+(dsg[O.k]===val?' on':'')+(lock?' locked':'')+(prem?' prem':'');b.textContent=name;b.id='do-'+O.k+'-'+String(val).replace(/[.#]/g,'_');
+      b.onclick=()=>{audio();if(lock){say(O.l+': '+name+' comes with No ads.');return;}dsg[O.k]=val;buildDesign();renderDesigner();};row.appendChild(b);});
     sec.appendChild(row);box.appendChild(sec);}
   for(const C of DCOL){const sec=document.createElement('div');sec.className='dsec';sec.innerHTML=`<div class="lbl">${C.l}</div>`;const row=document.createElement('div');row.className='swrow';
-    C.c.forEach(c=>{const b=document.createElement('button');b.className='sw'+(dsg[C.k]===c?' on':'')+(c===null?' none':'');b.style.background=c||'transparent';b.setAttribute('aria-label',C.l+' colour');
-      b.onclick=()=>{audio();dsg[C.k]=c;buildDesign();renderDesigner();};row.appendChild(b);});
+    C.c.forEach((c,i)=>{const prem=i>=C.free,lock=dLocked(prem);const b=document.createElement('button');b.className='sw'+(dsg[C.k]===c?' on':'')+(c===null?' none':'')+(lock?' locked':'')+(prem&&dview!=='free'?' prem':'');b.style.background=c||'transparent';b.setAttribute('aria-label',C.l+' colour'+(prem?' (No ads)':''));
+      b.onclick=()=>{audio();if(lock){say('This colour comes with No ads.');return;}dsg[C.k]=c;buildDesign();renderDesigner();};row.appendChild(b);});
     sec.appendChild(row);box.appendChild(sec);}
   const list=designSaved(),sv=$('dsaved');$('dsavedsec').hidden=!list.length;sv.innerHTML='';
   list.forEach((d,i)=>{const r=document.createElement('div');r.innerHTML=`<b></b>`;r.querySelector('b').textContent=d.name||('Design '+(i+1));
@@ -1721,7 +1765,7 @@ function renderDesigner(){
 $('dname').addEventListener('input',e=>{dsg.name=e.target.value.slice(0,24);});
 $('designdone').onclick=()=>{chime(true);closeDesigner();};
 $('drandom').onclick=()=>{audio();const pick=a=>a[Math.floor(Math.random()*a.length)];const name=dsg.name;
-  for(const O of DOPT)dsg[O.k]=pick(O.o)[1];for(const C of DCOL)dsg[C.k]=pick(C.c);dsg.name=name;buildDesign();renderDesigner();$('dmsg').textContent='A fresh design. Keep tapping for more.';};
+  for(const O of DOPT)dsg[O.k]=pick(O.o.filter(x=>!dLocked(x[2])))[1];for(const C of DCOL)dsg[C.k]=pick(C.c.filter((c,i)=>!dLocked(i>=C.free)));dsg.name=name;buildDesign();renderDesigner();$('dmsg').textContent='A fresh design. Keep tapping for more.';};
 $('dsave').onclick=()=>{audio();const l=designSaved();const d=JSON.parse(JSON.stringify(dsg));if(!d.name)d.name='Design '+(l.length+1);
   const at=l.findIndex(x=>x.name===d.name);if(at>=0)l[at]=d;else l.push(d);while(l.length>12)l.shift();try{localStorage.setItem(DSG_KEY,JSON.stringify(l))}catch(e){}
   dsg.name=d.name;chime(true);renderDesigner();$('dmsg').textContent='Saved "'+d.name+'".';};

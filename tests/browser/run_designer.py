@@ -16,13 +16,21 @@ with sync_playwright() as pw:
   A.click('#goDesign');A.wait_for_timeout(1200)
   A.screenshot(path=O+'d_designer_default.png')
   A.fill('#dname','Black Widow')
-  for k,v in [('size','1_4'),('masts','3'),('tiers','3'),('castle','1_6'),('fore','1'),('guns','5'),('decks','2'),('fig','2'),('pet','1')]:
+  for k,v in [('size','1_4'),('masts','3'),('tiers','3'),('castle','1_6'),('fore','1'),('guns','5'),('decks','2'),('fig','6'),('pet','1'),('gallery','1'),('ram','1'),('cargo','1'),('lamps','1')]:
     A.click(f'#do-{k}-{v}');A.wait_for_timeout(150)
   A.locator('.dsec:has-text("Hull") .swrow .sw').nth(3).click()
   A.locator('.dsec:has-text("Sails") .swrow .sw').nth(4).click()
   A.locator('.dsec:has-text("Sail stripe") .swrow .sw').nth(2).click()
   A.wait_for_timeout(1500);A.screenshot(path=O+'d_designer_custom.png')
   A.click('#dsave');A.wait_for_timeout(300);print('msg:',A.inner_text('#dmsg'))
+  for k,v in [('sailStyle','lateen'),('cond','2'),('glow','_3dff9a'),('oars','1'),('fig','5'),('masts','2')]:
+    A.click(f'#do-{k}-{v}');A.wait_for_timeout(150)
+  A.wait_for_timeout(1200);A.screenshot(path=O+'d_designer_ghost.png')
+  A.click('#dv-free');A.wait_for_timeout(300)
+  print('locked chips in player view:',A.locator('.dopt.locked').count(),'locked swatches:',A.locator('.sw.locked').count())
+  A.click('#do-masts-4');A.wait_for_timeout(200);print('locked tap says:',A.inner_text('#dmsg'),'| masts still',E('dsg.masts'))
+  A.wait_for_timeout(200);A.screenshot(path=O+'d_designer_playerview.png')
+  A.click('#dv-me');A.wait_for_timeout(200)
   A.click('#drandom');A.wait_for_timeout(1500);A.screenshot(path=O+'d_designer_random.png')
   A.click('#dshare');A.wait_for_timeout(500);code=A.inner_text('#dcode');print('code ok:',code.startswith('BBSHIP1:'),len(code))
   A.click('#dsaved button:has-text("Load")');A.wait_for_timeout(800);print('loaded name:',A.input_value('#dname'))
