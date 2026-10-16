@@ -79,6 +79,14 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .sw.auto::after{content:"A";position:absolute;inset:0;display:grid;place-items:center;font:800 13px var(--body);color:rgba(255,255,255,.85);text-shadow:0 1px 2px #000}
 .sw.locked,.emt.locked{opacity:.38}
 .sw.locked::before,.emt.locked::before{content:"";position:absolute;right:-3px;bottom:-3px;width:14px;height:14px;border-radius:50%;background:#0b2230 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='3.5' y='7' width='9' height='7' rx='1.5' fill='%23d6b262'/%3E%3Cpath d='M5.5 7V5a2.5 2.5 0 0 1 5 0v2' stroke='%23d6b262' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") center/11px no-repeat;border:1px solid rgba(214,178,98,.6)}
+.dopt{flex:0 0 auto;padding:8px 12px;border-radius:9px;cursor:pointer;font:700 13px var(--body);border:1px solid rgba(214,178,98,.3);background:rgba(255,255,255,.04);color:var(--parch)}
+.dopt.on{border-color:var(--brass-hi);background:rgba(214,178,98,.18);color:var(--brass-hi)}
+.dname{width:100%;box-sizing:border-box;padding:9px 11px;border-radius:9px;border:1px solid rgba(214,178,98,.35);background:rgba(0,0,0,.25);color:var(--parch);font:600 15px var(--body)}
+.dacts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.dacts .btn{margin:0;flex:1 1 auto}
+.dsaved{display:flex;flex-direction:column;gap:6px}
+.dsaved div{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(214,178,98,.2)}
+.dsaved b{flex:1;font-family:var(--display);font-size:13px;color:var(--parch)}
+.dcode{width:100%;box-sizing:border-box;margin-top:8px;font:12px monospace;color:#c9d8de;background:rgba(0,0,0,.3);border:1px solid rgba(214,178,98,.25);border-radius:8px;padding:8px;word-break:break-all;user-select:all;-webkit-user-select:all}
 .emgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:7px}
 .emt{position:relative;aspect-ratio:1;border-radius:9px;cursor:pointer;padding:3px;border:2px solid rgba(255,255,255,.18);background:rgba(255,255,255,.04)}
 .emt canvas{position:static;inset:auto;width:100%;height:100%;display:block;border-radius:6px}
@@ -354,6 +362,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
       <button class="btn ghost" id="goStory">Story</button>
       <div class="savenote" id="storynote" hidden></div>
       <button class="btn ghost dressbtn" id="goDress">Ship &amp; colours</button>
+      <button class="btn ghost" id="goDesign" hidden>Ship Designer</button>
       <button class="linkbtn" id="goBoard" hidden>Leaderboards</button>
       <button class="linkbtn" id="replayTut" hidden>Replay the first voyage</button>
       <button class="linkbtn" id="startnoads" hidden>Remove ads</button>
@@ -437,6 +446,18 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <div id="swatches"></div>
     <p class="dressmsg" id="dressmsg" aria-live="polite"></p>
     <div class="dressnote" id="dressnote"></div>
+  </div>
+</div>
+<div class="overlay sheet" id="designov" hidden>
+  <div class="card dress" role="dialog" aria-labelledby="designh">
+    <div class="dresshead"><div><div class="eyebrow">Preview · only you</div><h2 id="designh">Ship Designer</h2></div><button class="btn small" id="designdone">Done</button></div>
+    <div class="dsec"><div class="lbl">Ship name</div><input class="dname" id="dname" maxlength="24" placeholder="Name your ship"></div>
+    <div id="dopts"></div>
+    <div class="dacts"><button class="btn ghost" id="drandom">Surprise me</button><button class="btn ghost" id="dsave">Save design</button><button class="btn" id="dshare">Send to Claude</button></div>
+    <p class="dressmsg" id="dmsg" aria-live="polite"></p>
+    <div id="dcodebox" hidden><div class="lbl">Design code (copy and send it)</div><div class="dcode" id="dcode"></div></div>
+    <div class="dsec" id="dsavedsec" hidden><div class="lbl">Your saved designs</div><div class="dsaved" id="dsaved"></div></div>
+    <div class="dressnote">Looks only: speed and firepower come from the ship class, so designs stay fair online.</div>
   </div>
 </div>
 <div class="overlay" id="drawov" hidden>
@@ -1712,6 +1733,77 @@ function renderDress(){
     sec.appendChild(row);box.appendChild(sec);}
   $('dressnote').textContent=(dress.ctx==='harbour'?MODE:dress.mode)==='open'?'Other captains at sea see your colours and emblem.':'Wave battle keeps its own ships and colours.';
 }
+/* ================= Ship Designer (preview for the game's creator; opens to everyone in Season 2) ================= */
+// Unlock: tap the "Broadside Bay" title on the main menu 7 times. A design is looks only: hull size and shape,
+// masts, sail rows, castles, gun ports, figurehead, pet and colours. It never changes speed or firepower.
+const DSG_KEY='bb-designs',DSG_ON='bb-designer';
+const DOPT=[
+  {k:'size',l:'Size',o:[['Small',.95],['Medium',1.15],['Large',1.4],['Huge',1.75]]},
+  {k:'len',l:'Hull length',o:[['Short',.85],['Normal',1],['Long',1.18]]},
+  {k:'wid',l:'Hull width',o:[['Slim',.82],['Normal',1],['Wide',1.2]]},
+  {k:'masts',l:'Masts',o:[['1',1],['2',2],['3',3],['4',4]]},
+  {k:'tiers',l:'Sails per mast',o:[['2',2],['3',3]]},
+  {k:'castle',l:'Stern castle',o:[['Low',.7],['Normal',1],['Tall',1.6],['Towering',2.2]]},
+  {k:'fore',l:'Front castle',o:[['None',0],['Yes',1]]},
+  {k:'guns',l:'Guns a side',o:[['2',2],['3',3],['4',4],['5',5],['6',6],['8',8]]},
+  {k:'decks',l:'Gun decks',o:[['1',1],['2',2]]},
+  {k:'fig',l:'Figurehead',o:[['None',0],['Mermaid',1],['Lion',2],['Eagle',3],['Sea serpent',4]]},
+  {k:'pet',l:'Pet',o:[['None',0],['Parrot',1],['Monkey',2]]},
+  {k:'emb',l:'Emblem',o:EMBLEMS.map((e,i)=>[EMBLEM_NAMES[i],i])},
+];
+const DCOL=[
+  {k:'side',l:'Hull',c:PAINT.h.filter(Boolean)},{k:'trim',l:'Trim',c:PAINT.t.filter(Boolean)},{k:'band',l:'Hull stripe',c:[null].concat(PAINT.t.filter(Boolean))},
+  {k:'deck',l:'Deck',c:['#b48a5c','#8a6a48','#d4b48a','#5a4636','#cfc4ae']},{k:'sail',l:'Sails',c:PAINT.s},{k:'stripe',l:'Sail stripe',c:PAINT.p},
+  {k:'ecol',l:'Emblem colour',c:PAINT.c},{k:'flag',l:'Flag',c:PAINT.f},{k:'lamp',l:'Lanterns',c:['#ffd27a','#ff5a3a','#7fd3ff','#7dff9a','#c58bff']},
+];
+const DSG0=()=>({v:1,name:'',size:1.15,len:1,wid:1,masts:2,tiers:2,castle:1,fore:0,guns:3,decks:1,fig:0,pet:0,emb:1,
+  side:'#6e4527',trim:'#b8923f',band:null,deck:'#b48a5c',sail:'#ece2cb',stripe:'#1f5c74',ecol:'#8a6b2a',flag:'#1f5c74',lamp:'#ffd27a'});
+let dsg=DSG0(),designOn=false;
+const MAST_POS={1:[.2],2:[1.0,-.75],3:[1.4,.1,-1.2],4:[1.6,.6,-.4,-1.35]};
+function designLook(d){const n=d.guns|0,span=n<2?0:Math.min(1.95,(n-1)*.28),ports=[];for(let i=0;i<n;i++)ports.push(n<2?0:-span+2*span*i/(n-1));
+  return {own:true,side:d.side,bottom:'#1c1712',trim:d.trim,band:d.band,deck:d.deck,sail:d.sail,stripe:d.stripe,emblem:EMBLEMS[d.emb]||null,ecol:d.ecol,flag:d.flag,
+    masts:MAST_POS[d.masts]||MAST_POS[2],tiers:d.tiers,castleH:d.castle,forecastle:!!d.fore,ports,decks:d.decks,fig:d.fig,pet:d.pet,lamp:d.lamp,guns:true,scale:d.size};}
+function buildDesign(){sinking=sinking.filter(x=>x.g!==pship);disposeGroup(pship);pship=makeShip(designLook(dsg));pship.userData.inner.scale.set(dsg.len,1,dsg.wid);}
+function designUnlocked(){try{return localStorage.getItem(DSG_ON)==='1'}catch(e){return false}}
+function designSaved(){try{return (JSON.parse(localStorage.getItem(DSG_KEY)||'[]')||[]).filter(x=>x&&typeof x==='object')}catch(e){return []}}
+function designCode(d){return 'BBSHIP1:'+btoa(unescape(encodeURIComponent(JSON.stringify(d))));}
+function openDesigner(){audio();designOn=true;firing=false;joy=null;$('start').hidden=true;showcase=true;document.body.classList.add('dressing');
+  Object.assign(view,{yaw:clock*.16,pitch:1,zoom:1,idle:4});$('viewctl').hidden=false;
+  $('dmsg').textContent='';$('dcodebox').hidden=true;$('designov').hidden=false;buildDesign();renderDesigner();}
+function closeDesigner(){designOn=false;$('designov').hidden=true;showcase=false;document.body.classList.remove('dressing');$('viewctl').hidden=true;
+  setShip(shipId);$('start').hidden=false;refreshStart();}
+function renderDesigner(){
+  $('dname').value=dsg.name||'';const box=$('dopts');box.innerHTML='';
+  for(const O of DOPT){const sec=document.createElement('div');sec.className='dsec';const cur=O.o.find(x=>x[1]===dsg[O.k]);
+    sec.innerHTML=`<div class="lbl">${O.l} <span>${cur?cur[0]:''}</span></div>`;const row=document.createElement('div');row.className='chiprow';
+    O.o.forEach(([name,val])=>{const b=document.createElement('button');b.className='dopt'+(dsg[O.k]===val?' on':'');b.textContent=name;b.id='do-'+O.k+'-'+String(val).replace('.','_');
+      b.onclick=()=>{audio();dsg[O.k]=val;buildDesign();renderDesigner();};row.appendChild(b);});
+    sec.appendChild(row);box.appendChild(sec);}
+  for(const C of DCOL){const sec=document.createElement('div');sec.className='dsec';sec.innerHTML=`<div class="lbl">${C.l}</div>`;const row=document.createElement('div');row.className='swrow';
+    C.c.forEach(c=>{const b=document.createElement('button');b.className='sw'+(dsg[C.k]===c?' on':'')+(c===null?' none':'');b.style.background=c||'transparent';b.setAttribute('aria-label',C.l+' colour');
+      b.onclick=()=>{audio();dsg[C.k]=c;buildDesign();renderDesigner();};row.appendChild(b);});
+    sec.appendChild(row);box.appendChild(sec);}
+  const list=designSaved(),sv=$('dsaved');$('dsavedsec').hidden=!list.length;sv.innerHTML='';
+  list.forEach((d,i)=>{const r=document.createElement('div');r.innerHTML=`<b></b>`;r.querySelector('b').textContent=d.name||('Design '+(i+1));
+    const ld=document.createElement('button');ld.className='dopt';ld.textContent='Load';ld.onclick=()=>{audio();dsg=Object.assign(DSG0(),d);buildDesign();renderDesigner();$('dmsg').textContent='Loaded '+(dsg.name||'your design')+'.';};
+    const del=document.createElement('button');del.className='dopt';del.textContent='Delete';del.onclick=()=>{const l=designSaved();l.splice(i,1);try{localStorage.setItem(DSG_KEY,JSON.stringify(l))}catch(e){}renderDesigner();};
+    r.append(ld,del);sv.appendChild(r);});
+}
+$('dname').addEventListener('input',e=>{dsg.name=e.target.value.slice(0,24);});
+$('designdone').onclick=()=>{chime(true);closeDesigner();};
+$('drandom').onclick=()=>{audio();const pick=a=>a[Math.floor(Math.random()*a.length)];const name=dsg.name;
+  for(const O of DOPT)dsg[O.k]=pick(O.o)[1];for(const C of DCOL)dsg[C.k]=pick(C.c);dsg.name=name;buildDesign();renderDesigner();$('dmsg').textContent='A fresh design. Keep tapping for more.';};
+$('dsave').onclick=()=>{audio();const l=designSaved();const d=JSON.parse(JSON.stringify(dsg));if(!d.name)d.name='Design '+(l.length+1);
+  const at=l.findIndex(x=>x.name===d.name);if(at>=0)l[at]=d;else l.push(d);while(l.length>12)l.shift();try{localStorage.setItem(DSG_KEY,JSON.stringify(l))}catch(e){}
+  dsg.name=d.name;chime(true);renderDesigner();$('dmsg').textContent='Saved "'+d.name+'".';};
+$('dshare').onclick=async()=>{audio();const code=designCode(dsg),txt='My Broadside Bay ship design'+(dsg.name?' "'+dsg.name+'"':'')+':\n'+code;
+  $('dcode').textContent=code;$('dcodebox').hidden=false;
+  try{if(navigator.share){await navigator.share({text:txt});$('dmsg').textContent='Sent. Claude can build it from this code.';return;}}catch(e){}
+  try{await navigator.clipboard.writeText(txt);$('dmsg').textContent='Copied. Paste it in your chat with Claude.';}catch(e){$('dmsg').textContent='Press and hold the code below to copy it.';}};
+$('goDesign').onclick=openDesigner;
+{let taps=0,tapT=0;const h=document.querySelector('#start h1');if(h)h.addEventListener('click',()=>{const n=Date.now();taps=n-tapT<900?taps+1:1;tapT=n;
+  if(taps>=7){taps=0;let on=!designUnlocked();try{localStorage.setItem(DSG_ON,on?'1':'0')}catch(e){}$('goDesign').hidden=!on;chime(true);showBanner(on?'Ship Designer unlocked':'Ship Designer hidden');}});}
+$('goDesign').hidden=!designUnlocked();
 /* ---- draw-your-own emblem: a 16x16 grid ---- */
 const pad={bits:new Uint8Array(256),mode:1,down:false};
 const padC=$('pad'),padG=padC.getContext('2d');
@@ -3026,7 +3118,7 @@ function render(dt){
     const w=e.r*1.3;e.bar.visible=e.kind!=='boss'&&e.hp<e.max;e.bar.position.set(e.x,e.big?9.5:7.8,e.z);e.bar.quaternion.copy(cam.quaternion);
     e.bar.children[0].scale.x=w;e.bar.children[0].position.x=-w/2;e.fg.scale.x=w*Math.max(0,e.hp)/e.max;e.fg.position.x=-w/2;}
   const k=camK;
-  if(showcase){if(!view.drag&&view.pts.size===0){view.idle+=dt;if(view.idle>3)view.yaw+=dt*.16;}const a=view.yaw,sc=SHIP().scale,port=W<H,z=view.zoom,rr=(port?19:14)*sc*z;camPos.set(P.x+Math.cos(a)*rr,(port?6.5:5)*sc*z*view.pitch,P.z+Math.sin(a)*rr);look.set(P.x,(port?-5.5:-1.5)*sc*z,P.z);if(!port){const off=rr*.32;look.x+=Math.sin(a)*off;look.z-=Math.cos(a)*off;}cam.position.copy(camPos);}
+  if(showcase){if(!view.drag&&view.pts.size===0){view.idle+=dt;if(view.idle>3)view.yaw+=dt*.16;}const a=view.yaw,sc=designOn?dsg.size*Math.max(1,dsg.len*.95)*1.35:SHIP().scale,port=W<H,z=view.zoom,rr=(port?19:14)*sc*z;camPos.set(P.x+Math.cos(a)*rr,(port?6.5:5)*sc*z*view.pitch,P.z+Math.sin(a)*rr);look.set(P.x,(port?-5.5:-1.5)*sc*z,P.z);if(!port){const off=rr*.32;look.x+=Math.sin(a)*off;look.z-=Math.cos(a)*off;}cam.position.copy(camPos);}
   else if(state==='title'){const a=clock*.12;camPos.set(P.x+Math.cos(a)*22,9,P.z+Math.sin(a)*22);look.set(P.x,2.5,P.z);cam.position.copy(camPos);}
   else{const tx=P.x+Math.cos(P.a)*3,tz=P.z+Math.sin(P.a)*3;
     const ck=k*(1+(SHIP().scale-1)*.55),land=W>H,ch=(land?31:27)*ck,cz=(land?15:25)*ck;camPos.lerp(new THREE.Vector3(tx,ch,tz+cz),Math.min(1,dt*3));look.set(camPos.x,0,camPos.z-cz-(land?1.5:3));
