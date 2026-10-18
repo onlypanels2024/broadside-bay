@@ -316,7 +316,7 @@ function adReward(){const f=window.__fakeAds;if(f)f.rewarded=(f.rewarded|0)+1;re
 function adInter(){const f=window.__fakeAds;if(f)f.inter=(f.inter|0)+1;return Promise.resolve();}
 function noAdsBuy(say){say('Remove ads is only in the Android app.');}
 function noAdsPrice(){return '€5';}""","""// Google's test ads until the game goes public (tapping your own real ads breaks AdMob's rules). Set to false for the public release.
-const AD_TEST=true;
+const AD_TEST=false;
 const AD_IDS={reward:'ca-app-pub-7319579555027884/2523081279',inter:'ca-app-pub-7319579555027884/9177698541'};
 const NOADS={sku:'noads_monthly',plan:'monthly'};
 const ADST={on:false,rw:false,inr:false,na:0,price:'',synced:0};
