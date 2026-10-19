@@ -3094,7 +3094,7 @@ function krakenTick(dt){
       if(MODE==='open'&&kraken.mine>=3&&kraken.claimed!==slot){kraken.claimed=slot;econKill('kraken',String(slot));chime(true);setTimeout(()=>chime(true),180);updHud();
         for(let i=0;i<12;i++)addPickup('coin',kraken.x+rnd(-6,6),kraken.z+rnd(-6,6),20);}}}
   const g=kraken.g,y=wh(kraken.x,kraken.z,clock)*.6-14*(1-kraken.rise)+Math.sin(clock*.9)*.35;g.position.set(kraken.x,y,kraken.z);g.rotation.y=-Math.atan2(P.z-kraken.z,P.x-kraken.x);
-  kraken.flash=Math.max(0,kraken.flash-dt);KM.body.emissive.setRGB(kraken.flash*.8+(kraken.rage?.05+.04*Math.sin(clock*6):0),kraken.flash*.2,kraken.flash*.2);
+  kraken.flash=Math.max(0,kraken.flash-dt*1.4);KM.body.emissive.setRGB(kraken.flash*.3+(kraken.rage?.05+.04*Math.sin(clock*6):0),kraken.flash*.1,0);
   // below 40% health it gets angry: red eyes, faster and harder strikes
   if(!kraken.rage&&kraken.hp>0&&kraken.hp<=kraken.max*.4){kraken.rage=true;KM.eye.emissive.copy(L('#ff2010'));KM.eye.color.copy(L('#ff6040'));if(d<90&&state==='play'){hudNote('The kraken is enraged!');noise(1.2,50,.55);shake=Math.max(shake,.8);}}
   if(!kraken.rage&&KM.eye.emissive.g<.15&&KM.eye.emissive.g<L('#ff5a00').g*.5){KM.eye.emissive.copy(L('#ff5a00'));KM.eye.color.copy(L('#ff8a30'));}
@@ -3126,7 +3126,7 @@ function krakenTick(dt){
     if(near!==kraken.bar){kraken.bar=near;$('boss').hidden=!near&&!enemies.some(e=>e.kind==='boss'&&Math.hypot(e.x-P.x,e.z-P.z)<80);}}
   else if(kraken.bar){kraken.bar=false;$('boss').hidden=true;}
 }
-function krakenHurt(b){boom(b.x,b.z,false);noise(.15,900,.25);kraken.flash=.25;kraken.mine++;kraken.hp=Math.max(0,kraken.hp-1);if(MODE==='open')krakenHitShared(kraken.slot);}
+function krakenHurt(b){const hy=2+Math.random()*2;spark(b.x,hy,b.z,{color:'#ffb04a',add:true,s:1.6,life:.14});for(let i=0;i<3;i++)spark(b.x,hy,b.z,{color:'#ff7a26',add:true,s:rnd(.5,.9),life:rnd(.15,.3),vx:rnd(-3,3),vy:rnd(1,3),vz:rnd(-3,3)});smoke(b.x,hy,b.z,3,true,.8);noise(.15,900,.25);kraken.flash=.15;kraken.mine++;kraken.hp=Math.max(0,kraken.hp-1);if(MODE==='open')krakenHitShared(kraken.slot);}
 function seaEventsTick(dt){
   // treasure
   if(treasure){treasure.t-=dt;if(treasure.pulse>0)treasure.pulse-=dt;const I=treasure.isl,d=Math.hypot(P.x-I.x,P.z-I.z),near=d<I.r*1.3+8;
