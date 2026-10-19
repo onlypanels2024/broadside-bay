@@ -2292,7 +2292,7 @@ function startStory(i){
   if(i===2){const isl=islands.filter(x=>!x.port).sort((a,b)=>Math.hypot(a.x-60,a.z-60)-Math.hypot(b.x-60,b.z-60))[0];treasure={isl,t:99999,dig:0};
     for(let k=0;k<4;k++)storyFoe(k<3?'sloop':'galleon',isl.x+Math.cos(k*1.6)*16,isl.z+Math.sin(k*1.6)*16);}
   if(i===3){const sp={x:120,z:40};storyFoe('boss',sp.x,sp.z);$('bossname').textContent='The Iron Maw';storyFoe('galleon',sp.x-10,sp.z+10);storyFoe('galleon',sp.x-10,sp.z-10);}
-  if(i===4){const b=PORTS[2];story.kraken={x:b.x+70,z:b.z-40,hp:45};KR.hp=45;kraken.slot=0;placeAtPort(PORTS[2]);}else KR.hp=60;
+  if(i===4){const b=PORTS[2];story.kraken={x:b.x+70,z:b.z-40,hp:70};KR.hp=70;kraken.slot=0;placeAtPort(PORTS[2]);}else KR.hp=100;
   $('wavelbl').textContent='Sunk';$('boss').hidden=true;$('boss').classList.add('left');$('map').hidden=false;$('rankrow').hidden=true;$('dock').hidden=true;
   $('objective').hidden=false;$('start').hidden=true;$('hint').hidden=false;setIslandUniforms();updHud();musPlay();state='play';showBanner(c.t,true);storyObjective();}
 function storyObjective(){const c=STORY[story.i];let t=c.goal;
@@ -3011,35 +3011,78 @@ function convoyArrived(){const c=convoy;convoy=null;
   else if(state==='play'&&Math.hypot(c.m.x-P.x,c.m.z-P.z)<200)showBanner('The convoy reached '+c.dest.name);}
 function convoySunk(e){if(convoy&&convoy.m===e){convoy.esc.forEach(x=>{if(x.hp>0)x.mode='attack';});convoy.m=null;convoy=null;showBanner('Merchant sunk! Her escorts want revenge',true);}}
 /* ---- the kraken: the same one for everyone online, rising every 8 minutes for 4 minutes ---- */
-const KR={slot:480000,life:240000,hp:60};
+const KR={slot:480000,life:240000,hp:100,big:150};
 const krakenBig=t=>{const S=seasonAt(t),E=eventAt(t);return S.id==='kraken'||(E&&E.id==='kraken2');};
-const kraken={on:false,slot:-1,x:0,z:0,r:5,hp:KR.hp,mine:0,g:null,tent:[],atkT:3,warn:null,dead:false,claimed:-1,announced:-1,rise:0,flash:0};
+const kraken={on:false,slot:-1,x:0,z:0,r:7.5,hp:KR.hp,mine:0,g:null,tent:[],atkT:3,warn:null,dead:false,claimed:-1,announced:-1,rise:0,flash:0};
 function krakenSpot(slot){let a=(slot*2654435761)>>>0;const R=()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
   for(let k=0;k<60;k++){const x=(R()*2-1)*(WORLD-40),z=(R()*2-1)*(WORLD-40);
     if(PORTS.some(p=>Math.hypot(x-p.x,z-p.z)<SAFE_R+40)||Math.hypot(x-ARENA_D.x,z-ARENA_D.z)<ARENA_D.r+30)continue;if(islands.some(i=>Math.hypot(x-i.x,z-i.z)<i.r+14))continue;return{x,z};}return{x:120,z:120};}
 // online: the app shares the kraken's health through the database
 function krakenWatch(slot,cb){return FB&&NET.room?FB.krakenWatch(slot,cb):()=>{};}
-function krakenHitShared(slot){if(FB&&NET.room)FB.krakenHit(slot,kraken.max>60);}
+function krakenHitShared(slot){if(FB&&NET.room)FB.krakenHit(slot,kraken.max>100);}
 let krakenOff=null;
-const KM={body:std({color:L('#3b2134'),roughness:.55,metalness:.1}),eye:std({color:L('#ffd23a'),emissive:L('#ffb000'),emissiveIntensity:2.5}),warn:new THREE.MeshBasicMaterial({color:L('#ff3a2a'),transparent:true,opacity:.0,depthWrite:false})};
-function buildKraken(){const g=new THREE.Group();
-  const body=new THREE.Mesh(new THREE.SphereGeometry(4.2,24,16,0,TAU,0,Math.PI/2),KM.body);body.scale.set(1,.75,1.15);body.castShadow=true;g.add(body);
-  [-1,1].forEach(s2=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.42,12,10),KM.eye);e.position.set(3.2,1.7,s2*1.15);g.add(e);});
-  const tent=[];for(let i=0;i<8;i++){const pivot=new THREE.Group();const a=i/8*TAU+.2;pivot.position.set(Math.cos(a)*4.6,-.3,Math.sin(a)*4.6);pivot.rotation.y=-a;
-    const segs=[];let parent=pivot;for(let k=0;k<7;k++){const r0=.55*(1-k/8),r1=.55*(1-(k+1)/8);const m=new THREE.Mesh(new THREE.CylinderGeometry(r1,r0,1.1,10),KM.body);m.position.y=k?1.1:.55;m.castShadow=true;
-      if(k){const j=new THREE.Group();j.position.y=.55;parent.add(j);j.add(m);m.position.y=.55;segs.push(j);parent=m;}else{pivot.add(m);segs.push(m);parent=m;}}
-    g.add(pivot);tent.push({pivot,segs,a,ph:Math.random()*TAU,slam:0});}
-  const ring=new THREE.Mesh(new THREE.RingGeometry(2.4,3.2,32),KM.warn);ring.rotation.x=-Math.PI/2;ring.renderOrder=3;scene.add(ring);
-  scene.add(g);return{g,tent,ring};}
+const KTEX=(()=>{const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,256,256);
+  for(let i=0;i<700;i++){const r=1+Math.random()*3.5;x.fillStyle='rgba('+(60+Math.random()*60|0)+','+(25+Math.random()*25|0)+','+(30+Math.random()*25|0)+','+(.25+Math.random()*.4)+')';x.beginPath();x.ellipse(Math.random()*256,Math.random()*256,r,r*(.5+Math.random()),Math.random()*3,0,TAU);x.fill();}
+  x.strokeStyle='rgba(40,8,14,.5)';x.lineWidth=1.4;for(let i=0;i<40;i++){x.beginPath();let px=Math.random()*256,py=Math.random()*256;x.moveTo(px,py);for(let k=0;k<6;k++){px+=Math.random()*24-12;py+=Math.random()*24-12;x.lineTo(px,py);}x.stroke();}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(2,2);if(THREE.sRGBEncoding)t.encoding=THREE.sRGBEncoding;return t;})();
+const KM={body:std({color:0xffffff,vertexColors:true,map:KTEX,bumpMap:KTEX,bumpScale:.07,roughness:.32,metalness:.08,emissive:new THREE.Color(0,0,0)}),belly:std({color:L('#c7836f'),roughness:.6}),
+  dark:std({color:L('#1c0810'),roughness:.7}),brow:std({color:L('#2a0a0e'),map:KTEX,roughness:.55}),socket:std({color:L('#0d0305'),roughness:.9}),horn:std({color:L('#d8ccb0'),roughness:.5}),
+  eye:std({color:L('#ff8a30'),emissive:L('#ff5a00'),emissiveIntensity:3}),pupil:new THREE.MeshBasicMaterial({color:0x000000}),
+  foam:new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.45,depthWrite:false}),
+  warn:new THREE.MeshBasicMaterial({color:L('#ff3a2a'),transparent:true,opacity:.0,depthWrite:false})};
+// joins several shapes into one mesh, each vertex coloured (fewer draw calls on phones)
+function kMerge(parts){const P=[],N=[],U=[],C=[],v=new THREE.Vector3(),n=new THREE.Vector3();
+  for(const [geo,m,col] of parts){const g=geo.index?geo.toNonIndexed():geo.clone();g.applyMatrix4(m);const p=g.attributes.position,nn=g.attributes.normal,uu=g.attributes.uv;
+    for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i);n.fromBufferAttribute(nn,i);P.push(v.x,v.y,v.z);N.push(n.x,n.y,n.z);U.push(uu?uu.getX(i):0,uu?uu.getY(i):0);const c=typeof col==='function'?col(v,n):col;C.push(c.r,c.g,c.b);}}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));return g;}
+const KC={top:L('#2a161d'),mid:L('#46252c'),under:L('#9a6a66'),rim:L('#e2cdb2'),pit:L('#5a3434'),spike:L('#1e1216'),brow:L('#2e1a20')};
+function buildKraken(){const g=new THREE.Group(),S=1.7;g.scale.setScalar(S);const M=new THREE.Matrix4(),q=new THREE.Quaternion(),E3=new THREE.Euler(),one=new THREE.Vector3(1,1,1);
+  const mat=(x,y,z,rx,ry,rz,sx,sy,sz)=>new THREE.Matrix4().compose(new THREE.Vector3(x,y,z),q.clone().setFromEuler(E3.set(rx||0,ry||0,rz||0)),new THREE.Vector3(sx||1,sy||1,sz||1));
+  const shade=(v,n)=>{const t=Math.min(1,Math.max(0,(v.y+1)/8));return KC.mid.clone().lerp(KC.top,t);};
+  // the head: a tall, angular, ridged dome with a crown of spikes and a heavy scowling brow
+  const prof=[[0,-1.2],[4.2,-1.2],[4.45,.6],[4.1,2.4],[3.6,4],[3.0,5.6],[2.2,7],[1.2,8.2],[0,9.4]].map(([x,y])=>new THREE.Vector2(x,y));
+  const parts=[[new THREE.LatheGeometry(prof,11),mat(-.8,0,0,0,0,.12,.95,.78,1.05),shade]];
+  for(let i=0;i<14;i++){const a=i/14*TAU,r=1.6+(i%2)*.5,h=6.6-(i%2)*.8;parts.push([new THREE.ConeGeometry(.3,1.6+(i%3)*.5,6),mat(-1.4+Math.cos(a)*r,h,Math.sin(a)*r*1.1,Math.sin(a)*.6,0,-Math.cos(a)*.6+.15),KC.spike]);}
+  for(let i=0;i<5;i++)parts.push([new THREE.ConeGeometry(.38,2.2-i*.25,6),mat(-1.2-i*.5,7.3-i*.25,0,0,0,.15+i*.12),KC.spike]);
+  [-1,1].forEach(s2=>{parts.push([new THREE.SphereGeometry(1,12,8),mat(2.55,3.2,s2*1.15,-s2*.55,0,-.3,.42,.32,1.25),KC.brow]);});
+  parts.push([new THREE.SphereGeometry(1,10,8),mat(2.75,2.35,0,0,0,-.15,.3,.75,.28),KC.brow]);
+  parts.push([new THREE.SphereGeometry(1,14,10),mat(2.45,1.55,0,0,0,-.35,.95,1.05,1.75),(v,n)=>KC.mid.clone().lerp(KC.top,.35)]);
+  const head=new THREE.Mesh(kMerge(parts),KM.body);head.castShadow=true;g.add(head);
+  // deep sockets and glowing orange slit eyes
+  const eyes=[];[-1,1].forEach(s2=>{
+    const so=new THREE.Mesh(new THREE.SphereGeometry(.8,12,8),KM.socket);so.scale.set(.45,.55,1.0);so.position.set(2.72,2.62,s2*1.3);so.rotation.x=-s2*.4;g.add(so);
+    const e=new THREE.Mesh(new THREE.SphereGeometry(.55,12,8),KM.eye);e.scale.set(.42,.48,.95);e.position.set(2.9,2.6,s2*1.3);e.rotation.x=-s2*.4;g.add(e);eyes.push(e);
+    const pu=new THREE.Mesh(new THREE.BoxGeometry(.06,.5,.12),KM.pupil);pu.position.set(3.12,2.6,s2*1.3);g.add(pu);});
+  // arms: thick tentacles with big pale suckers underneath
+  const armCol=(v,n)=>{const t=Math.max(0,n.x);return KC.top.clone().lerp(KC.under,t*t);};
+  const mkArm=(N,base,L1,suck,cf)=>{const geos=[];for(let k=0;k<N;k++){const r0=base*(1-k/(N+1)),r1=base*(1-(k+1)/(N+1)),pp=[[new THREE.CylinderGeometry(r1,r0,L1,10),mat(0,0,0),cf?(v,n)=>cf(v,n,k/N):armCol]];
+      if(suck){const sr=r0*.42;[-.22,.22].forEach(o=>{pp.push([new THREE.CylinderGeometry(sr,sr*.9,.14,10),mat(r0*.92,o*L1*1.6,0,0,0,Math.PI/2),KC.rim]);pp.push([new THREE.CylinderGeometry(sr*.45,sr*.45,.16,8),mat(r0*.95,o*L1*1.6,0,0,0,Math.PI/2),KC.pit]);});}
+      geos.push(kMerge(pp));}return geos;};
+  const bigGeo=mkArm(11,1.0,1.25,true),smallGeo=mkArm(11,.8,1.05,true),tent=[];
+  const addArm=(geos,L1,pivot,list,extra)=>{const segs=[];let parent=pivot;geos.forEach((geo,k)=>{const m=new THREE.Mesh(geo,KM.body);m.castShadow=k<5;
+      if(k){const j=new THREE.Group();j.position.y=L1/2;parent.add(j);j.add(m);m.position.y=L1/2;segs.push(j);}else{m.position.y=L1/2;pivot.add(m);segs.push(m);}parent=m;});
+    g.add(pivot);list.push(Object.assign({pivot,segs,ph:Math.random()*TAU,slam:0},extra));};
+  for(let i=0;i<10;i++){const a=.75+i/9*(TAU-1.5),R=Math.cos(a)>0?4.4:5,big=i%3===0;const pivot=new THREE.Group();pivot.position.set(Math.cos(a)*R-.4,-.8,Math.sin(a)*R);pivot.rotation.y=-a;
+    addArm(big?bigGeo:smallGeo,big?1.25:1.05,pivot,tent,{a,big});}
+  // a beard of face-tentacles hanging from under the eyes into the sea
+  const fcol=(v,n,t)=>KC.mid.clone().lerp(KC.top,.35+t*.5).lerp(KC.under,Math.max(0,n.x)*.25*(1-t)),beard=[];
+  const bLong=mkArm(10,.5,.62,false,fcol),bShort=mkArm(8,.42,.6,false,fcol);
+  for(let i=0;i<6;i++){const z=(i-2.5)*.48,side=Math.abs(z),pivot=new THREE.Group();pivot.position.set(2.95-side*.35,1.7-side*.2,z*1.05);
+    pivot.rotation.set(z*.45,0,Math.PI+.72);addArm(side>1?bShort:bLong,side>1?.6:.62,pivot,beard,{side:Math.sign(z)});}
+  // white water churning around it
+  const foam=new THREE.Mesh(new THREE.RingGeometry(4.2,7.6,40),KM.foam);foam.rotation.x=-Math.PI/2;foam.position.y=-.35;g.add(foam);
+  const ring=new THREE.Mesh(new THREE.RingGeometry(3.3,4.3,36),KM.warn);ring.rotation.x=-Math.PI/2;ring.renderOrder=3;scene.add(ring);
+  const ring2=new THREE.Mesh(new THREE.RingGeometry(3.3,4.3,36),KM.warn);ring2.rotation.x=-Math.PI/2;ring2.renderOrder=3;ring2.visible=false;scene.add(ring2);
+  scene.add(g);return{g,tent,beard,ring,ring2,foam,eyes};}
 function krakenNow(){return (typeof serverNowMs==='function'?serverNowMs():Date.now())+(window.__wxShift||0);}
 function krakenTick(dt){
   const sto=MODE==='story'&&story.kraken,now=krakenNow(),slot=sto?-7:Math.floor(now/KR.slot),age=sto?0:now-slot*KR.slot,big=!sto&&krakenBig(slot*KR.slot),alive=sto||(age<(big?360000:KR.life)&&MODE==='open');
-  if(slot!==kraken.slot){if(krakenOff){krakenOff();krakenOff=null;}Object.assign(kraken,{slot,hp:big?90:KR.hp,mine:0,dead:false});kraken.max=big?90:KR.hp;const sp=krakenSpot(slot);kraken.x=sp.x;kraken.z=sp.z;
+  if(slot!==kraken.slot){if(krakenOff){krakenOff();krakenOff=null;}Object.assign(kraken,{slot,hp:big?KR.big:KR.hp,mine:0,dead:false,rage:false});kraken.max=big?KR.big:KR.hp;const sp=krakenSpot(slot);kraken.x=sp.x;kraken.z=sp.z;
     if(MODE==='open')krakenOff=krakenWatch(slot,v=>{if(typeof v==='number'&&v<kraken.hp)kraken.hp=v;});
     if(sto){kraken.x=story.kraken.x;kraken.z=story.kraken.z;kraken.hp=story.kraken.hp;}}
   const show=alive&&!kraken.dead;
-  if(show&&!kraken.g){const k=buildKraken();kraken.g=k.g;kraken.tent=k.tent;kraken.warn=k.ring;kraken.rise=0;}
-  if(!show&&kraken.g){kraken.rise-=dt*.5;if(kraken.rise<=0||MODE!=='open'){scene.remove(kraken.g);scene.remove(kraken.warn);kraken.g=null;kraken.tent=[];}}
+  if(show&&!kraken.g){const k=buildKraken();Object.assign(kraken,{g:k.g,tent:k.tent,beard:k.beard,sprayT:0,warn:k.ring,warn2:k.ring2,foam:k.foam,rise:0,rage:false,warnT:0});}
+  if(!show&&kraken.g){kraken.rise-=dt*.5;if(kraken.rise<=0||MODE!=='open'){scene.remove(kraken.g);scene.remove(kraken.warn);scene.remove(kraken.warn2);kraken.g=null;kraken.tent=[];kraken.beard=[];}}
   kraken.on=show&&!!kraken.g;
   if(show&&kraken.announced!==slot&&state==='play'){kraken.announced=slot;showBanner('The kraken has risen!',true);noise(1.4,60,.5);}
   if(!kraken.g)return;
@@ -3050,20 +3093,32 @@ function krakenTick(dt){
     if(d<120&&state==='play'){showBanner('The kraken is slain!',true);
       if(MODE==='open'&&kraken.mine>=3&&kraken.claimed!==slot){kraken.claimed=slot;econKill('kraken',String(slot));chime(true);setTimeout(()=>chime(true),180);updHud();
         for(let i=0;i<12;i++)addPickup('coin',kraken.x+rnd(-6,6),kraken.z+rnd(-6,6),20);}}}
-  const g=kraken.g,y=wh(kraken.x,kraken.z,clock)*.6-6*(1-kraken.rise);g.position.set(kraken.x,y,kraken.z);g.rotation.y=-Math.atan2(P.z-kraken.z,P.x-kraken.x);
-  kraken.flash=Math.max(0,kraken.flash-dt);KM.body.emissive.setRGB(kraken.flash*.8,kraken.flash*.2,kraken.flash*.2);
+  const g=kraken.g,y=wh(kraken.x,kraken.z,clock)*.6-14*(1-kraken.rise)+Math.sin(clock*.9)*.35;g.position.set(kraken.x,y,kraken.z);g.rotation.y=-Math.atan2(P.z-kraken.z,P.x-kraken.x);
+  kraken.flash=Math.max(0,kraken.flash-dt);KM.body.emissive.setRGB(kraken.flash*.8+(kraken.rage?.05+.04*Math.sin(clock*6):0),kraken.flash*.2,kraken.flash*.2);
+  // below 40% health it gets angry: red eyes, faster and harder strikes
+  if(!kraken.rage&&kraken.hp>0&&kraken.hp<=kraken.max*.4){kraken.rage=true;KM.eye.emissive.copy(L('#ff2010'));KM.eye.color.copy(L('#ff6040'));if(d<90&&state==='play'){hudNote('The kraken is enraged!');noise(1.2,50,.55);shake=Math.max(shake,.8);}}
+  if(!kraken.rage&&KM.eye.emissive.g<.15&&KM.eye.emissive.g<L('#ff5a00').g*.5){KM.eye.emissive.copy(L('#ff5a00'));KM.eye.color.copy(L('#ff8a30'));}
+  if(kraken.foam){kraken.foam.material.opacity=.3+.15*Math.sin(clock*2.2);kraken.foam.scale.setScalar(1+.05*Math.sin(clock*1.7));}
   for(const t of kraken.tent){const sw=Math.sin(clock*1.6+t.ph);t.slam=Math.max(0,t.slam-dt);
-    const slamA=t.slam>0?Math.sin((1-t.slam/.7)*Math.PI)*1.25:0;
-    t.pivot.rotation.z=-.25-sw*.15-slamA;t.segs.forEach((sg,k)=>{if(k){sg.rotation.z=-(.16+sw*.07)-slamA*.12;sg.rotation.x=Math.sin(clock*2+t.ph+k*.6)*.12;}});}
+    const slamA=t.slam>0?Math.sin((1-t.slam/.7)*Math.PI)*1.1:0,sp=kraken.rage?1.6:1;
+    t.pivot.rotation.z=-.12-sw*.12-slamA;t.segs.forEach((sg,k)=>{if(k){const c=k/t.segs.length;sg.rotation.z=-(.06+c*c*.5+sw*.06)-slamA*.1;sg.rotation.x=Math.sin(clock*2*sp+t.ph+k*.5)*(.08+c*.18);}});}
+  for(const t of kraken.beard||[])t.segs.forEach((sg,k)=>{if(k){sg.rotation.x=Math.sin(clock*1.4+t.ph+k*.7)*.14+t.side*k*.025;sg.rotation.z=Math.sin(clock*1.1+t.ph)*.06+.06+k*.025;}});
+  // spray thrown up around it
+  if(show&&kraken.rise>.5&&d<110){kraken.sprayT-=dt;if(kraken.sprayT<=0){kraken.sprayT=rnd(.25,.6);const a=rnd(0,TAU),r=rnd(7,12);splash(kraken.x+Math.cos(a)*r,kraken.z+Math.sin(a)*r);}}
   // attacks: a red ring warns where a tentacle will strike
-  if(show&&state==='play'&&d<30&&(MODE==='story'||!inSafe(P))){kraken.atkT-=dt*(MODE==='story'?1.3:1);
-    if(kraken.atkT<=0&&!kraken.warnT){kraken.warnT=1.1;kraken.wx=P.x+Math.cos(P.a)*P.v*.9;kraken.wz=P.z+Math.sin(P.a)*P.v*.9;}}
+  if(show&&state==='play'&&d<42&&(MODE==='story'||!inSafe(P))){kraken.atkT-=dt*(MODE==='story'?1.3:1)*(kraken.rage?1.35:1);
+    if(kraken.atkT<=0&&!kraken.warnT){kraken.warnT=kraken.rage?.85:.95;const lead=rnd(.6,1.1);kraken.wx=P.x+Math.cos(P.a)*P.v*lead;kraken.wz=P.z+Math.sin(P.a)*P.v*lead;
+      // when angry it strikes twice: where you're heading and where you are now
+      kraken.two=kraken.rage;if(kraken.two){kraken.wx2=P.x+rnd(-2,2);kraken.wz2=P.z+rnd(-2,2);}}}
   if(kraken.warnT){kraken.warnT-=dt;kraken.warn.position.set(kraken.wx,wh(kraken.wx,kraken.wz,clock)+.25,kraken.wz);KM.warn.opacity=.35+.35*Math.sin(clock*18);
-    if(kraken.warnT<=0){kraken.warnT=0;KM.warn.opacity=0;kraken.atkT=rnd(2.2,3.2);
-      const tt=kraken.tent[Math.floor(Math.random()*kraken.tent.length)];if(tt)tt.slam=.7;
-      splash(kraken.wx,kraken.wz);boom(kraken.wx,kraken.wz,false);noise(.6,140,.45);
-      if(Math.hypot(P.x-kraken.wx,P.z-kraken.wz)<3.4){NET.lastHitBy=null;hurtPlayer();}}}
-  else KM.warn.opacity=0;
+    kraken.warn2.visible=!!kraken.two;if(kraken.two)kraken.warn2.position.set(kraken.wx2,wh(kraken.wx2,kraken.wz2,clock)+.25,kraken.wz2);
+    if(kraken.warnT<=0){kraken.warnT=0;KM.warn.opacity=0;kraken.warn2.visible=false;kraken.atkT=kraken.rage?rnd(1.2,1.8):rnd(1.6,2.4);
+      const strike=(x,z,dmg)=>{const ang=Math.atan2(z-kraken.z,x-kraken.x)+g.rotation.y;let best=null,bd=9;
+        for(const t of kraken.tent){if(t.slam>0)continue;const df=Math.abs(Math.atan2(Math.sin(t.a-ang),Math.cos(t.a-ang)));if(df<bd){bd=df;best=t;}}if(best)best.slam=.7;
+        splash(x,z);boom(x,z,false);noise(.6,140,.45);
+        if(Math.hypot(P.x-x,P.z-z)<4.3){NET.lastHitBy=null;hurtPlayer();if(dmg>1&&P.hp>0){P.inv=0;hurtPlayer();}}};
+      strike(kraken.wx,kraken.wz,kraken.rage?2:1);if(kraken.two)setTimeout(()=>{if(kraken.g&&!kraken.dead)strike(kraken.wx2,kraken.wz2,1);},250);}}
+  else{KM.warn.opacity=0;if(kraken.warn2)kraken.warn2.visible=false;}
   // ships can't sail through it
   if(d<kraken.r+P.r){const k=(kraken.r+P.r-d)/(d||1);P.x+=(P.x-kraken.x)*k;P.z+=(P.z-kraken.z)*k;P.v*=.8;}
   // boss bar
