@@ -88,7 +88,7 @@
         krakenWatch(slot, cb) { const ref = db.ref('kraken/' + slot + '/hp'), fn = s => cb(s.val()); ref.on('value', fn); return () => ref.off('value', fn); },
         krakenHit(slot, big) {
           const u = auth.currentUser; if (!u) return;
-          db.ref('kraken/' + slot + '/hp').transaction(h => (h === null ? (big ? 89 : 59) : h > 0 ? h - 1 : undefined)).catch(() => {});
+          db.ref('kraken/' + slot + '/hp').transaction(h => (h === null ? (big ? 149 : 99) : h > 0 ? h - 1 : undefined)).catch(() => {});
           db.ref('kraken/' + slot + '/hits/' + u.uid).transaction(n => (n || 0) + 1).catch(() => {});
         },
         // Friends: my list (uid -> name) and requests to me (uid -> {n}); both followed live.

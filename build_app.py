@@ -252,7 +252,7 @@ function fleetChanged(){const f=fleetsAll()[myFleetId()],k=f?f.tag+f.col+f.em:''
 function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.unfleets){NET.unfleets();NET.unfleets=null;}NET.fleets={};fleetKey='';""")
 # ---- the shared kraken
 rep("function krakenWatch(slot,cb){return ()=>{};}","function krakenWatch(slot,cb){return FB&&NET.room?FB.krakenWatch(slot,cb):()=>{};}")
-rep("function krakenHitShared(slot){}","function krakenHitShared(slot){if(FB&&NET.room)FB.krakenHit(slot,kraken.max>60);}")
+rep("function krakenHitShared(slot){}","function krakenHitShared(slot){if(FB&&NET.room)FB.krakenHit(slot,kraken.max>100);}")
 # ---- captain's log, titles and looks
 rep("function logOn(){return false;}","function logOn(){return econServer()&&!!NET.srv;}")
 rep("function logSave(){return null;}","function logSave(){return NET.srv;}")

@@ -281,7 +281,7 @@
       "$slot": {
         "hp": {
           ".write": "auth != null",
-          ".validate": "newData.isNumber() && ((!data.exists() && (newData.val() === 59 || newData.val() === 89)) || newData.val() === data.val() - 1) && newData.val() >= 0"
+          ".validate": "newData.isNumber() && ((!data.exists() && (newData.val() === 59 || newData.val() === 89 || newData.val() === 99 || newData.val() === 149)) || newData.val() === data.val() - 1) && newData.val() >= 0"
         },
         "hits": {
           "$uid": {

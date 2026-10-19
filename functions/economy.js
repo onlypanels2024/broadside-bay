@@ -43,7 +43,7 @@
   const PVP = { g: 150, xp: 120 };
   const DUEL = { g: 100, xp: 60 };
   // The kraken: everyone online sees the same one. A new one can rise every 8 minutes and stays 4 minutes.
-  const KRAKEN = { slot: 480000, life: 240000, hp: 60, minHits: 3 };
+  const KRAKEN = { slot: 480000, life: 240000, hp: 100, minHits: 3 };
   // Ship paint. A 7-letter code (hull, trim, sails, stripe, emblem colour, flag, emblem), each a base-36 index,
   // plus an optional 16x16 drawing (64 hex digits) when the emblem is the captain's own (index 35).
   // The rank needed for each choice; must match PAINT_RANK in the game (a test checks this).

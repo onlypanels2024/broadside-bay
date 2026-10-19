@@ -203,6 +203,8 @@ test('shared kraken: its health only goes down one hit at a time, and you only c
   assert.strictEqual(db.as({ uid: 'A' }).write('/kraken/5/hits/A', 30, { now: T0 }).allowed, false);
   assert.strictEqual(db.as({ uid: 'A' }).write('/kraken/5/hits/B', 1, { now: T0 }).allowed, false);
   assert.strictEqual(targaryen.database(rules, {}, T0).as({ uid: 'A' }).write('/kraken/6/hp', 59, { now: T0 }).allowed, true);
+  assert.strictEqual(targaryen.database(rules, {}, T0).as({ uid: 'A' }).write('/kraken/6/hp', 99, { now: T0 }).allowed, true);
+  assert.strictEqual(targaryen.database(rules, {}, T0).as({ uid: 'A' }).write('/kraken/6/hp', 149, { now: T0 }).allowed, true);
 });
 
 test('friends: ask anyone, only the asked captain can accept, and nobody can edit someone else\'s list', () => {
