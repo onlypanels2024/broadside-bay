@@ -2867,6 +2867,7 @@ function buildKraken(){const g=new THREE.Group(),S=1.7;g.scale.setScalar(S);cons
   for(let i=0;i<5;i++)parts.push([new THREE.ConeGeometry(.38,2.2-i*.25,6),mat(-1.2-i*.5,7.3-i*.25,0,0,0,.15+i*.12),KC.spike]);
   [-1,1].forEach(s2=>{parts.push([new THREE.SphereGeometry(1,12,8),mat(2.55,3.2,s2*1.15,-s2*.55,0,-.3,.42,.32,1.25),KC.brow]);});
   parts.push([new THREE.SphereGeometry(1,10,8),mat(2.75,2.35,0,0,0,-.15,.3,.75,.28),KC.brow]);
+  parts.push([new THREE.SphereGeometry(1,14,10),mat(2.45,1.55,0,0,0,-.35,.95,1.05,1.75),(v,n)=>KC.mid.clone().lerp(KC.top,.35)]);
   const head=new THREE.Mesh(kMerge(parts),KM.body);head.castShadow=true;g.add(head);
   // deep sockets and glowing orange slit eyes
   const eyes=[];[-1,1].forEach(s2=>{
@@ -2874,9 +2875,9 @@ function buildKraken(){const g=new THREE.Group(),S=1.7;g.scale.setScalar(S);cons
     const e=new THREE.Mesh(new THREE.SphereGeometry(.55,12,8),KM.eye);e.scale.set(.42,.48,.95);e.position.set(2.9,2.6,s2*1.3);e.rotation.x=-s2*.4;g.add(e);eyes.push(e);
     const pu=new THREE.Mesh(new THREE.BoxGeometry(.06,.5,.12),KM.pupil);pu.position.set(3.12,2.6,s2*1.3);g.add(pu);});
   // arms: thick tentacles with big pale suckers underneath
-  const armCol=(v,n)=>{const t=Math.max(0,-n.x);return KC.top.clone().lerp(KC.under,t*t);};
-  const mkArm=(N,base,L1,suck,cf)=>{const geos=[];for(let k=0;k<N;k++){const r0=base*(1-k/(N+1)),r1=base*(1-(k+1)/(N+1)),pp=[[new THREE.CylinderGeometry(r1,r0,L1,10),mat(0,0,0),cf||armCol]];
-      if(suck){const sr=r0*.42;[-.22,.22].forEach(o=>{pp.push([new THREE.CylinderGeometry(sr,sr*.9,.14,10),mat(-r0*.92,o*L1*1.6,0,0,0,Math.PI/2),KC.rim]);pp.push([new THREE.CylinderGeometry(sr*.45,sr*.45,.16,8),mat(-r0*.95,o*L1*1.6,0,0,0,Math.PI/2),KC.pit]);});}
+  const armCol=(v,n)=>{const t=Math.max(0,n.x);return KC.top.clone().lerp(KC.under,t*t);};
+  const mkArm=(N,base,L1,suck,cf)=>{const geos=[];for(let k=0;k<N;k++){const r0=base*(1-k/(N+1)),r1=base*(1-(k+1)/(N+1)),pp=[[new THREE.CylinderGeometry(r1,r0,L1,10),mat(0,0,0),cf?(v,n)=>cf(v,n,k/N):armCol]];
+      if(suck){const sr=r0*.42;[-.22,.22].forEach(o=>{pp.push([new THREE.CylinderGeometry(sr,sr*.9,.14,10),mat(r0*.92,o*L1*1.6,0,0,0,Math.PI/2),KC.rim]);pp.push([new THREE.CylinderGeometry(sr*.45,sr*.45,.16,8),mat(r0*.95,o*L1*1.6,0,0,0,Math.PI/2),KC.pit]);});}
       geos.push(kMerge(pp));}return geos;};
   const bigGeo=mkArm(11,1.0,1.25,true),smallGeo=mkArm(11,.8,1.05,true),tent=[];
   const addArm=(geos,L1,pivot,list,extra)=>{const segs=[];let parent=pivot;geos.forEach((geo,k)=>{const m=new THREE.Mesh(geo,KM.body);m.castShadow=k<5;
@@ -2885,8 +2886,10 @@ function buildKraken(){const g=new THREE.Group(),S=1.7;g.scale.setScalar(S);cons
   for(let i=0;i<10;i++){const a=.75+i/9*(TAU-1.5),R=Math.cos(a)>0?4.4:5,big=i%3===0;const pivot=new THREE.Group();pivot.position.set(Math.cos(a)*R-.4,-.8,Math.sin(a)*R);pivot.rotation.y=-a;
     addArm(big?bigGeo:smallGeo,big?1.25:1.05,pivot,tent,{a,big});}
   // a beard of face-tentacles hanging from under the eyes into the sea
-  const beard=[],bGeo=mkArm(8,.34,.7,false,(v,n)=>KC.top.clone().lerp(KC.mid,Math.max(0,n.x)*.6));
-  for(let i=0;i<6;i++){const z=(i-2.5)*.62,pivot=new THREE.Group();pivot.position.set(3.0-Math.abs(z)*.3,1.9-Math.abs(z)*.15,z);pivot.rotation.set(z*.35,0,Math.PI+.45);addArm(bGeo,.6,pivot,beard,{});}
+  const fcol=(v,n,t)=>KC.mid.clone().lerp(KC.top,.35+t*.5).lerp(KC.under,Math.max(0,n.x)*.25*(1-t)),beard=[];
+  const bLong=mkArm(10,.5,.62,false,fcol),bShort=mkArm(8,.42,.6,false,fcol);
+  for(let i=0;i<6;i++){const z=(i-2.5)*.48,side=Math.abs(z),pivot=new THREE.Group();pivot.position.set(2.95-side*.35,1.7-side*.2,z*1.05);
+    pivot.rotation.set(z*.45,0,Math.PI+.72);addArm(side>1?bShort:bLong,side>1?.6:.62,pivot,beard,{side:Math.sign(z)});}
   // white water churning around it
   const foam=new THREE.Mesh(new THREE.RingGeometry(4.2,7.6,40),KM.foam);foam.rotation.x=-Math.PI/2;foam.position.y=-.35;g.add(foam);
   const ring=new THREE.Mesh(new THREE.RingGeometry(3.3,4.3,36),KM.warn);ring.rotation.x=-Math.PI/2;ring.renderOrder=3;scene.add(ring);
@@ -2920,7 +2923,7 @@ function krakenTick(dt){
   for(const t of kraken.tent){const sw=Math.sin(clock*1.6+t.ph);t.slam=Math.max(0,t.slam-dt);
     const slamA=t.slam>0?Math.sin((1-t.slam/.7)*Math.PI)*1.1:0,sp=kraken.rage?1.6:1;
     t.pivot.rotation.z=-.12-sw*.12-slamA;t.segs.forEach((sg,k)=>{if(k){const c=k/t.segs.length;sg.rotation.z=-(.06+c*c*.5+sw*.06)-slamA*.1;sg.rotation.x=Math.sin(clock*2*sp+t.ph+k*.5)*(.08+c*.18);}});}
-  for(const t of kraken.beard||[])t.segs.forEach((sg,k)=>{if(k){sg.rotation.x=Math.sin(clock*1.4+t.ph+k*.7)*.22;sg.rotation.z=Math.sin(clock*1.1+t.ph)*.08+.12;}});
+  for(const t of kraken.beard||[])t.segs.forEach((sg,k)=>{if(k){sg.rotation.x=Math.sin(clock*1.4+t.ph+k*.7)*.14+t.side*k*.025;sg.rotation.z=Math.sin(clock*1.1+t.ph)*.06+.06+k*.025;}});
   // spray thrown up around it
   if(show&&kraken.rise>.5&&d<110){kraken.sprayT-=dt;if(kraken.sprayT<=0){kraken.sprayT=rnd(.25,.6);const a=rnd(0,TAU),r=rnd(7,12);splash(kraken.x+Math.cos(a)*r,kraken.z+Math.sin(a)*r);}}
   // attacks: a red ring warns where a tentacle will strike
