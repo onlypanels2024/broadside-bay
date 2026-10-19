@@ -2842,9 +2842,13 @@ function krakenSpot(slot){let a=(slot*2654435761)>>>0;const R=()=>{a=(a+0x6D2B79
 function krakenWatch(slot,cb){return ()=>{};}
 function krakenHitShared(slot){}
 let krakenOff=null;
-const KM={body:std({color:L('#5a1626'),roughness:.42,metalness:.08,emissive:new THREE.Color(0,0,0)}),belly:std({color:L('#c7836f'),roughness:.6}),
-  dark:std({color:L('#1c0810'),roughness:.7}),brow:std({color:L('#33090f'),roughness:.5}),horn:std({color:L('#d8ccb0'),roughness:.5}),
-  eye:std({color:L('#ffd23a'),emissive:L('#ffb000'),emissiveIntensity:2.6}),pupil:new THREE.MeshBasicMaterial({color:0x000000}),
+const KTEX=(()=>{const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,256,256);
+  for(let i=0;i<260;i++){const r=2+Math.random()*9;x.fillStyle='rgba('+(60+Math.random()*60|0)+','+(25+Math.random()*25|0)+','+(30+Math.random()*25|0)+','+(.25+Math.random()*.4)+')';x.beginPath();x.ellipse(Math.random()*256,Math.random()*256,r,r*(.5+Math.random()),Math.random()*3,0,TAU);x.fill();}
+  x.strokeStyle='rgba(40,8,14,.5)';x.lineWidth=1.4;for(let i=0;i<40;i++){x.beginPath();let px=Math.random()*256,py=Math.random()*256;x.moveTo(px,py);for(let k=0;k<6;k++){px+=Math.random()*24-12;py+=Math.random()*24-12;x.lineTo(px,py);}x.stroke();}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(2,2);if(THREE.sRGBEncoding)t.encoding=THREE.sRGBEncoding;return t;})();
+const KM={body:std({color:L('#7a2a30'),map:KTEX,bumpMap:KTEX,bumpScale:.06,roughness:.5,metalness:.05,emissive:new THREE.Color(0,0,0)}),belly:std({color:L('#c7836f'),roughness:.6}),
+  dark:std({color:L('#1c0810'),roughness:.7}),brow:std({color:L('#2a0a0e'),map:KTEX,roughness:.55}),socket:std({color:L('#0d0305'),roughness:.9}),horn:std({color:L('#d8ccb0'),roughness:.5}),
+  eye:std({color:L('#e8ff6a'),emissive:L('#c8e000'),emissiveIntensity:2.2}),pupil:new THREE.MeshBasicMaterial({color:0x000000}),
   foam:new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.45,depthWrite:false}),
   warn:new THREE.MeshBasicMaterial({color:L('#ff3a2a'),transparent:true,opacity:.0,depthWrite:false})};
 function buildKraken(){const g=new THREE.Group(),S=1.7;g.scale.setScalar(S);
@@ -2855,15 +2859,14 @@ function buildKraken(){const g=new THREE.Group(),S=1.7;g.scale.setScalar(S);
   for(let i=0;i<7;i++){const h=new THREE.Mesh(new THREE.ConeGeometry(.32-i*.02,1.3-i*.08,8),KM.horn);const t=i/6;
     h.position.set(-1.6-t*2.6,6.4-t*4.3+.1,0);h.rotation.z=.9+t*.3;g.add(h);}
   [-1,1].forEach(s2=>{for(let i=0;i<4;i++){const h=new THREE.Mesh(new THREE.ConeGeometry(.22,.8,7),KM.horn);h.position.set(-.6-i*.9,4.4-i*.9,s2*(2.6+i*.15));h.rotation.set(s2*-.7,0,.7);g.add(h);}});
-  // the face: glowing slit eyes under a heavy angry brow
-  const eyes=[];[-1,1].forEach(s2=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.72,14,12),KM.eye);e.position.set(3.05,2.5,s2*1.55);e.scale.set(.55,1,1);g.add(e);eyes.push(e);
-    const pu=new THREE.Mesh(new THREE.BoxGeometry(.1,1.05,.2),KM.pupil);pu.position.set(3.45,2.5,s2*1.55);g.add(pu);
-    const brow=new THREE.Mesh(new THREE.SphereGeometry(1,16,10),KM.brow);brow.scale.set(.55,.32,1.25);brow.position.set(3.2,3.25,s2*1.45);brow.rotation.set(s2*.5,0,-.3);g.add(brow);});
-  // the maw: a dark hole ringed with teeth, and a beak
-  const maw=new THREE.Mesh(new THREE.CircleGeometry(1.25,20),KM.dark);maw.position.set(3.95,.55,0);maw.rotation.y=Math.PI/2;g.add(maw);
-  for(let i=0;i<12;i++){const a=i/12*TAU,t=new THREE.Mesh(new THREE.ConeGeometry(.15,.55,6),KM.horn);t.position.set(3.98,.55+Math.sin(a)*1.15,Math.cos(a)*1.15);
-    t.rotation.x=Math.atan2(-Math.cos(a),-Math.sin(a));g.add(t);}
-  const beak=new THREE.Mesh(new THREE.ConeGeometry(.5,1.3,4),KM.dark);beak.position.set(4.35,.55,0);beak.rotation.z=-Math.PI/2;g.add(beak);
+  // the face: narrow glowing eyes sunk in dark sockets under a heavy, scowling brow
+  const eyes=[];[-1,1].forEach(s2=>{
+    const so=new THREE.Mesh(new THREE.SphereGeometry(.85,14,10),KM.socket);so.scale.set(.5,.62,1.15);so.position.set(3.0,2.45,s2*1.6);so.rotation.x=-s2*.35;g.add(so);
+    const e=new THREE.Mesh(new THREE.SphereGeometry(.6,14,10),KM.eye);e.scale.set(.45,.42,1.05);e.position.set(3.22,2.4,s2*1.6);e.rotation.x=-s2*.35;g.add(e);eyes.push(e);
+    const pu=new THREE.Mesh(new THREE.BoxGeometry(.08,.11,.85),KM.pupil);pu.position.set(3.5,2.4,s2*1.6);pu.rotation.x=-s2*.35;g.add(pu);
+    const brow=new THREE.Mesh(new THREE.SphereGeometry(1,16,10),KM.brow);brow.scale.set(.62,.36,1.35);brow.position.set(3.2,3.0,s2*1.5);brow.rotation.set(-s2*.55,0,-.35);g.add(brow);});
+  // a hooked, parrot-like beak at the waterline
+  [1,-1].forEach(u=>{const bk=new THREE.Mesh(new THREE.ConeGeometry(.42,1.5,6),KM.dark);bk.position.set(4.0,.55+u*.32,0);bk.rotation.z=-Math.PI/2+u*.5;bk.scale.set(1,1,.8);g.add(bk);});
   // arms: ten thick tentacles with suckers, rising out of the sea around it
   const sucker=new THREE.SphereGeometry(.16,6,4),tent=[];
   for(let i=0;i<10;i++){const a=.75+i/9*(TAU-1.5),R=Math.cos(a)>0?4.4:5;const pivot=new THREE.Group();pivot.position.set(Math.cos(a)*R,-.8,Math.sin(a)*R);pivot.rotation.y=-a;
@@ -2897,10 +2900,10 @@ function krakenTick(dt){
       if(MODE==='open'&&kraken.mine>=3&&kraken.claimed!==slot){kraken.claimed=slot;econKill('kraken',String(slot));chime(true);setTimeout(()=>chime(true),180);updHud();
         for(let i=0;i<12;i++)addPickup('coin',kraken.x+rnd(-6,6),kraken.z+rnd(-6,6),20);}}}
   const g=kraken.g,y=wh(kraken.x,kraken.z,clock)*.6-14*(1-kraken.rise)+Math.sin(clock*.9)*.35;g.position.set(kraken.x,y,kraken.z);g.rotation.y=-Math.atan2(P.z-kraken.z,P.x-kraken.x);
-  kraken.flash=Math.max(0,kraken.flash-dt);KM.body.emissive.setRGB(kraken.flash*.8+(kraken.rage?.12+.08*Math.sin(clock*6):0),kraken.flash*.2,kraken.flash*.2);
+  kraken.flash=Math.max(0,kraken.flash-dt);KM.body.emissive.setRGB(kraken.flash*.8+(kraken.rage?.05+.04*Math.sin(clock*6):0),kraken.flash*.2,kraken.flash*.2);
   // below 40% health it gets angry: red eyes, faster and harder strikes
-  if(!kraken.rage&&kraken.hp>0&&kraken.hp<=kraken.max*.4){kraken.rage=true;KM.eye.emissive.copy(L('#ff2010'));KM.eye.color.copy(L('#ff5030'));if(d<90&&state==='play'){hudNote('The kraken is enraged!');noise(1.2,50,.55);shake=Math.max(shake,.8);}}
-  if(!kraken.rage&&KM.eye.emissive.r>0&&KM.eye.emissive.g<.2){KM.eye.emissive.copy(L('#ffb000'));KM.eye.color.copy(L('#ffd23a'));}
+  if(!kraken.rage&&kraken.hp>0&&kraken.hp<=kraken.max*.4){kraken.rage=true;KM.eye.emissive.copy(L('#ff2010'));KM.eye.color.copy(L('#ff6040'));if(d<90&&state==='play'){hudNote('The kraken is enraged!');noise(1.2,50,.55);shake=Math.max(shake,.8);}}
+  if(!kraken.rage&&KM.eye.emissive.g<.2){KM.eye.emissive.copy(L('#c8e000'));KM.eye.color.copy(L('#e8ff6a'));}
   if(kraken.foam){kraken.foam.material.opacity=.3+.15*Math.sin(clock*2.2);kraken.foam.scale.setScalar(1+.05*Math.sin(clock*1.7));}
   for(const t of kraken.tent){const sw=Math.sin(clock*1.6+t.ph);t.slam=Math.max(0,t.slam-dt);
     const slamA=t.slam>0?Math.sin((1-t.slam/.7)*Math.PI)*1.1:0,sp=kraken.rage?1.6:1;
