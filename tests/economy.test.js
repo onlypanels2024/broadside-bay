@@ -265,6 +265,25 @@ test('sea events pay once per their gap; a kraken only once per appearance', () 
   assert.strictEqual(E.processRequest(null, { k: 'kill', e: 'merchant' }, inPort, NOW).ok, false, 'not from a harbour');
 });
 
+test('Shark Hunter: the megalodon unlocks its title and the steel wake', () => {
+  let s = E.processRequest(null, { k: 'kill', e: 'sloop' }, atSea, NOW).save;
+  assert.strictEqual(E.processRequest(s, { k: 'title', id: 'shark' }, null, NOW).ok, false);
+  assert.strictEqual(E.processRequest(s, { k: 'cos', cx: '5000' }, null, NOW).ok, false, 'steel wake needs the megalodon');
+  s = E.processRequest(s, { k: 'kill', e: 'shark', id: '42' }, seaAt(NOW + 1000), NOW + 1000).save;
+  assert.strictEqual(E.processRequest(s, { k: 'title', id: 'shark' }, null, NOW + 2000).ok, true);
+  assert.strictEqual(E.processRequest(s, { k: 'cos', cx: '5000' }, null, NOW + 2000).ok, true);
+});
+
+test('launch week doubles gold for everything, then ends', () => {
+  assert.strictEqual(E.eventAt(NOW), null, 'off until the dates are set');
+  E.LAUNCH.from = NOW - 1000; E.LAUNCH.to = NOW + 7 * 86400000;
+  try {
+    assert.strictEqual(E.eventAt(NOW).id, 'launch');
+    for (const k of ['sloop', 'kraken', 'shark', 'merchant']) assert.strictEqual(E.eventMul(k, NOW), 2, k);
+    assert.notStrictEqual((E.eventAt(NOW + 8 * 86400000) || {}).id, 'launch', 'over after a week');
+  } finally { E.LAUNCH.from = 0; E.LAUNCH.to = 0; }
+});
+
 test('achievements come from the referee\'s counts; titles and looks only once earned', () => {
   let s = null;
   assert.strictEqual(E.processRequest(s, { k: 'title', id: 'first' }, null, NOW).ok, false);

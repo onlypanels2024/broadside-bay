@@ -9,7 +9,7 @@ with sync_playwright() as pw:
   EA=lambda c:A.evaluate(f"__t.ev({json.dumps(c)})");EB=lambda c:B.evaluate(f"__t.ev({json.dumps(c)})")
   A.goto(U+'?who=gary&referee=1');A.wait_for_timeout(1500);A.evaluate("localStorage.clear()");B.goto(U+'?who=maria');B.wait_for_timeout(2000)
   day="Math.floor(Date.now()/86400000)"
-  A.evaluate("window.__fakeDb.ref('saves/google_gary').set({gold:900,earned:12000,sunk:80,xp:9500,dn:4,bs:7,up:{hull:0,sails:0,reload:0,triple:0,broadside:1},ships:{brig:true,frigate:true},ship:'frigate',ks:{sloop:60,galleon:12,boss:3,kraken:1,treasure:2,captain:11,merchant:1},daily:{d:"+day+",st:1}})")
+  A.evaluate("window.__fakeDb.ref('saves/google_gary').set({gold:900,earned:12000,sunk:80,xp:9500,dn:4,bs:7,up:{hull:0,sails:0,reload:0,triple:0,broadside:1},ships:{brig:true,frigate:true},ship:'frigate',ks:{sloop:60,galleon:12,boss:3,kraken:1,shark:1,treasure:2,captain:11,merchant:1},daily:{d:"+day+",st:1}})")
   A.click('#goOpen');A.wait_for_timeout(400);A.click('#joingoogle');A.wait_for_timeout(600);A.click('#joingo')
   B.click('#goOpen');B.wait_for_timeout(400);B.fill('#guestname','Maria');B.click('#joinguest')
   for pg in(A,B):pg.wait_for_function("__t.state==='play'",timeout=90000);pg.evaluate('__t.noAI()')

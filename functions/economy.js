@@ -430,6 +430,6 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
   const portNear = (x, z) => num(x) && num(z) ? PORTS.findIndex(([px, pz]) => Math.hypot(x - px, z - pz) < PORT_R) : -1;
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { useShip, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, SHARK, sharkRises, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { useShip, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, SHARK, sharkRises, LAUNCH, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);
