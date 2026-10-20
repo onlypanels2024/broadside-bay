@@ -3068,7 +3068,7 @@ const RAIN_N=1400,rainPos=new Float32Array(RAIN_N*6),rainGeo=new THREE.BufferGeo
 const rainM=new THREE.LineBasicMaterial({color:L('#cfe0ea'),transparent:true,opacity:0,depthWrite:false});
 const rain=new THREE.LineSegments(rainGeo,rainM);rain.frustumCulled=false;rain.visible=false;scene.add(rain);
 const rainD=Array.from({length:RAIN_N},()=>({x:rnd(-45,45),y:rnd(0,32),z:rnd(-45,45),v:rnd(34,46)}));
-const nightL=new THREE.PointLight(0xffb060,0,30,1.6);scene.add(nightL);
+const nightL=new THREE.PointLight(0xffc27a,0,22,1.6);scene.add(nightL);
 function weatherAt(t){
   const ph=(t%DAY_MS)/DAY_MS,a=ph*TAU,el=Math.sin(a)+.3;
   const slot=Math.floor(t/WX_SLOT),k=wxKind(slot),kp=wxKind(slot-1),w=smooth(0,45000,t-slot*WX_SLOT),A=WXT[kp],B=WXT[k];
@@ -3092,7 +3092,7 @@ function updWeather(dt){
   hemiL.intensity=.35*(1-WX.night*.45)+WX.cloud*.15+WX.flash*1.8;
   R.toneMappingExposure=1-WX.night*.22-WX.cloud*.08;
   const glow=Math.max(WX.night,WX.cloud*.5);lampGlowM.opacity=glow*.95;M.lamp.emissiveIntensity=2.2+glow*3;
-  nightL.intensity=WX.night*.55;nightL.position.set(P.x,9,P.z);
+  nightL.intensity=WX.night*1.4;nightL.position.set(P.x,4,P.z);
   // water darkens at night and in storms; waves grow in storms
   const wd=(1-WX.night*.62)*(1-WX.cloud*.3);for(const k in WATER0)waterMat.uniforms[k].value.copy(WATER0[k]).multiplyScalar(k==='uFoam'?Math.max(.45,wd):wd);
   WAMP=WX.amp;waterMat.uniforms.uAmp.value=WX.amp;
