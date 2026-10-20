@@ -906,7 +906,7 @@ const LATEEN=(()=>{const g=new THREE.BufferGeometry(),P=[.15,.7,0, .15,5.2,0, -2
   g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute([1,0,1,1,0,0,.55,.45],2));
   g.setIndex([0,1,3,1,2,3,2,0,3]);g.computeVertexNormals();return g;})();
 const flagMats={};
-const TRAIL_COL=['#ffffff','#ffd65a','#c58bff','#5be3a0'];
+const TRAIL_COL=['#ffffff','#ffd65a','#c58bff','#5be3a0',undefined,'#9fb4c8'];
 const ballMat=i=>[M.ball,M.fireball,M.purpleball,M.goldball][i|0]||M.ball;
 // figureheads (1 mermaid, 2 lion, 3 eagle, 4 sea serpent) and pets (1 parrot, 2 monkey), all small and simple
 function addFigurehead(add,kind,x,y){const B=M.brass;
@@ -1401,9 +1401,10 @@ const WEEKENDS=[
   {id:'kraken2',n:'Kraken weekend',d:'The kraken pays double, and stays longer.'},
   {id:'fleet2',n:'Fleet tournament',d:'Port battle points count double.'},
 ];
+const LAUNCH={from:0,to:0,id:'launch',n:'Launch week',d:'Every ship you sink pays double gold, the kraken and the megalodon too.'};
 const weekNo=now=>Math.floor((now/86400000+3)/7);
 function seasonAt(now){const w=weekNo(now)-SEASON0_WEEK,n=Math.floor(w/6),k=((n%SEASONS.length)+SEASONS.length)%SEASONS.length;return Object.assign({no:n+1,weeksLeft:6-(w-n*6)},SEASONS[k]);}
-function eventAt(now){const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}
+function eventAt(now){if(LAUNCH.from&&now>=LAUNCH.from&&now<LAUNCH.to)return LAUNCH;const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}
 // gold multiplier for a reward at a moment in time
 function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
   if(S.id==='gold'&&kind==='treasure')m*=1.5;
@@ -1411,6 +1412,7 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
   if(S.id==='ghost'&&['sloop','galleon','fireship','boss'].includes(kind))m*=1.25;
   if(E&&E.id==='gold2'&&['sloop','galleon','fireship','boss','merchant','kraken'].includes(kind))m*=2;
   if(E&&E.id==='kraken2'&&kind==='kraken')m*=2;
+  if(E&&E.id==='launch'&&['sloop','galleon','fireship','boss','merchant','kraken','shark'].includes(kind))m*=2;
   return m;}
 /*ENDSEASONDEF*/
 const XP_FOR={sloop:20,galleon:50,fireship:35,boss:250,player:120,treasure:60,merchant:80,escort:70,kraken:400,shark:600};
@@ -1418,6 +1420,8 @@ const LOCAL_GOLD={sloop:50,galleon:150,fireship:100,boss:300,treasure:400,mercha
 const IS_SHIP=k=>['sloop','galleon','boss','fireship','merchant','kraken','shark'].includes(k);
 // Economy hooks. In this page everything is local. The Android app swaps these for versions that
 // ask the online referee, which alone decides gold, XP, upgrades and ships in online Open sea.
+function askReview(){try{if(localStorage.getItem('bb-rev'))return;}catch(e){}const P2=typeof CapP==='function'&&CapP();if(!P2||!P2.InAppReview)return;
+  try{localStorage.setItem('bb-rev','1');}catch(e){}setTimeout(()=>{P2.InAppReview.requestReview().catch(()=>{});},3500);}
 function econServer(){return false;}
 function econRequest(r){}
 function econKill(kind,id){addGold(LOCAL_GOLD[kind]||50);addXP(XP_FOR[kind]||20);if(MODE==='open'){if(IS_SHIP(kind))sunk++;saveOpen();}}
@@ -1855,6 +1859,9 @@ function updWxTog(){$('wxtogv').textContent=WX.fx?'On':'Off';}
 $('wxtog').onclick=()=>{audio();WX.fx=!WX.fx;try{localStorage.setItem('bb-wxfx',WX.fx?'1':'0')}catch(e){}updWxTog();};
 /* ---- notifications (phone app only, off until you switch them on) ---- */
 const CapP=()=>window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()&&window.Capacitor.Plugins||null;
+// crash reports: any game error is sent to Firebase Crashlytics (phone app only, a few per session at most)
+(()=>{let sent=0;const rep=(msg,st)=>{const P2=CapP();if(!P2||!P2.FirebaseCrashlytics||sent>=5)return;sent++;try{P2.FirebaseCrashlytics.recordException({message:String(msg||'error').slice(0,300)+(st?'\n'+String(st).slice(0,1500):'')}).catch(()=>{});}catch(e){}};
+  window.addEventListener('error',e=>rep(e.message,e.error&&e.error.stack));window.addEventListener('unhandledrejection',e=>rep(e.reason&&e.reason.message||e.reason,e.reason&&e.reason.stack));})();
 let notifOn=false;try{notifOn=localStorage.getItem('bb-notif')==='1'}catch(e){}
 function notifSaveToken(t){}   // the app: keep the token online so the referee can send challenges and port alerts
 function notifSaveTokenClear(){}
@@ -2006,10 +2013,11 @@ const ACH=[
   {id:'fleet',n:'Fleet Sailor',d:'Join a fleet',st:'fleet',need:1,ti:'Fleet Sailor'},
   {id:'duelist',n:'Duelist',d:'Win 5 duels',st:'ks.duel',need:5,ti:'the Duelist'},
   {id:'champ',n:'Season Champion',d:'Finish a season in the top 10',st:'sr',need:1,ti:'Season Champion'},
+  {id:'shark',n:'Shark Hunter',d:'Help destroy the megalodon',st:'ks.shark',need:1,ti:'Shark Hunter'},
 ];
 // Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (or nothing).
 const COS={
-  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'}],
+  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'},{n:'Steel wake',a:'shark'}],
   ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'}],
   fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
   pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
@@ -2352,6 +2360,9 @@ function renderFleet(){if($('fleetov').hidden)return;const body=$('fleetbody');b
       if(me===mine.own&&uid!==me){const b=document.createElement('button');b.className='shipbtn ghost';b.textContent='Remove';b.disabled=busy;b.onclick=()=>fleetAsk({op:'kick',who:uid},'Removing '+nm+'…');r.appendChild(b);}else r.appendChild(document.createElement('span'));
       list.appendChild(r);}
     body.appendChild(list);
+    const inv=document.createElement('button');inv.className='btn';inv.textContent='Invite friends';inv.onclick=async()=>{const txt=`Join my fleet [${mine.tag}] ${mine.n} in Broadside Bay, the online pirate battle game! Sail with me: https://broadsidebay.web.app`;
+      try{if(navigator.share){await navigator.share({title:'Broadside Bay',text:txt});return;}}catch(e){return;}
+      try{await navigator.clipboard.writeText(txt);$('fleetmsg').textContent='Invite copied. Paste it to your friends.';}catch(e){$('fleetmsg').textContent=txt;}};body.appendChild(inv);
     const lv=document.createElement('button');lv.className='linkbtn'+(fleet.leaveArm?' warn':'');lv.textContent=fleet.leaveArm?'Tap again to leave '+mine.n:'Leave this fleet';lv.disabled=busy;
     lv.onclick=()=>{if(!fleet.leaveArm){fleet.leaveArm=true;renderFleet();return;}fleet.leaveArm=false;fleetAsk({op:'leave'},'Leaving the fleet…');};body.appendChild(lv);portSection(body);return;}
   $('fleeth').textContent='Fleets';
@@ -2914,7 +2925,7 @@ function krakenTick(dt){
   // health from everyone's hits; when it reaches 0 the kraken sinks
   if(show&&kraken.hp<=0){kraken.dead=true;boom(kraken.x,kraken.z,true,3.5);noise(1.4,120,.6);shake=Math.max(shake,1.2);
     if(d<120&&state==='play'){showBanner('The kraken is slain!',true);
-      if(MODE==='open'&&kraken.mine>=3&&kraken.claimed!==slot){kraken.claimed=slot;econKill('kraken',String(slot));chime(true);setTimeout(()=>chime(true),180);updHud();
+      if(MODE==='open'&&kraken.mine>=3&&kraken.claimed!==slot){kraken.claimed=slot;econKill('kraken',String(slot));askReview();chime(true);setTimeout(()=>chime(true),180);updHud();
         for(let i=0;i<12;i++)addPickup('coin',kraken.x+rnd(-6,6),kraken.z+rnd(-6,6),20);}}}
   const g=kraken.g,y=wh(kraken.x,kraken.z,clock)*.6-14*(1-kraken.rise)+Math.sin(clock*.9)*.35;g.position.set(kraken.x,y,kraken.z);g.rotation.y=-Math.atan2(P.z-kraken.z,P.x-kraken.x);
   kraken.flash=Math.max(0,kraken.flash-dt*1.4);KM.body.emissive.setRGB(kraken.flash*.3+(kraken.rage?.05+.04*Math.sin(clock*6):0),kraken.flash*.1,0);
@@ -2988,7 +2999,7 @@ function sharkTick(dt){
   const d=Math.hypot(P.x-shark.x,P.z-shark.z);
   if(show&&shark.hp<=0){shark.dead=true;boom(shark.x,shark.z,true,3);noise(1.4,110,.6);shake=Math.max(shake,1.1);
     if(d<120&&state==='play'){hudNote('The megalodon is destroyed');
-      if(MODE==='open'&&shark.mine>=3&&shark.claimed!==slot){shark.claimed=slot;econKill('shark',String(slot));chime(true);setTimeout(()=>chime(true),180);updHud();
+      if(MODE==='open'&&shark.mine>=3&&shark.claimed!==slot){shark.claimed=slot;econKill('shark',String(slot));askReview();chime(true);setTimeout(()=>chime(true),180);updHud();
         for(let i=0;i<16;i++)addPickup('coin',shark.x+rnd(-7,7),shark.z+rnd(-7,7),20);}}}
   // hunting: when a captain comes close it turns, a red streak warns, then it lunges
   const hunt=show&&state==='play'&&d<60&&!inSafe(P);
@@ -3006,7 +3017,7 @@ function sharkTick(dt){
   else shark.warn.material.opacity=0;
   if(shark.mode==='lunge'){const k=1-shark.mt/.75,e=k*k*(3-2*k);face=Math.atan2(shark.tz-shark.sz,shark.tx-shark.sx);
     const ex=shark.tx+Math.cos(face)*6,ez=shark.tz+Math.sin(face)*6;tx=shark.sx+(ex-shark.sx)*e;tz=shark.sz+(ez-shark.sz)*e;lift=Math.sin(k*Math.PI)*2.2;
-    if(!shark.bite&&k>.5&&Math.hypot(P.x-(tx+Math.cos(face)*SH.len*.7),P.z-(tz+Math.sin(face)*SH.len*.7))<7){shark.bite=true;NET.lastHitBy=null;hurtPlayer();if(P.hp>0){P.inv=0;hurtPlayer();}splash(P.x,P.z,true);shake=Math.max(shake,1);}
+    if(!shark.bite&&k>.5&&Math.hypot(P.x-(tx+Math.cos(face)*SH.len*.7),P.z-(tz+Math.sin(face)*SH.len*.7))<7){shark.bite=true;NET.lastHitBy=null;noise(.22,2200,.5);noise(.5,85,.6);hurtPlayer();if(P.hp>0){P.inv=0;hurtPlayer();}splash(P.x,P.z,true);shake=Math.max(shake,1);}
     if(k>.92)splash(tx+Math.cos(face)*8,tz+Math.sin(face)*8);
     if(shark.mt<=0){shark.mode='dive';shark.mt=1.6;shark.off.x=tx-px;shark.off.z=tz-pz;splash(tx,tz,true);}}
   if(shark.mode==='dive'){lift=-1.6*Math.sin((1-shark.mt/1.6)*Math.PI);if(shark.mt<=0){shark.mode='swim';shark.atkT=rnd(3.5,5.5);}}
@@ -3015,6 +3026,7 @@ function sharkTick(dt){
   const g=shark.g,sw=Math.sin(clock*2.4)*.06;
   g.position.set(shark.x,wh(shark.x,shark.z,clock)*.5+.1+lift-10*(1-shark.rise)+Math.sin(clock*1.3)*.25,shark.z);g.rotation.set(0,-shark.a+sw,Math.sin(clock*1.1)*.04);
   shark.flash=Math.max(0,shark.flash-dt*2);
+  if(show&&state==='play'&&d<45){shark.rumT=(shark.rumT||0)-dt;if(shark.rumT<=0){shark.rumT=rnd(1.6,2.4);noise(1.4,38,.35*(1-d/45)+.08);}}
   // ramming into it hurts and pushes you off
   const sd=sharkDist(P.x,P.z);
   if(show&&sd<3.4+P.r){const nx=(P.x-shark.x)||1,nz=(P.z-shark.z),nl=Math.hypot(nx,nz)||1;P.x+=nx/nl*.8;P.z+=nz/nl*.8;P.v*=.6;if(P.inv<=0&&state==='play'){NET.lastHitBy=null;hurtPlayer();}}

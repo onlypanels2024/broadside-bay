@@ -188,10 +188,11 @@ const ACH=[
   {id:'fleet',n:'Fleet Sailor',d:'Join a fleet',st:'fleet',need:1,ti:'Fleet Sailor'},
   {id:'duelist',n:'Duelist',d:'Win 5 duels',st:'ks.duel',need:5,ti:'the Duelist'},
   {id:'champ',n:'Season Champion',d:'Finish a season in the top 10',st:'sr',need:1,ti:'Season Champion'},
+  {id:'shark',n:'Shark Hunter',d:'Help destroy the megalodon',st:'ks.shark',need:1,ti:'Shark Hunter'},
 ];
 // Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (or nothing).
 const COS={
-  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'}],
+  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'},{n:'Steel wake',a:'shark'}],
   ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'}],
   fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
   pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
@@ -215,9 +216,10 @@ const WEEKENDS=[
   {id:'kraken2',n:'Kraken weekend',d:'The kraken pays double, and stays longer.'},
   {id:'fleet2',n:'Fleet tournament',d:'Port battle points count double.'},
 ];
+const LAUNCH={from:0,to:0,id:'launch',n:'Launch week',d:'Every ship you sink pays double gold, the kraken and the megalodon too.'};
 const weekNo=now=>Math.floor((now/86400000+3)/7);
 function seasonAt(now){const w=weekNo(now)-SEASON0_WEEK,n=Math.floor(w/6),k=((n%SEASONS.length)+SEASONS.length)%SEASONS.length;return Object.assign({no:n+1,weeksLeft:6-(w-n*6)},SEASONS[k]);}
-function eventAt(now){const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}
+function eventAt(now){if(LAUNCH.from&&now>=LAUNCH.from&&now<LAUNCH.to)return LAUNCH;const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}
 // gold multiplier for a reward at a moment in time
 function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
   if(S.id==='gold'&&kind==='treasure')m*=1.5;
@@ -225,6 +227,7 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
   if(S.id==='ghost'&&['sloop','galleon','fireship','boss'].includes(kind))m*=1.25;
   if(E&&E.id==='gold2'&&['sloop','galleon','fireship','boss','merchant','kraken'].includes(kind))m*=2;
   if(E&&E.id==='kraken2'&&kind==='kraken')m*=2;
+  if(E&&E.id==='launch'&&['sloop','galleon','fireship','boss','merchant','kraken','shark'].includes(kind))m*=2;
   return m;}
 /*ENDSEASONDEF*/
   const docked = p => !!p && inHarbour(p.x, p.z);
