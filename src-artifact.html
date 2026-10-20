@@ -2895,6 +2895,61 @@ function buildKraken(){const g=new THREE.Group(),S=1.7;g.scale.setScalar(S);cons
   const ring=new THREE.Mesh(new THREE.RingGeometry(3.3,4.3,36),KM.warn);ring.rotation.x=-Math.PI/2;ring.renderOrder=3;scene.add(ring);
   const ring2=new THREE.Mesh(new THREE.RingGeometry(3.3,4.3,36),KM.warn);ring2.rotation.x=-Math.PI/2;ring2.renderOrder=3;ring2.visible=false;scene.add(ring2);
   scene.add(g);return{g,tent,beard,ring,ring2,foam,eyes};}
+/* ---- the Ironfang: a rare armoured shark ---- */
+const STEX=(()=>{const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,256,256);
+  // riveted armour plates in staggered rows
+  x.strokeStyle='rgba(26,32,40,.7)';x.lineWidth=2.2;const rows=6,rh=256/rows;
+  for(let r=0;r<rows;r++){const y=r*rh,off=(r%2)*32;x.beginPath();x.moveTo(0,y);x.lineTo(256,y);x.stroke();
+    for(let k=-1;k<5;k++){const px=off+k*64;x.beginPath();x.moveTo(px,y);x.lineTo(px,y+rh);x.stroke();
+      x.fillStyle='rgba(30,36,44,.75)';for(let j=0;j<4;j++){x.beginPath();x.arc(px+6+j*16,y+5,1.6,0,TAU);x.fill();}}}
+  x.strokeStyle='rgba(255,255,255,.22)';x.lineWidth=1;for(let i=0;i<40;i++){const px=Math.random()*256,py=Math.random()*256;x.beginPath();x.moveTo(px,py);x.lineTo(px+Math.random()*26-13,py+Math.random()*4-2);x.stroke();}
+  x.fillStyle='rgba(60,40,30,.18)';for(let i=0;i<60;i++){x.beginPath();x.arc(Math.random()*256,Math.random()*256,Math.random()*5+1,0,TAU);x.fill();}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(4,2);if(THREE.sRGBEncoding)t.encoding=THREE.sRGBEncoding;return t;})();
+const SM={body:std({color:0xffffff,vertexColors:true,map:STEX,bumpMap:STEX,bumpScale:.05,roughness:.3,metalness:.6,emissive:new THREE.Color(0,0,0)}),
+  glow:new THREE.MeshBasicMaterial({color:0xb80000,toneMapped:false}),eye:new THREE.MeshBasicMaterial({color:0xe00800,toneMapped:false}),
+  maw:new THREE.MeshBasicMaterial({color:0x6a0606,toneMapped:false}),tooth:std({color:L('#ece6d6'),roughness:.4}),dark:std({color:L('#14181c'),roughness:.6,metalness:.4}),
+  warn:new THREE.MeshBasicMaterial({color:L('#ff3a2a'),transparent:true,opacity:0,depthWrite:false})};
+const SC={top:L('#46505a'),mid:L('#76808a'),belly:L('#cfd2cc'),spike:L('#a7b0b7'),fin:L('#525b64')};
+const SPF=[[0,0],[2.2,0],[2.35,1.5],[2.2,3.2],[1.85,4.6],[1.35,5.8],[.8,6.8],[.3,7.5],[0,7.8]],SPB=[[0,-6.2],[.35,-6.0],[.75,-4.8],[1.25,-3.2],[1.8,-1.4],[2.2,0]];
+function sharkR(x){const pr=x>=0?SPF.slice(1):SPB;for(let i=0;i<pr.length-1;i++){const [r0,y0]=pr[i],[r1,y1]=pr[i+1];if(x>=Math.min(y0,y1)&&x<=Math.max(y0,y1))return r0+(r1-r0)*(x-y0)/(y1-y0);}return 0;}
+function buildShark(){const g=new THREE.Group(),S=1.25;g.scale.set(S,S*1.14,S*1.06);const q=new THREE.Quaternion(),E3=new THREE.Euler();
+  const mat=(x,y,z,rx,ry,rz,sx,sy,sz)=>new THREE.Matrix4().compose(new THREE.Vector3(x,y,z),q.clone().setFromEuler(E3.set(rx||0,ry||0,rz||0)),new THREE.Vector3(sx||1,sy||1,sz||1));
+  const shade=(v,n)=>{const t=Math.min(1,Math.max(0,(n.y+.35)/1.1));return SC.belly.clone().lerp(SC.mid,Math.min(1,t*1.6)).lerp(SC.top,Math.max(0,t-.45)*1.8);};
+  const V2=a=>a.map(([r,y])=>new THREE.Vector2(r,y)),Z=.86;
+  const parts=[[new THREE.LatheGeometry(V2(SPF),22),mat(0,0,0,0,0,-Math.PI/2,1,1,Z),shade]];
+  // spikes sitting on the back, dorsal fin, side fins, gill slits
+  for(let i=0;i<9;i++){const x=5.4-i*.8,h=(i<2?1:1.45)-Math.max(0,i-5)*.15;parts.push([new THREE.ConeGeometry(.22,h,6),mat(x,sharkR(x)-.12+h*.42,0,0,0,.3),SC.spike]);}
+  const fin=new THREE.Shape();fin.moveTo(0,0);fin.lineTo(2.8,0);fin.quadraticCurveTo(.8,1.2,-1.2,3.6);fin.quadraticCurveTo(-.3,1.4,0,0);
+  const finG=new THREE.ExtrudeGeometry(fin,{depth:.18,bevelEnabled:true,bevelSize:.05,bevelThickness:.05,bevelSegments:1});finG.translate(0,0,-.09);
+  parts.push([finG,mat(-.8,2.0,0,0,0,0,1,1,1),SC.fin]);
+  [-1,1].forEach(s2=>{parts.push([finG,mat(2.6,-1.1,s2*1.55,Math.PI+s2*.75,0,.25,.95,.95,1),SC.fin]);
+    for(let k=0;k<5;k++){const x=3.9-k*.4;parts.push([new THREE.BoxGeometry(.14,1.4,.12),mat(x,.35,s2*sharkR(x)*Z*.98,0,s2*-.2,.15),SC.top.clone().multiplyScalar(.25)]);}});
+  const body=new THREE.Mesh(kMerge(parts),SM.body);body.castShadow=true;g.add(body);
+  // glowing armour joint and side ports
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(2.2,.08,8,40),SM.glow);ring.rotation.y=Math.PI/2;ring.scale.set(1,1,Z);g.add(ring);
+  [-1,1].forEach(s2=>{const z=s2*sharkR(1.2)*Z*.97,rot=s2>0?0:Math.PI;const port=new THREE.Mesh(new THREE.TorusGeometry(.38,.07,8,20),SM.glow);port.position.set(1.2,.4,z);port.rotation.y=rot;g.add(port);
+    const pd=new THREE.Mesh(new THREE.CircleGeometry(.36,16),SM.dark);pd.position.set(1.2,.4,z+s2*.01);pd.rotation.y=rot;g.add(pd);});
+  // eyes: glowing red in dark sockets under a scowling brow
+  [-1,1].forEach(s2=>{const x=5.2,z=s2*sharkR(x)*Z*.9;const so=new THREE.Mesh(new THREE.SphereGeometry(.42,12,8),SM.dark);so.scale.set(1,.8,.5);so.position.set(x,.55,z);g.add(so);
+    const e=new THREE.Mesh(new THREE.SphereGeometry(.2,12,8),SM.eye);e.position.set(x+.05,.55,z+s2*.13);g.add(e);const er=new THREE.Mesh(new THREE.TorusGeometry(.3,.05,6,16),SM.glow);er.position.set(x+.05,.55,z+s2*.14);g.add(er);
+    const br=new THREE.Mesh(new THREE.SphereGeometry(1,10,6),SM.dark);br.scale.set(.75,.14,.32);br.position.set(x+.05,.98,z*.95);br.rotation.set(0,0,-.35);g.add(br);});
+  // jaws: under the snout, upper teeth fixed, lower jaw hinged
+  const maw=new THREE.Mesh(new THREE.SphereGeometry(1,16,10),SM.maw);maw.scale.set(1.7,.7,1.3);maw.position.set(4.9,-1.0,0);g.add(maw);
+  for(let i=0;i<13;i++){const a=(i/12-.5)*2.8,t=new THREE.Mesh(new THREE.ConeGeometry(.17,.75,5),SM.tooth);t.position.set(4.75+Math.cos(a)*1.55,-1.2,Math.sin(a)*1.35);t.rotation.x=Math.PI;g.add(t);}
+  const jaw=new THREE.Group();jaw.position.set(3.3,-1.25,0);g.add(jaw);
+  const jm=new THREE.Mesh(kMerge([[new THREE.SphereGeometry(1,18,10,0,TAU,Math.PI/2,Math.PI/2),mat(1.5,0,0,0,0,0,1.75,.65,1.35),(v,n)=>SC.belly.clone().lerp(SC.mid,.2)]]),SM.body);jaw.add(jm);
+  const jin=new THREE.Mesh(new THREE.CircleGeometry(1,20),SM.maw);jin.rotation.x=-Math.PI/2;jin.scale.set(1.7,1.3,1);jin.position.set(1.5,.01,0);jaw.add(jin);
+  for(let i=0;i<11;i++){const a=(i/10-.5)*2.7,t=new THREE.Mesh(new THREE.ConeGeometry(.16,.7,5),SM.tooth);t.position.set(1.4+Math.cos(a)*1.6,.3,Math.sin(a)*1.22);jaw.add(t);}
+  // tail half, swishes from the joint
+  const tail=new THREE.Group();g.add(tail);
+  const tparts=[[new THREE.LatheGeometry(V2(SPB),22),mat(0,0,0,0,0,-Math.PI/2,1,1,Z),shade]];
+  for(let i=0;i<4;i++){const x=-.9-i*1.2;tparts.push([new THREE.ConeGeometry(.2,1.1-i*.18,6),mat(x,sharkR(x)-.1+.4,0,0,0,.35),SC.spike]);}
+  const tf=new THREE.Shape();tf.moveTo(0,0);tf.quadraticCurveTo(-1.5,1.8,-2.6,4.2);tf.quadraticCurveTo(-.6,2.2,.4,.2);tf.quadraticCurveTo(-.4,-1.6,-1.8,-2.8);tf.quadraticCurveTo(-.2,-1.2,0,0);
+  const tfg=new THREE.ExtrudeGeometry(tf,{depth:.2,bevelEnabled:true,bevelSize:.05,bevelThickness:.05,bevelSegments:1});tfg.translate(0,0,-.1);
+  tparts.push([tfg,mat(-5.9,0,0),SC.fin]);tparts.push([finG,mat(-2.6,-1.25,0,Math.PI,0,0,.45,.45,1),SC.fin]);
+  const tm=new THREE.Mesh(kMerge(tparts),SM.body);tm.castShadow=true;tail.add(tm);
+  const tglow=new THREE.Mesh(new THREE.TorusGeometry(.8,.06,8,24),SM.glow);tglow.rotation.y=Math.PI/2;tglow.scale.set(1,1,Z);tglow.position.x=-4.75;tail.add(tglow);
+  return{g,jaw,tail};}
 function krakenNow(){return (typeof serverNowMs==='function'?serverNowMs():Date.now())+(window.__wxShift||0);}
 function krakenTick(dt){
   const sto=MODE==='story'&&story.kraken,now=krakenNow(),slot=sto?-7:Math.floor(now/KR.slot),age=sto?0:now-slot*KR.slot,big=!sto&&krakenBig(slot*KR.slot),alive=sto||(age<(big?360000:KR.life)&&MODE==='open');
