@@ -242,6 +242,18 @@ test('fleets: sensible names and tags only; founding needs Bosun and 500 gold, o
   assert.strictEqual(E.fleetPay({ ...r.save, fleet: 'abc' }).ok, false, 'already in one');
 });
 
+test('the Ironfang shark pays 1500 once per appearance, and its windows are rare but real', () => {
+  let s = null;
+  let r = E.processRequest(s, { k: 'kill', e: 'shark', id: '123' }, atSea, NOW); assert.strictEqual(r.ok, true); s = r.save;
+  assert.strictEqual(s.gold, 1500); assert.strictEqual(s.ks.shark, 1); assert.strictEqual(s.sunk, 1);
+  assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'shark', id: '123' }, seaAt(NOW + 700000), NOW + 700000).ok, false, 'same shark twice');
+  assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'shark', id: '124' }, seaAt(NOW + 60000), NOW + 60000).ok, false, 'too soon');
+  assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'shark', id: '124' }, seaAt(NOW + 700000), NOW + 700000).ok, true, 'the next shark pays');
+  assert.strictEqual(E.norm(s).shl, '123');
+  let n = 0; for (let i = 0; i < 6000; i++) if (E.sharkRises(i)) n++;
+  assert.ok(n > 700 && n < 1300, 'about one window in six: ' + n);
+});
+
 test('sea events pay once per their gap; a kraken only once per appearance', () => {
   let s = null;
   let r = E.processRequest(s, { k: 'kill', e: 'treasure' }, atSea, NOW); assert.strictEqual(r.ok, true); assert.strictEqual(r.save.gold, 600, 'Gold Rush season: treasure pays 50% more'); s = r.save;

@@ -34,6 +34,8 @@
     merchant: { g: 500, xp: 80, pts: 0, gap: 150000 },
     escort: { g: 300, xp: 70, pts: 0, gap: 150000 },
     kraken: { g: 900, xp: 400, pts: 0, gap: 240000 },
+    // the Ironfang: a rare shark (about once an hour)
+    shark: { g: 1500, xp: 600, pts: 0, gap: 600000 },
     // a spare treasure map (picked up while already following one) is traded for a little gold
     map: { g: 40, xp: 0, pts: 0, gap: 30000 },
   };
@@ -44,6 +46,9 @@
   const DUEL = { g: 100, xp: 60 };
   // The kraken: everyone online sees the same one. A new one can rise every 8 minutes and stays 4 minutes.
   const KRAKEN = { slot: 480000, life: 240000, hp: 100, minHits: 3 };
+  // The Ironfang shark: it may surface in any 10-minute window (one in six) and hunts for 3 minutes. Must match the game.
+  const SHARK = { slot: 600000, life: 180000, hp: 150, odds: 6, minHits: 3 };
+  const sharkRises = slot => { let a = (Math.imul(slot ^ 0x5bd1e995, 2654435761)) >>> 0; a ^= a >>> 15; a = Math.imul(a, 0x2c1b3c6d) >>> 0; a ^= a >>> 12; return a % SHARK.odds === 0; };
   // Ship paint. A 7-letter code (hull, trim, sails, stripe, emblem colour, flag, emblem), each a base-36 index,
   // plus an optional 16x16 drawing (64 hex digits) when the emblem is the captain's own (index 35).
   // The rank needed for each choice; must match PAINT_RANK in the game (a test checks this).
@@ -96,7 +101,7 @@
     if (s.ck && typeof s.ck === 'object' && num(s.ck.n) && num(s.ck.t)) o.ck = { n: s.ck.n, t: s.ck.t }; else delete o.ck;
     // daily chest {d: last day claimed, st: streak} and today's quests {d: day, p: [progress x3], c: [claimed x3]}
     // lifetime counts for the captain's log and achievements
-    o.ks = {}; for (const k of ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'treasure', 'escort', 'captain', 'duel']) { const v = s.ks && s.ks[k]; if (num(v) && v > 0) o.ks[k] = Math.floor(v); }
+    o.ks = {}; for (const k of ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark', 'treasure', 'escort', 'captain', 'duel']) { const v = s.ks && s.ks[k]; if (num(v) && v > 0) o.ks[k] = Math.floor(v); }
     if (!Object.keys(o.ks).length) delete o.ks;
     for (const k of ['dn', 'bs']) { if (num(s[k]) && s[k] > 0) o[k] = Math.floor(s[k]); else delete o[k]; }
     if (typeof s.title === 'string' && ACH.some(a => a.id === s.title)) o.title = s.title; else delete o.title;
@@ -105,6 +110,7 @@
     if (Array.isArray(s.sr)) o.sr = s.sr.filter(x => Number.isInteger(x) && x > 0).slice(-20); else delete o.sr;
     if (o.sr && !o.sr.length) delete o.sr;
     if (typeof s.kl === 'string' && /^[0-9]{1,9}$/.test(s.kl)) o.kl = s.kl; else delete o.kl;
+    if (typeof s.shl === 'string' && /^[0-9]{1,9}$/.test(s.shl)) o.shl = s.shl; else delete o.shl;
     // video rewards today {d: day, n: gold videos, c: 1 when today's chest was doubled}; no-ads subscription paid until na (ms)
     if (s.ad && typeof s.ad === 'object' && num(s.ad.d)) o.ad = { d: s.ad.d, n: num(s.ad.n) ? Math.max(0, Math.floor(s.ad.n)) : 0, c: s.ad.c ? 1 : 0 }; else delete o.ad;
     if (num(s.na) && s.na > 0) o.na = Math.floor(s.na); else delete o.na;
@@ -247,11 +253,12 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
           const key = 'l' + req.e[0] + req.e[1];
           if (now - (rl[key] || 0) < K.gap) return reject(req.e + ' claimed too soon');
           if (req.e === 'kraken') { if (!/^[0-9]{1,9}$/.test(String(req.id)) || String(s.kl) === String(req.id)) return reject('kraken already claimed'); s.kl = String(req.id); }
+          if (req.e === 'shark') { if (!/^[0-9]{1,9}$/.test(String(req.id)) || String(s.shl) === String(req.id)) return reject('shark already claimed'); s.shl = String(req.id); }
           rl[key] = now;
         }
         else { if (rl.b < K.pts) return reject('sinking faster than pirates appear'); rl.b -= K.pts; }
         rl.rj = 0; s.rl = rl;
-        const ship = ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken'].includes(req.e);
+        const ship = ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark'].includes(req.e);
         s.ks = { ...(s.ks || {}), [req.e]: ((s.ks && s.ks[req.e]) | 0) + 1 };
         const g = Math.round(K.g * (opts && opts.goldMul || 1) * eventMul(req.e, now));
         s.gold += g; s.earned += g; s.xp += K.xp; if (ship) s.sunk += 1;
@@ -420,6 +427,6 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
   const portNear = (x, z) => num(x) && num(z) ? PORTS.findIndex(([px, pz]) => Math.hypot(x - px, z - pz) < PORT_R) : -1;
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { useShip, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { useShip, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, SHARK, sharkRises, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

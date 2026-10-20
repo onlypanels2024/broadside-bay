@@ -23,6 +23,7 @@ rep('<title>Broadside Bay</title>\n<link rel="preconnect" href="https://fonts.go
 body{margin:0;font-size:14px}
 img{max-width:100%}''')
 rep('</style>\n\n<canvas id="c"','</style>\n</head>\n<body>\n<canvas id="c"')
+rep('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>','<script src="vendor/GLTFLoader.js"></script>')
 rep('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>',
 '''<script src="vendor/three.min.js"></script>
 <script src="vendor/firebase-app-compat.js"></script>
@@ -164,7 +165,7 @@ rep("function econServer(){return false;}\nfunction econRequest(r){}\nfunction e
 """function econServer(){return MODE==='open'&&saveMode==='server'&&!!NET.room;}
 function econRequest(r){if(!econServer())return;const k=FB.request(r);if(k)NET.pending.set(k,Date.now());}
 // Online kill rewards include the coins the wreck drops (coins online are just for show).
-const ONLINE_KILL={sloop:{g:70,xp:20},galleon:{g:210,xp:50},fireship:{g:120,xp:35},boss:{g:550,xp:250},treasure:{g:400,xp:60},merchant:{g:500,xp:80},escort:{g:300,xp:70},kraken:{g:900,xp:400},map:{g:40,xp:0}};
+const ONLINE_KILL={sloop:{g:70,xp:20},galleon:{g:210,xp:50},fireship:{g:120,xp:35},boss:{g:550,xp:250},treasure:{g:400,xp:60},merchant:{g:500,xp:80},escort:{g:300,xp:70},kraken:{g:900,xp:400},shark:{g:1500,xp:600},map:{g:40,xp:0}};
 // Show the reward straight away, then follow the referee's answer: while requests are waiting we keep
 // the local numbers; once all are answered we take the referee's numbers (correcting anything refused).
 function econSync(){const sv=NET.srv;if(!sv||!econServer())return;const last=typeof sv.last==='string'?sv.last:'';
@@ -253,6 +254,8 @@ function closeOnline(){if(NET.unwatch){NET.unwatch();NET.unwatch=null;}if(NET.un
 # ---- the shared kraken
 rep("function krakenWatch(slot,cb){return ()=>{};}","function krakenWatch(slot,cb){return FB&&NET.room?FB.krakenWatch(slot,cb):()=>{};}")
 rep("function krakenHitShared(slot){}","function krakenHitShared(slot){if(FB&&NET.room)FB.krakenHit(slot,kraken.max>100);}")
+rep("function sharkWatch(slot,cb){return ()=>{};}","function sharkWatch(slot,cb){return FB&&NET.room?FB.sharkWatch(slot,cb):()=>{};}")
+rep("function sharkHitShared(slot){}","function sharkHitShared(slot){if(FB&&NET.room)FB.sharkHit(slot);}")
 # ---- captain's log, titles and looks
 rep("function logOn(){return false;}","function logOn(){return econServer()&&!!NET.srv;}")
 rep("function logSave(){return null;}","function logSave(){return NET.srv;}")

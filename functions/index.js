@@ -231,6 +231,13 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
     if (!fresh || !kr || kr.hp > 0 || !kr.hits || (kr.hits[uid] | 0) < E.KRAKEN.minHits) pre = 'kraken not earned';
     if (fresh) await db.ref(`kraken/${sl - 3}`).remove();
   }
+  // a shark reward needs a real shark window, its shared health at 0, and this captain to have hit it
+  if (req.k === 'kill' && req.e === 'shark') {
+    const sh = (await db.ref(`shark/${req.id}`).get()).val(), sl = Number(req.id);
+    const fresh = Number.isFinite(sl) && Math.abs(Date.now() - sl * E.SHARK.slot) < 1800000 && E.sharkRises(sl);
+    if (!fresh || !sh || sh.hp > 0 || !sh.hits || (sh.hits[uid] | 0) < E.SHARK.minHits) pre = 'shark not earned';
+    if (Number.isFinite(sl)) await db.ref(`shark/${sl - 4}`).remove();
+  }
   // sinking near a port your fleet holds pays more
   let opts = null, port = -1, myFleet = null;
   if (req.k === 'kill' && player) {
@@ -255,7 +262,7 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
   });
   if (verdict && !verdict.ok) logger.info('request refused', { uid, k: req.k, reason: verdict.reason });
   if (verdict && verdict.ok && req.k === 'kill') await portScore(db, myFleet, port, E.PORT_PTS[req.e] || 0);
-  if (verdict && verdict.ok && req.k === 'kill') await boardAdd(db, uid, player && player.n, { s: ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken'].includes(req.e) ? 1 : 0, g: E.KILL[req.e].g }, res.snapshot.val());
+  if (verdict && verdict.ok && req.k === 'kill') await boardAdd(db, uid, player && player.n, { s: ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark'].includes(req.e) ? 1 : 0, g: E.KILL[req.e].g }, res.snapshot.val());
   else if (verdict && verdict.ok && (req.k === 'daily' || req.k === 'quest') && await isGoogle(uid)) await boardAdd(db, uid, player && player.n, {}, res.snapshot.val());
   if (verdict && verdict.strike) await strike(db, uid, 'claims: ' + verdict.reason);
 });

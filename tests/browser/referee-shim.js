@@ -45,6 +45,7 @@
           await txn('saves/'+uid,sv=>{const o=E.norm(sv);o.fmsg={ok:msg.ok,why:msg.why,t:Date.now()};o.last=sv&&typeof sv.last==='string'&&sv.last>rid?sv.last:rid;return o;});continue;}
         if(req.k==='check'){await txn('saves/'+uid,sv=>{const o=E.norm(sv);o.last=sv&&typeof sv.last==='string'&&sv.last>rid?sv.last:rid;return o;});continue;}
         const player=(await db.ref('players/'+uid).get()).val();let verdict;
+        if(req.k==='kill'&&req.e==='shark'){const sh=(await db.ref('shark/'+req.id).get()).val();if(!sh||sh.hp>0||!sh.hits||(sh.hits[uid]|0)<3||!E.sharkRises(Number(req.id))){window.__refLog.push(['req','kill','shark',false,'shark not earned']);await txn('saves/'+uid,sv=>{const o=E.norm(sv);o.last=sv&&sv.last>rid?sv.last:rid;return o;});continue;}}
         if(req.k==='kill'&&req.e==='kraken'){const kr=(await db.ref('kraken/'+req.id).get()).val();if(!kr||kr.hp>0||!kr.hits||(kr.hits[uid]|0)<3){window.__refLog.push(['req','kill','kraken',false,'kraken not earned']);await txn('saves/'+uid,sv=>{const o=E.norm(sv);o.last=sv&&sv.last>rid?sv.last:rid;return o;});continue;}}
         let opts=null,port=-1,myF=null;if(req.k==='kill'&&player){port=E.portNear(player.x,player.z);myF=(await db.ref('saves/'+uid+'/fleet').get()).val();
           if(port>=0&&myF){const wk=E.weekOf(Date.now());const hb=(await db.ref('board/p'+(wk-1)+'/'+port).get()).val()||{};const top=Object.entries(hb).sort((a,b)=>b[1].s-a[1].s)[0];if(top&&top[0]===myF)opts={goldMul:E.PORT_BONUS};}}
