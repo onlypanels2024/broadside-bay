@@ -177,7 +177,7 @@
             ".validate": "newData.isString() && newData.val().matches(/^(kill|up|repair|ship|look|check|daily|quest|fleet|title|cos|starter|season|erase|reset|adgold|chest2|noads)$/)"
           },
           "e": {
-            ".validate": "newData.isString() && newData.val().matches(/^(sloop|galleon|boss|fireship|treasure|merchant|escort|kraken)$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^(sloop|galleon|boss|fireship|treasure|merchant|escort|kraken|shark|map)$/)"
           },
           "id": {
             ".validate": "newData.isString() && newData.val().matches(/^([a-z0-9_]{0,16})$/)"
@@ -282,6 +282,21 @@
         "hp": {
           ".write": "auth != null",
           ".validate": "newData.isNumber() && ((!data.exists() && (newData.val() === 59 || newData.val() === 89 || newData.val() === 99 || newData.val() === 149)) || newData.val() === data.val() - 1) && newData.val() >= 0"
+        },
+        "hits": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.isNumber() && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() + 1)"
+          }
+        }
+      }
+    },
+    "shark": {
+      ".read": "auth != null",
+      "$slot": {
+        "hp": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber() && ((!data.exists() && newData.val() === 149) || newData.val() === data.val() - 1) && newData.val() >= 0"
         },
         "hits": {
           "$uid": {
