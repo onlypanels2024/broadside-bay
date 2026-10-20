@@ -3138,8 +3138,10 @@ let sharkModel=null,sharkLoading=false,sharkOff=null;
 function sharkWatch(slot,cb){return FB&&NET.room?FB.sharkWatch(slot,cb):()=>{};}
 function sharkHitShared(slot){if(FB&&NET.room)FB.sharkHit(slot);}
 function sharkLoad(){if(sharkModel||sharkLoading||!THREE.GLTFLoader)return;sharkLoading=true;
-  new THREE.GLTFLoader().load(MODEL_BASE+'ironfang.glb',gl=>{const m=gl.scene,gw=new THREE.TextureLoader().load(MODEL_BASE+'ironfang_glow.jpg');gw.flipY=false;
-    m.traverse(o=>{if(o.isMesh){o.castShadow=true;const mt=o.material;mt.metalness=.35;mt.roughness=.5;mt.emissive=new THREE.Color(1,1,1);mt.emissiveMap=gw;mt.emissiveIntensity=1.2;}});
+  new THREE.GLTFLoader().load(MODEL_BASE+'ironfang.glb',gl=>{const m=gl.scene;
+    // the model file came with its own bright lights: drop them so they never light up the rest of the sea
+    const lights=[];m.traverse(o=>{if(o.isLight)lights.push(o);});lights.forEach(o=>o.parent&&o.parent.remove(o));
+    m.traverse(o=>{if(o.isMesh){o.castShadow=true;const mt=o.material;mt.color=L('#7f8ea2');mt.metalness=.35;mt.roughness=.5;}});
     m.rotation.y=Math.PI/2;m.scale.set(26,25,26*1.45);sharkModel=m;},undefined,()=>{sharkLoading=false;});}
 function sharkDist(x,z){// distance from a point to the shark's spine
   const ca=Math.cos(shark.a),sa=Math.sin(shark.a),dx=x-shark.x,dz=z-shark.z,t=Math.max(-SH.len,Math.min(SH.len*.9,dx*ca+dz*sa));return Math.hypot(dx-ca*t,dz-sa*t);}
