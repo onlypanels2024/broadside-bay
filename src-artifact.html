@@ -571,8 +571,8 @@ let best=0;try{best=+localStorage.getItem('bb-best')||0}catch(e){}
 /* ================= renderer, sky, light ================= */
 const cv=$('c');
 let R;
-try{R=new THREE.WebGLRenderer({canvas:cv,antialias:true,powerPreference:'high-performance'});}catch(e){$('err').hidden=false;return;}
-R.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+try{R=new THREE.WebGLRenderer({canvas:cv,antialias:true,powerPreference:'default'});}catch(e){$('err').hidden=false;return;}
+R.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));
 R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
 R.outputEncoding=THREE.sRGBEncoding;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.0;
 const scene=new THREE.Scene();
@@ -609,7 +609,7 @@ const sky=new THREE.Mesh(skyGeo,skyMat);sky.frustumCulled=false;scene.add(sky);
 scene.add(new THREE.HemisphereLight(0xdff4ff,0x0d5b6c,.35));
 const hemiL=scene.children[scene.children.length-1];
 const sunL=new THREE.DirectionalLight(0xfff0d8,1.9);
-sunL.castShadow=true;sunL.shadow.mapSize.set(2048,2048);
+sunL.castShadow=true;sunL.shadow.mapSize.set(1024,1024);
 Object.assign(sunL.shadow.camera,{left:-38,right:38,top:38,bottom:-38,near:1,far:160});sunL.shadow.bias=-.0004;sunL.shadow.normalBias=.03;
 scene.add(sunL);scene.add(sunL.target);
 
@@ -3186,10 +3186,12 @@ function drawMap(){
 for(let i=0;i<5;i++){const r=rnd(2.8,4.2),a=i/5*TAU+.4,x=Math.cos(a)*rnd(18,32),z=Math.sin(a)*rnd(18,32);addIslandData(x,z,r,rnd(0,TAU));}streamIslands();
 setIslandUniforms();updHud();updAim();
 let last=performance.now();
-function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;
+// keep the phone cool: at most 60 frames a second while playing, 30 on menus, the harbour and pause
+function loop(now){requestAnimationFrame(loop);const gap=(state==='play'&&!document.querySelector('.overlay:not([hidden])'))?1000/60:1000/30;if(now-last<gap-2)return;
+  const dt=Math.min(.05,(now-last)/1000);last=now;
   {const t=state==='title';if(t!==loop.title){loop.title=t;document.body.classList.toggle('attitle',t);}}
   if(state==='title'){P.a+=dt*.15;P.v=4;P.x+=Math.cos(P.a)*P.v*dt*.2;P.z+=Math.sin(P.a)*P.v*dt*.2;wakeT-=dt;if(wakeT<=0){wakeT=.12;wake(P,1);}}
-  if(state!=='paused')update(dt);render(dt);requestAnimationFrame(loop);}
+  if(state!=='paused')update(dt);render(dt);}
 requestAnimationFrame(loop);
 })();
 </script>
