@@ -397,6 +397,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
       <button class="btn ghost" id="seatog">Sea sounds: <span id="seav">On</span></button>
       <button class="btn ghost" id="buzztog">Vibration: <span id="buzzv">On</span></button>
       <button class="btn ghost" id="wxtog">Rain &amp; lightning: <span id="wxtogv">On</span></button>
+      <button class="btn ghost" id="gfxtog">Graphics: <span id="gfxtogv">Balanced</span></button>
       <button class="btn ghost" id="drawtog">Captains' drawings: <span id="drawtogv">Shown</span></button>
       <button class="btn ghost" id="menuleave">Main menu</button>
       <button class="linkbtn" id="menuerase" hidden>Delete my online data</button>
@@ -612,8 +613,10 @@ let best=0;try{best=+localStorage.getItem('bb-best')||0}catch(e){}
 /* ================= renderer, sky, light ================= */
 const cv=$('c');
 let R;
-try{R=new THREE.WebGLRenderer({canvas:cv,antialias:true,powerPreference:'default'});}catch(e){$('err').hidden=false;return;}
-R.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));
+const GFX=[{n:'Battery saver',fps:30,pr:1,sh:512},{n:'Balanced',fps:60,pr:1.5,sh:1024},{n:'High',fps:0,pr:2,sh:2048}];
+let gfxQ=1;try{const v=localStorage.getItem('bb-gfx');if(v!==null&&GFX[+v])gfxQ=+v;}catch(e){}
+try{R=new THREE.WebGLRenderer({canvas:cv,antialias:true,powerPreference:gfxQ===2?'high-performance':'default'});}catch(e){$('err').hidden=false;return;}
+R.setPixelRatio(Math.min(GFX[gfxQ].pr,window.devicePixelRatio||1));
 R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
 R.outputEncoding=THREE.sRGBEncoding;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.0;
 const scene=new THREE.Scene();
@@ -650,7 +653,7 @@ const sky=new THREE.Mesh(skyGeo,skyMat);sky.frustumCulled=false;scene.add(sky);
 scene.add(new THREE.HemisphereLight(0xdff4ff,0x0d5b6c,.35));
 const hemiL=scene.children[scene.children.length-1];
 const sunL=new THREE.DirectionalLight(0xfff0d8,1.9);
-sunL.castShadow=true;sunL.shadow.mapSize.set(1024,1024);
+sunL.castShadow=true;sunL.shadow.mapSize.set(GFX[gfxQ].sh,GFX[gfxQ].sh);
 Object.assign(sunL.shadow.camera,{left:-38,right:38,top:38,bottom:-38,near:1,far:160});sunL.shadow.bias=-.0004;sunL.shadow.normalBias=.03;
 scene.add(sunL);scene.add(sunL.target);
 
@@ -1936,6 +1939,11 @@ fb.addEventListener('pointerdown',e=>{audio();if(state==='play')firing=true;fb.c
 fb.addEventListener('contextmenu',e=>e.preventDefault());
 $('snd').onclick=()=>{audio();setMusic(!MUS.on);};
 function updWxTog(){$('wxtogv').textContent=WX.fx?'On':'Off';}
+function updGfxTog(){$('gfxtogv').textContent=GFX[gfxQ].n;}
+$('gfxtog').onclick=()=>{audio();gfxQ=(gfxQ+1)%GFX.length;try{localStorage.setItem('bb-gfx',String(gfxQ))}catch(e){}
+  const G=GFX[gfxQ];R.setPixelRatio(Math.min(G.pr,window.devicePixelRatio||1));resize();
+  sunL.shadow.mapSize.set(G.sh,G.sh);if(sunL.shadow.map){sunL.shadow.map.dispose();sunL.shadow.map=null;}updGfxTog();};
+updGfxTog();
 $('wxtog').onclick=()=>{audio();WX.fx=!WX.fx;try{localStorage.setItem('bb-wxfx',WX.fx?'1':'0')}catch(e){}updWxTog();};
 /* ---- notifications (phone app only, off until you switch them on) ---- */
 const CapP=()=>window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()&&window.Capacitor.Plugins||null;
@@ -3364,7 +3372,7 @@ for(let i=0;i<5;i++){const r=rnd(2.8,4.2),a=i/5*TAU+.4,x=Math.cos(a)*rnd(18,32),
 setIslandUniforms();updHud();updAim();
 let last=performance.now();
 // keep the phone cool: at most 60 frames a second while playing, 30 on menus, the harbour and pause
-function loop(now){requestAnimationFrame(loop);const gap=(state==='play'&&!document.querySelector('.overlay:not([hidden])'))?1000/60:1000/30;if(now-last<gap-2)return;
+function loop(now){requestAnimationFrame(loop);const fps=GFX[gfxQ].fps,gap=(state==='play'&&!document.querySelector('.overlay:not([hidden])'))?(fps?1000/fps:0):1000/30;if(now-last<gap-2)return;
   const dt=Math.min(.05,(now-last)/1000);last=now;
   {const t=state==='title';if(t!==loop.title){loop.title=t;document.body.classList.toggle('attitle',t);}}
   if(state==='title'){P.a+=dt*.15;P.v=4;P.x+=Math.cos(P.a)*P.v*dt*.2;P.z+=Math.sin(P.a)*P.v*dt*.2;wakeT-=dt;if(wakeT<=0){wakeT=.12;wake(P,1);}}
