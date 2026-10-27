@@ -310,8 +310,26 @@ details.how summary::-webkit-details-marker{display:none}
   #start .modes{margin-top:auto}
   #start .modes .btn{margin-top:10px}#start .modes .btn.ghost{margin-top:9px}#start .modes .linkbtn{margin-top:6px}
 }
+@media (orientation:landscape){
+  body #start{place-items:stretch;background:linear-gradient(90deg,rgba(3,16,24,.85) 0%,rgba(3,16,24,.25) 34%,rgba(3,16,24,0) 46%,rgba(3,16,24,0) 54%,rgba(3,16,24,.3) 64%,rgba(3,16,24,.88) 100%)}
+  body #start .card{max-width:none;background:none;border:none;box-shadow:none;padding:calc(env(safe-area-inset-top) + 10px) calc(env(safe-area-inset-right) + 10px) 10px calc(env(safe-area-inset-left) + 10px);
+    grid-template-columns:minmax(0,320px) 1fr minmax(0,330px);align-content:center;min-height:calc(100dvh - 32px)}
+  body #start .card>*{grid-column:1}
+  body #start .card>.modes{grid-column:3;grid-row:1 / span 8}
+  body #start .rule,#start .card>p{display:none}
+  body #start h1{font-size:40px}
+}
+@keyframes bbRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes bbShine{0%,55%{background-position:160% 0,0 0}100%{background-position:-60% 0,0 0}}
+@keyframes bbGlow{0%,100%{box-shadow:0 6px 18px rgba(214,178,98,.3)}50%{box-shadow:0 6px 30px rgba(240,200,110,.75),0 0 0 2px rgba(255,226,150,.35)}}
+#start .eyebrow,#start h1,#start .seasonline,#start .modes>.btn,#start .modes>.linkbtn{animation:bbRise .7s cubic-bezier(.2,.8,.2,1) both}
+#start h1{animation-delay:.1s}#start .seasonline{animation-delay:.25s}#start #goOpen{animation:bbRise .7s .35s cubic-bezier(.2,.8,.2,1) both,bbGlow 2.6s 1.2s ease-in-out infinite}
+#start #goWaves{animation-delay:.45s}#start #goStory{animation-delay:.55s}#start #goDress{animation-delay:.65s}#start .modes>.linkbtn{animation-delay:.8s}
+#start h1{background-image:linear-gradient(105deg,transparent 42%,rgba(255,255,255,.85) 50%,transparent 58%),linear-gradient(180deg,#fff4cf 10%,#f0cf7f 55%,#b8862e 95%);
+  background-size:260% 100%,100% 100%;animation:bbRise .7s .1s cubic-bezier(.2,.8,.2,1) both,bbShine 5s 1.5s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){#start *{animation:none!important}}
 #start .eyebrow{text-shadow:0 2px 8px rgba(0,0,0,.8)}
-#start h1{font-size:46px;line-height:1;background:linear-gradient(180deg,#fff4cf 10%,#f0cf7f 55%,#b8862e 95%);-webkit-background-clip:text;background-clip:text;color:transparent;
+#start h1{font-size:46px;line-height:1;-webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 3px 0 #3a2208) drop-shadow(0 8px 18px rgba(0,0,0,.65))}
 #start .seasonline{display:inline-block;align-self:center;margin:10px auto 4px;padding:6px 14px;border-radius:999px;background:rgba(6,20,30,.72);border:1px solid rgba(232,196,110,.55);box-shadow:0 4px 14px rgba(0,0,0,.4)}
 #start .modes .btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%}
