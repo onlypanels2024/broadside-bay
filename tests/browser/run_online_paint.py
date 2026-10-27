@@ -9,7 +9,7 @@ with sync_playwright() as pw:
   EA=lambda c:A.evaluate(f"__t.ev({json.dumps(c)})");EB=lambda c:B.evaluate(f"__t.ev({json.dumps(c)})")
   A.goto(U+'?who=gary&referee=1');A.wait_for_timeout(1500);A.evaluate("localStorage.clear()");B.goto(U+'?who=maria');B.wait_for_timeout(2500)
   # the referee already has Gary as a Captain owning a Frigate
-  A.evaluate("window.__fakeDb.ref('saves/google_gary').set({gold:300,earned:0,sunk:0,xp:3200,up:{hull:0,sails:0,reload:0,triple:0,broadside:1},ships:{brig:true,frigate:true},ship:'brig'})")
+  A.evaluate("window.__fakeDb.ref('saves/google_gary').set({gold:300,earned:0,sunk:0,xp:3200,up:{hull:0,sails:0,reload:0,triple:0,broadside:1},ships:{brig:true,frigate:true},ship:'brig',daily:{d:Math.floor(Date.now()/86400000),st:1}})")
   # sign in, go back to the main menu, then open the shipwright
   A.click('#goOpen');A.wait_for_timeout(400);A.click('#joingoogle');A.wait_for_timeout(800);A.click('#joinback');A.wait_for_timeout(1500)
   print('start note:',A.inner_text('#savenote'))
