@@ -296,13 +296,22 @@ details.how summary::-webkit-details-marker{display:none}
   #start .modes .btn{margin-top:10px}#start .modes .btn.ghost{margin-top:9px}#start .modes .linkbtn{margin-top:6px}
 }
 @media (orientation:landscape){
-  body #start{place-items:stretch;background:linear-gradient(90deg,rgba(3,16,24,.85) 0%,rgba(3,16,24,.25) 34%,rgba(3,16,24,0) 46%,rgba(3,16,24,0) 54%,rgba(3,16,24,.3) 64%,rgba(3,16,24,.88) 100%)}
-  body #start .card{max-width:none;background:none;border:none;box-shadow:none;padding:calc(env(safe-area-inset-top) + 10px) calc(env(safe-area-inset-right) + 10px) 10px calc(env(safe-area-inset-left) + 10px);
-    grid-template-columns:minmax(0,320px) 1fr minmax(0,330px);align-content:center;min-height:calc(100dvh - 32px)}
-  body #start .card>*{grid-column:1}
-  body #start .card>.modes{grid-column:3;grid-row:1 / span 8}
-  body #start .rule,#start .card>p{display:none}
-  body #start h1{font-size:40px}
+  body #start{place-items:center;padding:8px;background:radial-gradient(ellipse at center,rgba(3,16,24,.35) 0%,rgba(3,16,24,.8) 70%,rgba(3,16,24,.92) 100%)}
+  body #start .card{max-width:900px;width:calc(100% - 28px);background:none;border:none;box-shadow:none;margin:auto;
+    padding:calc(env(safe-area-inset-top) + 4px) calc(env(safe-area-inset-right) + 8px) 4px calc(env(safe-area-inset-left) + 8px);
+    display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:24px;align-items:center;align-content:center}
+  body #start .card>*{grid-column:1;min-width:0}
+  body #start .card>.modes{grid-column:2;grid-row:1 / span 8;align-self:center;min-width:0}
+  body #start .rule,body #start .card>p{display:none}
+  body #start h1{font-size:clamp(26px,6vh,40px)}
+  body #start .seasonline{font-size:12px;padding:5px 12px;margin:6px auto 2px}
+  body #start .card>.menunote,body #start .card>small,body #start .credit{font-size:10px}
+  body #start .modes .btn{padding:6px 12px;font-size:13px;margin-top:5px;gap:9px;line-height:1.2}
+  body #start .modes .btn.ghost{margin-top:5px}
+  body #start #goOpen{padding:8px 12px;font-size:14px}
+  body #start .modes .btn::before{width:17px!important;height:17px!important}
+  body #start .modes .savenote,body #start .modes .onlinenote{font-size:11px!important;margin:2px 0 0!important;line-height:1.2!important}
+  body #start .modes .linkbtn{margin-top:2px;font-size:11px;padding:1px}
 }
 @keyframes bbRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @keyframes bbShine{0%,55%{background-position:160% 0,0 0}100%{background-position:-60% 0,0 0}}
