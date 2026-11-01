@@ -216,7 +216,7 @@ const WEEKENDS=[
   {id:'kraken2',n:'Kraken weekend',d:'The kraken pays double, and stays longer.'},
   {id:'fleet2',n:'Fleet tournament',d:'Port battle points count double.'},
 ];
-const LAUNCH={from:0,to:0,id:'launch',n:'Launch week',d:'Every ship you sink pays double gold, the kraken and the megalodon too.'};
+const LAUNCH={from:1793574000000,to:1794783600000,id:'launch',n:'Launch double gold',d:'Every ship you sink pays double gold, the kraken and the megalodon too.'};
 const weekNo=now=>Math.floor((now/86400000+3)/7);
 function seasonAt(now){const w=weekNo(now)-SEASON0_WEEK,n=Math.floor(w/6),k=((n%SEASONS.length)+SEASONS.length)%SEASONS.length;return Object.assign({no:n+1,weeksLeft:6-(w-n*6)},SEASONS[k]);}
 function eventAt(now){if(LAUNCH.from&&now>=LAUNCH.from&&now<LAUNCH.to)return LAUNCH;const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}

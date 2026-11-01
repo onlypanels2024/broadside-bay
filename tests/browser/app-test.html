@@ -1489,7 +1489,7 @@ const WEEKENDS=[
   {id:'kraken2',n:'Kraken weekend',d:'The kraken pays double, and stays longer.'},
   {id:'fleet2',n:'Fleet tournament',d:'Port battle points count double.'},
 ];
-const LAUNCH={from:0,to:0,id:'launch',n:'Launch week',d:'Every ship you sink pays double gold, the kraken and the megalodon too.'};
+const LAUNCH={from:1793574000000,to:1794783600000,id:'launch',n:'Launch double gold',d:'Every ship you sink pays double gold, the kraken and the megalodon too.'};
 const weekNo=now=>Math.floor((now/86400000+3)/7);
 function seasonAt(now){const w=weekNo(now)-SEASON0_WEEK,n=Math.floor(w/6),k=((n%SEASONS.length)+SEASONS.length)%SEASONS.length;return Object.assign({no:n+1,weeksLeft:6-(w-n*6)},SEASONS[k]);}
 function eventAt(now){if(LAUNCH.from&&now>=LAUNCH.from&&now<LAUNCH.to)return LAUNCH;const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}
@@ -2041,7 +2041,7 @@ const ADS_GOLD=100,ADS_PER_DAY=5,AD_WAVE_MAX=2,AD_GAP=240000,AD_FREE_RUNS=3;
 const AD={busy:false,waveVids:0,day:-1,n:0,chest:-1,runs:0,last:0};
 try{AD.runs=+localStorage.getItem('bb-runs')||0;AD.last=+localStorage.getItem('bb-adlast')||0;}catch(e){}
 // Google's test ads until the game goes public (tapping your own real ads breaks AdMob's rules). Set to false for the public release.
-const AD_TEST=true;
+const AD_TEST=false;
 const AD_IDS={reward:'ca-app-pub-7319579555027884/2523081279',inter:'ca-app-pub-7319579555027884/9177698541'};
 const NOADS={sku:'noads_monthly',plan:'monthly'};
 const ADST={on:false,rw:false,inr:false,na:0,price:'',synced:0};
