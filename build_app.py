@@ -366,6 +366,41 @@ async function noAdsBuy(say){if(noAdsOn()){say('No ads is on. Thank you for supp
   }catch(e){const m=String(e&&e.message||e);say(/cancel/i.test(m)?'':'Google Play said: '+m.slice(0,120));}}""")
 rep("econSync();dailyNotice();fleetChanged();achNotice();});","econSync();dailyNotice();fleetChanged();achNotice();if(sv&&(+sv.na||0)!==ADST.na&&!(ADST.na>Date.now()&&!sv.na&&ADST.na-Date.now()<3600000))noAdsSet(+sv.na||0);});")
 rep("if(FB)FB.ready.then(","adsInit();\nif(FB)FB.ready.then(()=>noAdsSync());\nif(FB)FB.ready.then(")
+# ---- the shop: Founder's Pack, Lifetime No ads, Season Pass (Google Play one-off products, checked by the referee)
+rep("""function shopOn(){return false;}                    // the app: online Open sea, signed in with Google
+function shopPrice(id){return {founder:'€2.99',lifetime:'€9.99',pass:'€3.99'}[id];}   // the app: Google Play's price
+function shopBuy(id,say){say('The shop is only in the Android app.');}""","""function shopOn(){const u=FB&&FB.user();return econServer()&&!!NET.srv&&!!u&&!!u.google&&(!!capPlug('NativePurchases')||!!window.__fakeShop);}
+const SHOP_DEF={founder:'€2.99',lifetime:'€9.99',pass:'€3.99'};
+function shopPrice(id){return ADST.prices&&ADST.prices[id]||SHOP_DEF[id];}
+function shopPrices(){const NP=capPlug('NativePurchases');if(!NP)return;const ids=Object.keys(STORE);
+  NP.getProducts({productIdentifiers:ids.map(k=>STORE[k].sku),productType:'inapp'}).then(r=>{ADST.prices={};for(const p of (r&&r.products)||[]){const k=ids.find(k=>STORE[k].sku===p.identifier);if(k&&p.priceString)ADST.prices[k]=p.priceString;}renderStore();}).catch(()=>{});}
+// purchases Google Play has taken but the referee hasn't confirmed yet are kept and sent again
+function shopPending(){try{return JSON.parse(localStorage.getItem('bb-buys')||'[]').filter(b=>b&&b.id&&b.tok&&Date.now()-b.t<7*86400000);}catch(e){return [];}}
+function shopPendingSet(a){try{localStorage.setItem('bb-buys',JSON.stringify(a.slice(-10)));}catch(e){}}
+function shopHas(sv,b){if(!sv)return false;if(b.id==='founder')return owns(sv,'founder');if(b.id==='lifetime')return owns(sv,'lifetime');return (sv.pp||[]).includes(seasonAt(b.t).no);}
+async function shopSync(){const sv=NET.srv;if(!sv||!shopOn())return;
+  const left=shopPending().filter(b=>!shopHas(sv,b));shopPendingSet(left);
+  for(const b of left)if(Date.now()-(b.sent||0)>60000){b.sent=Date.now();FB.request({k:'buy',id:b.id,tok:b.tok});}
+  shopPendingSet(left);
+  // a Founder's Pack or Lifetime No ads paid on this phone but never confirmed (the app closed too soon)
+  const NP=capPlug('NativePurchases');if(!NP||ADST.restored)return;ADST.restored=true;
+  try{const r=await NP.getPurchases({productType:'inapp'});for(const t of (r&&r.purchases)||[]){const k=['founder','lifetime'].find(k=>STORE[k].sku===t.productIdentifier),tok=t.purchaseToken||t.transactionId;
+    if(k&&tok&&!shopHas(NET.srv,{id:k})&&!shopPending().some(b=>b.tok===tok)){shopPendingSet(shopPending().concat([{id:k,tok,t:Date.now(),sent:Date.now()}]));FB.request({k:'buy',id:k,tok});}}}catch(e){}}
+async function shopBuy(id,say){const u=FB&&FB.user();
+  if(!u||!u.google){say('Sign in with Google first (Open sea), so your purchase follows you to any phone.');return;}
+  if(id==='founder'&&!shopFounderOpen()){say('The Founder\\'s Pack is no longer on sale.');return;}
+  if(id==='pass'&&(NET.srv&&(NET.srv.pp||[]).includes(seasonAt(serverNowMs()).no))){say('You already have this season\\'s pass.');return;}
+  if(window.__fakeShop){const tok='test-'+id+'-'+Date.now()+'-0000000000000';window.__fakeShop.bought=(window.__fakeShop.bought||[]).concat([id]);shopPendingSet(shopPending().concat([{id,tok,t:Date.now(),sent:Date.now()}]));FB.request({k:'buy',id,tok});say('Thank you! It arrives in a moment.');return;}
+  const NP=capPlug('NativePurchases');if(!NP){say('The shop is only in the Android app.');return;}
+  say('Opening Google Play…');
+  try{const t=await NP.purchaseProduct({productIdentifier:STORE[id].sku,productType:'inapp',quantity:1,isConsumable:id==='pass'});
+    const tok=t&&(t.purchaseToken||t.transactionId);if(!tok){say('');return;}
+    shopPendingSet(shopPending().concat([{id,tok,t:Date.now(),sent:Date.now()}]));FB.request({k:'buy',id,tok});
+    if(id==='lifetime')noAdsSet(NA_LIFETIME);
+    say(id==='founder'?'Welcome aboard, Founder! Your rewards arrive in a moment.':id==='pass'?'Season Pass unlocked! Claim your rewards below.':'Thank you! No ads, for life.');chime(true);
+  }catch(e){const m=String(e&&e.message||e);say(/cancel/i.test(m)?'':'Google Play said: '+m.slice(0,120));}}""")
+rep("ADST.on=true;adPrep('rw');adPrep('inr');renderNoAds();","ADST.on=true;adPrep('rw');adPrep('inr');renderNoAds();shopPrices();")
+rep("econSync();dailyNotice();fleetChanged();achNotice();if(sv&&","econSync();dailyNotice();fleetChanged();achNotice();shopSync();if(sv&&")
 open('www/index.html','w').write(s)
 print('built www/index.html',len(s))
 

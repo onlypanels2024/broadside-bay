@@ -154,6 +154,28 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .qrow .qr{font-size:12px;color:var(--brass-hi)}
 .qrow .qbar{grid-column:1/-1;height:6px;border-radius:3px;background:rgba(0,0,0,.4);overflow:hidden}
 .qrow .qbar i{display:block;height:100%;background:linear-gradient(90deg,#a77d2c,var(--brass-hi))}
+/* the shop: Founder's Pack, Season Pass, No ads */
+.sbox{margin:10px 0 4px;padding:12px;border-radius:12px;border:1px solid rgba(214,178,98,.35);background:rgba(255,255,255,.04);text-align:left}
+.sbox.fnd{border-color:var(--brass-hi);background:linear-gradient(135deg,rgba(61,123,255,.22),rgba(214,178,98,.16));box-shadow:0 0 18px rgba(255,214,90,.18)}
+.sbox h3{margin:0 0 4px;font:700 17px var(--display,var(--body));color:var(--brass-hi);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sbox h3 small{font:600 11px var(--body);color:var(--text);opacity:.8;padding:3px 8px;border-radius:10px;background:rgba(0,0,0,.35);white-space:nowrap}
+.sbox ul{margin:6px 0 10px;padding-left:18px;font-size:13px;line-height:1.5}
+.sbox .btn{width:100%;margin:6px 0 0}
+.sbox .note{font-size:12px;opacity:.8;margin:6px 0 0}
+.ptrack{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.ptier{display:grid;grid-template-columns:54px 1fr 1fr;gap:6px;align-items:stretch}
+.ptier .st{font:700 12px var(--body);color:var(--brass-hi);display:flex;flex-direction:column;justify-content:center;text-align:center;border-radius:8px;background:rgba(0,0,0,.3)}
+.ptier .st small{font-weight:500;opacity:.7;color:var(--text)}
+.prew{padding:6px 8px;border-radius:8px;border:1px solid rgba(214,178,98,.3);background:transparent;color:var(--text);font:600 12px var(--body);text-align:left;cursor:default;min-height:38px}
+.prew.prem{border-color:rgba(120,160,255,.5);background:rgba(61,123,255,.1)}
+.prew.can{cursor:pointer;border-color:var(--brass-hi);background:rgba(214,178,98,.22);color:var(--brass-hi);animation:bbGlow 2s ease-in-out infinite}
+.prew.got{opacity:.55}
+.prew.lock{opacity:.6}
+.phead{display:grid;grid-template-columns:54px 1fr 1fr;gap:6px;font:700 11px var(--body);text-transform:uppercase;letter-spacing:.06em;opacity:.75}
+.prog{height:8px;border-radius:4px;background:rgba(0,0,0,.45);border:1px solid rgba(214,178,98,.45);overflow:hidden;margin:6px 0 2px}
+.prog i{display:block;height:100%;background:linear-gradient(90deg,#a77d2c,var(--brass-hi))}
+#fixbtn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 214px);z-index:2;margin:0;font-size:14px;padding:11px 22px;white-space:nowrap}
+.keyhint{font-size:11px;opacity:.7;margin-top:6px}
 .blist{display:flex;flex-direction:column;gap:4px;margin-top:12px;text-align:left;min-height:120px}
 .brow{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.04);font-size:15px}
 .brow .bn{font-family:var(--display);font-weight:800;color:var(--muted);text-align:center}
@@ -435,6 +457,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
       <button class="btn ghost" id="menufleet" hidden>Fleet</button>
       <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
       <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
+      <button class="btn" id="menushop" hidden>Shop &amp; Season Pass</button>
       <button class="btn ghost" id="noadsbtn" hidden>Remove ads</button>
       <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
       <button class="btn ghost" id="notiftog" hidden>Notifications: <span id="notifv">Off</span></button>
@@ -613,6 +636,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <div class="days" id="days"></div>
     <button class="btn" id="chestbtn">Open chest</button>
     <button class="btn ghost adbtn" id="chest2btn" hidden></button>
+    <button class="btn ghost adbtn" id="chest3btn" hidden></button>
     <div class="rule"></div>
     <h2 style="font-size:22px">Today's quests</h2>
     <div class="qlist" id="qlist"></div>
@@ -620,6 +644,16 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <button class="btn ghost" id="dailyclose">Back to sea</button>
   </div>
 </div>
+<div class="overlay" id="storeov" hidden>
+  <div class="card">
+    <div class="eyebrow">Captain's shop</div>
+    <h2>Shop</h2>
+    <div id="storebody"></div>
+    <p class="menunote" id="storemsg"></p>
+    <button class="btn ghost" id="storeclose">Back</button>
+  </div>
+</div>
+<button id="fixbtn" class="btn" hidden>▶ Watch a video to repair</button>
 <div class="overlay" id="over" hidden>
   <div class="card">
     <div class="eyebrow" id="overeyebrow">Lost at sea</div>
@@ -629,6 +663,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <div class="lbl" id="overlbl">Gold plundered</div>
     <div class="big" id="os">0</div>
     <p id="ob">Best: 0</p>
+    <button class="btn" id="revivebtn" hidden>▶ Watch a video to keep fighting</button>
     <button class="btn" id="again">Sail again</button>
     <div><button class="linkbtn" id="overmenu">Main menu</button></div>
   </div>
@@ -931,7 +966,7 @@ const M={
   coconut:std({color:L('#5a3b1f'),roughness:.7}),
   plank:std({map:woodTex,color:L('#8a5a34'),roughness:.8}),
   ball:std({color:L('#1a1a1a'),metalness:.8,roughness:.35}),
-  fireball:std({color:L('#4a1606'),emissive:L('#ff6a1a'),emissiveIntensity:2.2,metalness:.4,roughness:.4}),purpleball:std({color:L('#2a1040'),emissive:L('#b25cff'),emissiveIntensity:2,metalness:.5,roughness:.35}),goldball:std({color:L('#ffcf55'),metalness:1,roughness:.2}),
+  fireball:std({color:L('#4a1606'),emissive:L('#ff6a1a'),emissiveIntensity:2.2,metalness:.4,roughness:.4}),purpleball:std({color:L('#2a1040'),emissive:L('#b25cff'),emissiveIntensity:2,metalness:.5,roughness:.35}),goldball:std({color:L('#ffcf55'),metalness:1,roughness:.2}),founderball:std({color:L('#0d1f5c'),emissive:L('#3d7bff'),emissiveIntensity:2,metalness:.6,roughness:.3}),rushball:std({color:L('#5a3300'),emissive:L('#ffae1a'),emissiveIntensity:2,metalness:.6,roughness:.3}),inkball:std({color:L('#07060c'),emissive:L('#6a2cff'),emissiveIntensity:1.2,metalness:.3,roughness:.5}),
   parrotR:std({color:L('#d8261c'),roughness:.6}),parrotG:std({color:L('#2fae3c'),roughness:.6}),parrotB:std({color:L('#2d5fd0'),roughness:.6}),beak:std({color:L('#f2c230'),roughness:.5}),fur:std({color:L('#6b4423'),roughness:.9}),furL:std({color:L('#c9a27a'),roughness:.9}),
   hotball:std({color:L('#3a1208'),emissive:L('#ff4a1a'),emissiveIntensity:1.4,metalness:.5,roughness:.4}),
   coin:std({color:L('#ffcf55'),metalness:1,roughness:.22}),parch:std({color:L('#e9d9a8'),roughness:.9}),ribbon:std({color:L('#a3271c'),roughness:.6}),
@@ -996,8 +1031,8 @@ const LATEEN=(()=>{const g=new THREE.BufferGeometry(),P=[.15,.7,0, .15,5.2,0, -2
   g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute([1,0,1,1,0,0,.55,.45],2));
   g.setIndex([0,1,3,1,2,3,2,0,3]);g.computeVertexNormals();return g;})();
 const flagMats={};
-const TRAIL_COL=['#ffffff','#ffd65a','#c58bff','#5be3a0','#ff7a2e','#9fb4c8'];
-const ballMat=i=>[M.ball,M.fireball,M.purpleball,M.goldball][i|0]||M.ball;
+const TRAIL_COL=['#ffffff','#ffd65a','#c58bff','#5be3a0','#ff7a2e','#9fb4c8',['#ffd65a','#3d7bff'],['#ffcf33','#19d27a'],['#1b2cff','#00e5ff']];
+const ballMat=i=>[M.ball,M.fireball,M.purpleball,M.goldball,M.founderball,M.rushball,M.inkball][i|0]||M.ball;
 // figureheads (1 mermaid, 2 lion, 3 eagle, 4 sea serpent) and pets (1 parrot, 2 monkey), all small and simple
 function addFigurehead(add,kind,x,y){const B=M.brass;
   if(kind===1){add(new THREE.CylinderGeometry(.12,.2,.55,10),B,x,y+.05,0).rotation.z=-.5;add(new THREE.SphereGeometry(.13,10,8),B,x+.16,y+.36,0);add(new THREE.ConeGeometry(.16,.3,8),B,x-.2,y-.25,0).rotation.z=2.4;}
@@ -1193,7 +1228,7 @@ let parts=[],planks=[];
 const FLAT=new THREE.PlaneGeometry(1,1);FLAT.rotateX(-Math.PI/2);
 function spark(x,y,z,o){
   let obj;
-  if(o.flat){obj=new THREE.Mesh(FLAT,new THREE.MeshBasicMaterial({map:foamTex,color:0xffffff,transparent:true,opacity:o.op||1,depthWrite:false}));obj.rotation.y=rnd(0,TAU);}
+  if(o.flat){obj=new THREE.Mesh(FLAT,new THREE.MeshBasicMaterial({map:foamTex,color:o.color?L(o.color):0xffffff,transparent:true,opacity:o.op||1,depthWrite:false}));obj.rotation.y=rnd(0,TAU);}
   else obj=new THREE.Sprite(new THREE.SpriteMaterial({map:o.tex||softTex,color:L(o.color),transparent:true,opacity:o.op||1,depthWrite:false,rotation:rnd(0,TAU),
     blending:o.add?THREE.AdditiveBlending:THREE.NormalBlending}));
   obj.position.set(x,y,z);obj.scale.setScalar(o.s);scene.add(obj);
@@ -1504,6 +1539,14 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
   if(E&&E.id==='kraken2'&&kind==='kraken')m*=2;
   if(E&&E.id==='launch'&&['sloop','galleon','fireship','boss','merchant','kraken','shark'].includes(kind))m*=2;
   return m;}
+// The shop (Google Play): Founder's Pack (on sale until 30 Nov 2026, Malta time), Lifetime No ads, Season Pass.
+const STORE={founder:{sku:'founder_pack',g:2000,until:1796079600000},lifetime:{sku:'noads_lifetime'},pass:{sku:'season_pass'}};
+const NA_LIFETIME=4102444800000;   // "no ads until the year 2100"
+// The Season Pass: 10 steps, each needs PASS.step more XP earned this season. [free reward, pass reward]:
+// a number is gold; w/b/t are this season's wake, cannonballs and title (a season without its own items pays PASS.swap gold).
+const PASS={step:300,tiers:[[100,300],[100,'b'],[150,400],[150,500],[200,'t'],[200,600],[250,700],[250,800],[300,1000],[500,'w']],swap:750,
+  items:{1:{w:'s1wake',b:'s1shot',t:'s1cap'},2:{w:'s2wake',b:'s2shot',t:'s2cap'}}};
+function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const r=T[prem?1:0];if(typeof r==='number')return{g:r};const it=PASS.items[n];return it&&it[r]?{o:it[r]}:{g:PASS.swap};}
 /*ENDSEASONDEF*/
 const XP_FOR={sloop:20,galleon:50,fireship:35,boss:250,player:120,treasure:60,merchant:80,escort:70,kraken:400,shark:600};
 const LOCAL_GOLD={sloop:50,galleon:150,fireship:100,boss:300,treasure:400,merchant:500,escort:300,kraken:900,shark:1500};
@@ -1621,12 +1664,13 @@ function openWorldTick(dt){
   if(!enemies.some(e=>e.kind==='boss')){bossT-=dt;if(bossT<=0){const sp=spawnSpot(100,125);if(sp){bossCount++;spawnShip('boss',sp.x,sp.z);showBanner('Boss ship sighted',true);bossT=240;}}}
   const [p,pd]=nearestPort(P.x,P.z),near=pd<SAFE_R-3;
   if($('dock').hidden===near)$('dock').hidden=!near;
+  renderFix(near);
   if(near&&lastPortName!==p.name){lastPortName=p.name;$('docklbl').textContent='Dock at '+p.name;showBanner(p.name+portSuffix(PORTS.indexOf(p)));}else if(!near)lastPortName='';
   edgeT-=dt;const B=BOUND();if((Math.abs(P.x)>=B-.5||Math.abs(P.z)>=B-.5)&&edgeT<=0){edgeT=4;showBanner('Edge of the known sea');}
   saveT-=dt;if(saveT<=0){saveT=10;saveOpen();}
   seaEventsTick(dt);
 }
-function reset(){AD.waveVids=0;
+function reset(){AD.waveVids=0;AD.revived=false;
   MODE='waves';ARENA=60;
   clearWorld();$('wavelbl').textContent='Wave';$('boss').classList.remove('left');$('map').hidden=true;$('dock').hidden=true;
   up={hull:0,sails:0,reload:0,triple:0,broadside:0};pw={speed:0,rapid:0,side:0};shipUps={};
@@ -1895,7 +1939,7 @@ function renderDesigner(){
 $('dname').addEventListener('input',e=>{dsg.name=e.target.value.slice(0,24);});
 $('designdone').onclick=()=>{chime(true);closeDesigner();};
 $('drandom').onclick=()=>{audio();const pick=a=>a[Math.floor(Math.random()*a.length)];const name=dsg.name;
-  for(const O of DOPT)dsg[O.k]=pick(O.o.filter(x=>!dLocked(x[2])))[1];for(const C of DCOL)dsg[C.k]=pick(C.c.filter((c,i)=>!dLocked(i>=C.free)));dsg.name=name;buildDesign();renderDesigner();$('dmsg').textContent='A fresh design. Keep tapping for more.';};
+  for(const O of DOPT)dsg[O.k]=pick(O.o.filter(x=>!dLocked(x[2])))[1];for(const C of DCOL)dsg[C.k]=pick(C.c.filter((c,i)=>!dLocked(i>=C.free)));dsg.name=name;buildDesign();renderDesigner();$('dmsg').textContent='A fresh design. Keep '+(ONPC?'clicking':'tapping')+' for more.';};
 $('dsave').onclick=()=>{audio();const l=designSaved();const d=JSON.parse(JSON.stringify(dsg));if(!d.name)d.name='Design '+(l.length+1);
   const at=l.findIndex(x=>x.name===d.name);if(at>=0)l[at]=d;else l.push(d);while(l.length>12)l.shift();try{localStorage.setItem(DSG_KEY,JSON.stringify(l))}catch(e){}
   dsg.name=d.name;chime(true);renderDesigner();$('dmsg').textContent='Saved "'+d.name+'".';};
@@ -2014,7 +2058,7 @@ updNotif();setTimeout(notifSetup,4000);
 function eraseOn(){const u=FB&&FB.user();return !!(u&&u.google&&NET.room);}   // the app: signed in with Google
 function eraseNow(){FB.request({k:'erase'});try{['bb-srv-cache','bb-open-wish'].forEach(k=>localStorage.removeItem(k));}catch(e){}setTimeout(async()=>{closeMenu();toMenu();closeOnline();await FB.signOut();refreshStart();showBanner('Your online captain has been deleted');},2500);}
 let eraseArm=false;
-$('menuerase').onclick=()=>{audio();if(!eraseArm){eraseArm=true;$('menuerase').textContent='Tap again to delete your online captain for good';$('menuerase').classList.add('warn');return;}
+$('menuerase').onclick=()=>{audio();if(!eraseArm){eraseArm=true;$('menuerase').textContent=TAPW+' again to delete your online captain for good';$('menuerase').classList.add('warn');return;}
   eraseArm=false;$('menuerase').textContent='Deleting…';eraseNow();};
 function updSea(){$('seav').textContent=seaOn?'On':'Off';}updSea();
 $('seatog').onclick=()=>{audio();seaOn=!seaOn;try{localStorage.setItem('bb-sea',seaOn?'1':'0')}catch(e){}updSea();};
@@ -2057,7 +2101,7 @@ function adPrep(kind){const A=capPlug('AdMob');if(!A)return;
 async function adsInit(){const A=capPlug('AdMob');if(!A)return;
   try{await A.initialize({maxAdContentRating:'Teen',initializeForTesting:AD_TEST});}catch(e){return;}
   try{const ci=await A.requestConsentInfo();if(ci&&ci.isConsentFormAvailable&&ci.status==='REQUIRED')await A.showConsentForm();}catch(e){}
-  ADST.on=true;adPrep('rw');adPrep('inr');renderNoAds();
+  ADST.on=true;adPrep('rw');adPrep('inr');renderNoAds();shopPrices();
   const NP=capPlug('NativePurchases');if(NP)NP.getProduct({productIdentifier:NOADS.sku,productType:'subs'}).then(r=>{if(r&&r.product&&r.product.priceString){ADST.price=r.product.priceString;renderNoAds();}}).catch(()=>{});}
 // shows an ad and waits until it is closed; game sound pauses meanwhile
 function adShow(kind){const A=capPlug('AdMob');if(!A||!ADST[kind]){adPrep(kind);return Promise.resolve(false);}
@@ -2098,6 +2142,14 @@ $('adgoldbtn').onclick=async()=>{if(AD.busy||adVideosLeft()<=0)return;audio();AD
   const ok=noAdsOn()||await adReward();AD.busy=false;
   if(ok){if(econServer()){AD.n++;econRequest({k:'adgold'});}else AD.waveVids++;addGold(g);chime(true);setTimeout(()=>chime(true),160);updHud();renderShop();showBanner('+'+g+' gold');}
   renderAdGold();};
+const CHEST3={g:150,gap:4*3600000};
+function renderChest3(){const b=$('chest3btn');if(!(adsOn()&&econServer())){b.hidden=true;return;}const sv=dailySave()||{},last=Math.max(AD.chest3||0,sv.ac||0),wait=last+CHEST3.gap-serverNowMs();
+  b.hidden=false;b.disabled=AD.busy||wait>0;
+  b.textContent=wait>0?'Next free chest in '+(wait>=3600000?Math.ceil(wait/3600000)+' h':Math.ceil(wait/60000)+' min'):(noAdsOn()?'Free chest (No ads bonus): +':'▶ Watch a video for a free chest: +')+CHEST3.g+' gold';}
+$('chest3btn').onclick=async()=>{if(AD.busy)return;const sv=dailySave()||{};if(serverNowMs()-Math.max(AD.chest3||0,sv.ac||0)<CHEST3.gap)return;audio();AD.busy=true;renderChest3();
+  const ok=noAdsOn()||await adReward();AD.busy=false;
+  if(ok){AD.chest3=serverNowMs();econRequest({k:'adchest'});addGold(CHEST3.g);updHud();chime(true);setTimeout(()=>chime(true),160);showBanner('Free chest: +'+CHEST3.g+' gold');}
+  renderChest3();};
 function renderChest2(st){const b=$('chest2btn'),day=dayOf(serverNowMs()),sv=dailySave()||{},a=sv.ad&&sv.ad.d===day?sv.ad:{};
   b.hidden=!(adsOn()&&econServer()&&!st.canChest&&!a.c&&AD.chest!==day);if(b.hidden)return;
   const g=DAILY_CHEST[Math.min(st.streak,7)-1];b.textContent=(noAdsOn()?'Bonus: double today\'s chest, +':'▶ Watch a video to double it: +')+g+' gold';b.disabled=AD.busy;}
@@ -2152,7 +2204,7 @@ function renderDaily(){const st=dailyState();
     if(q.claimed){b.textContent='Claimed ✓';b.disabled=true;}else if(q.done){b.textContent='Claim';b.onclick=()=>claimQuest(q);}else{b.textContent='In progress';b.disabled=true;b.classList.add('ghost');}
     r.appendChild(b);const bar=document.createElement('div');bar.className='qbar';bar.innerHTML=`<i style="width:${Math.round(q.p/q.Q.n*100)}%"></i>`;r.appendChild(bar);ql.appendChild(r);}
   const left=86400000-(serverNowMs()%86400000),h=Math.floor(left/3600000),m=Math.floor(left%3600000/60000);
-  renderChest2(st);
+  renderChest2(st);renderChest3();
   $('qreset').textContent=`New chest and quests in ${h} h ${m} min.`+(st.quests.some(q=>q.Q.ev==='captain')?' Captains sunk count only when the referee confirms them.':'');}
 function openDaily(from){if(!dailyOn())return;daily.from=from;audio();firing=false;joy=null;if(state==='play'&&!onlineAtSea())state='paused';
   ['menuov'].forEach(id=>$(id).hidden=true);renderDaily();$('dailyov').hidden=false;}
@@ -2189,10 +2241,13 @@ const ACH=[
   {id:'champ',n:'Season Champion',d:'Finish a season in the top 10',st:'sr',need:1,ti:'Season Champion'},
   {id:'shark',n:'Shark Hunter',d:'Help destroy the megalodon',st:'ks.shark',need:1,ti:'Shark Hunter'},
 ];
-// Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (or nothing).
+// Titles from the shop and the Season Pass (not achievements): the captain has one when s.own lists its id.
+const XTI=[{id:'founder',ti:'Founder'},{id:'s1cap',ti:'Gold Rush Captain'},{id:'s2cap',ti:'Kraken Season Captain'}];
+const owns=(s,id)=>!!s&&Array.isArray(s.own)&&s.own.includes(id);
+// Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (a), something owned (o), or nothing.
 const COS={
-  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'},{n:'Steel wake',a:'shark'}],
-  ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'}],
+  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'},{n:'Steel wake',a:'shark'},{n:'Founder\'s wake',o:'founder'},{n:'Gold Rush wake',o:'s1wake'},{n:'Abyss wake',o:'s2wake'}],
+  ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'},{n:'Founder\'s shot',o:'founder'},{n:'Gold Rush shot',o:'s1shot'},{n:'Ink shot',o:'s2shot'}],
   fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
   pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
 };
@@ -2200,7 +2255,7 @@ const COS_SLOTS=['trail','ball','fig','pet'];
 function achStat(s,st){if(!s)return 0;if(st==='sr')return Array.isArray(s.sr)?s.sr.length:0;if(st.startsWith('ks.'))return (s.ks&&s.ks[st.slice(3)])|0;if(st==='ship.manowar')return s.ships&&s.ships.manowar?1:0;if(st==='fleet')return s.fleet?1:0;return s[st]|0;}
 const achDone=(s,a)=>achStat(s,a.st)>=a.need;
 function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return false;
-  return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
+  return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(o.o)return owns(s,o.o);if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
 /*ENDACHDEF*/
 function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}
 function seasonClaimUI(box){const S=seasonAt(serverNowMs()),prev=S.no-1,sv=NET.srv;if(prev<1||!sv||(sv.sr||[]).includes(prev)||!FB)return;
@@ -2375,6 +2430,10 @@ function storyTick(dt){if(story.tut&&story.on){tutTick(dt);return;}if(!story.on|
   storyObjective();}
 function storyKill(e){if(MODE==='story')story.kills++;}
 /* ---- the first voyage: a guided lesson in the harbour ---- */
+// on a computer (mouse and keyboard, e.g. Google Play Games on PC) the lesson talks about keys and clicks
+const ONPC=(()=>{try{return matchMedia('(hover:hover) and (pointer:fine)').matches&&!('ontouchstart' in window&&navigator.maxTouchPoints>0);}catch(e){return false;}})();
+const TAPW=ONPC?'Click':'Tap',tapw=ONPC?'click':'tap';
+const TUT_PC=['Steer and sail with W A S D or the arrow keys. Head out of the harbour.','Hold Space (or click FIRE) to shoot your front cannon. Sink the target ahead of you!','Ships also have cannons along each side. Press E (or click this button) to switch to them.',null,null,'Sail back into the harbour and click Dock.',null];
 const TUT=[
   {t:'Drag anywhere on the left half of the screen to steer and sail. Head out of the harbour.',el:'hint'},
   {t:'Hold FIRE to shoot your front cannon. Sink the target ahead of you!',el:'fire'},
@@ -2384,13 +2443,22 @@ const TUT=[
   {t:'Sail back into the harbour and tap Dock.',el:'dock'},
   {t:'Buy an upgrade with your gold. Bigger sails make you faster.',el:'shop'},
 ];
+if(ONPC){$('hint').textContent='W A S D to steer · Space to fire · E switches cannons';$('viewhint').textContent='Drag to look around · mouse wheel to zoom';}
+// keyboard: Esc closes the open panel (its Back button), or opens the menu during play; any steering key clears the hint
+addEventListener('keydown',e=>{
+  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&!$('hint').hidden&&state==='play')$('hint').hidden=true;
+  if(e.key!=='Escape'||e.repeat)return;
+  const open=[...document.querySelectorAll('.overlay:not([hidden])')].filter(o=>o.id!=='start'&&o.id!=='over');
+  const top=open[open.length-1];
+  if(top){const b=top.id==='menuov'?$('menuresume'):[...top.querySelectorAll('button')].reverse().find(x=>!x.hidden&&!x.disabled&&/^(back|close|back to sea|done|cancel|resume)/i.test(x.textContent.trim()));if(b){e.preventDefault();b.click();}return;}
+  if(state==='play'&&!$('menubtn').hidden){e.preventDefault();$('menubtn').click();}});
 function tutDoneBefore(){try{return localStorage.getItem('bb-tut')==='1'}catch(e){return false}}
 function tutNote(){$('tutbox').hidden=tutDoneBefore();$('replayTut').hidden=!tutDoneBefore();renderNoAds();}
 $('replayTut').onclick=()=>{audio();startTutorial();};
 $('skipTut').onclick=()=>{audio();try{localStorage.setItem('bb-tut','1')}catch(e){}tutNote();};
 $('goTut').onclick=()=>{audio();startTutorial();};
 function tutGlow(id){document.querySelectorAll('.glowpulse').forEach(e=>e.classList.remove('glowpulse'));if(id&&$(id))$(id).classList.add('glowpulse');}
-function tutStep(n){story.step=n;const T=TUT[n];$('objective').textContent=T.t;$('objective').classList.add('tut');chime(true);
+function tutStep(n){story.step=n;const T=TUT[n];$('objective').textContent=ONPC&&TUT_PC[n]||T.t;$('objective').classList.add('tut');chime(true);
   tutGlow(T.el==='hint'?null:T.el==='shop'?'buy-sails':T.el);if(T.el==='hint')$('hint').hidden=false;
   const clear=(x,z)=>islands.every(i=>Math.hypot(x-i.x,z-i.z)>i.r*1.6+4);
   const spot=(base,dist)=>{for(const da of [0,.35,-.35,.7,-.7,Math.PI])for(const dd of [dist,dist*.8,dist*1.25]){const x=P.x+Math.cos(base+da)*dd,z=P.z+Math.sin(base+da)*dd;if(clear(x,z))return{x,z};}return{x:P.x+Math.cos(base)*dist,z:P.z+Math.sin(base)*dist};};
@@ -2479,7 +2547,7 @@ $('menufriends').onclick=openFriends;$('friendclose').onclick=()=>{audio();$('fr
 /* ---- captain's log, titles and looks (online; the referee keeps the counts) ---- */
 function logOn(){return econServer()&&!!NET.srv;}
 function logSave(){return NET.srv;}
-const titleOf=id=>{const a=ACH.find(x=>x.id===id);return a?a.ti:'';};
+const titleOf=id=>{const a=ACH.find(x=>x.id===id)||XTI.find(x=>x.id===id);return a?a.ti:'';};
 function cosOf(cx){const c=typeof cx==='string'&&/^[0-9]{4}$/.test(cx)?cx:'0000';return{trail:+c[0],ball:+c[1],fig:+c[2],pet:+c[3]};}
 const cosShip=c=>({fig:c.fig||0,pet:c.pet||0});
 let localCx=null;   // what I just chose, until the referee's copy catches up
@@ -2494,12 +2562,14 @@ function renderLog(){const sv=logSave()||{};const st=(k)=>achStat(sv,k);
   // titles
   const tbox=$('logtitles');tbox.innerHTML='';const cur=sv.title||'';$('logtitle').textContent=cur?titleOf(cur):'none';
   const none=document.createElement('button');none.className='tchip'+(cur?'':' on');none.textContent='No title';none.onclick=()=>{econRequest({k:'title',id:''});$('logmsg').textContent='Title removed.';};tbox.appendChild(none);
-  for(const a of ACH)if(achDone(sv,a)){const b=document.createElement('button');b.className='tchip'+(cur===a.id?' on':'');b.textContent=a.ti;b.onclick=()=>{econRequest({k:'title',id:a.id});$('logmsg').textContent='Other captains now see you as "'+a.ti+'".';};tbox.appendChild(b);}
+  for(const a of [...ACH.filter(a=>achDone(sv,a)),...XTI.filter(t=>owns(sv,t.id))]){const b=document.createElement('button');b.className='tchip'+(cur===a.id?' on':'');b.textContent=a.ti;b.onclick=()=>{econRequest({k:'title',id:a.id});$('logmsg').textContent='Other captains now see you as "'+a.ti+'".';};tbox.appendChild(b);}
   // looks
   const cb=$('logcos');cb.innerHTML='';const mc=myCos();
   for(const k of COS_SLOTS){const sec=document.createElement('div');sec.className='dsec';sec.innerHTML=`<div class="lbl">${COS_LABEL[k]} <span>${COS[k][mc[k]].n}</span></div>`;const row=document.createElement('div');row.className='chiprow wrap';
-    COS[k].forEach((o,i)=>{const a=o.a&&ACH.find(x=>x.id===o.a),ok=!a||achDone(sv,a);const b=document.createElement('button');b.className='tchip'+(mc[k]===i?' on':'')+(ok?'':' locked');b.id='cos-'+k+i;b.textContent=(ok?'':'🔒 ')+o.n;
-      b.onclick=()=>{if(!ok){$('logmsg').textContent='Unlock with the achievement "'+a.n+'": '+a.d+'.';return;}const c={...myCos(),[k]:i};localCx=cosCode(c);econRequest({k:'cos',cx:localCx});setShip(shipId);chime(true);renderLog();$('logmsg').textContent=COS_LABEL[k]+': '+o.n;};
+    COS[k].forEach((o,i)=>{const a=o.a&&ACH.find(x=>x.id===o.a),ok=o.o?owns(sv,o.o):!a||achDone(sv,a);
+      if(o.o&&!ok&&!(o.o==='founder'&&shopFounderOpen()))return;   // shop and pass looks only show once owned (or while on sale)
+      const b=document.createElement('button');b.className='tchip'+(mc[k]===i?' on':'')+(ok?'':' locked');b.id='cos-'+k+i;b.textContent=(ok?'':'🔒 ')+o.n;
+      b.onclick=()=>{if(!ok){$('logmsg').textContent=o.o?'Comes with the Founder\'s Pack (Menu → Shop).':'Unlock with the achievement "'+a.n+'": '+a.d+'.';return;}const c={...myCos(),[k]:i};localCx=cosCode(c);econRequest({k:'cos',cx:localCx});setShip(shipId);chime(true);renderLog();$('logmsg').textContent=COS_LABEL[k]+': '+o.n;};
       row.appendChild(b);});sec.appendChild(row);cb.appendChild(sec);}
   // achievements
   const al=$('logach');al.innerHTML='';let n=0;
@@ -2513,7 +2583,75 @@ $('menulog').onclick=openLog;$('logclose').onclick=()=>{audio();$('logov').hidde
 let achKnown=null;
 function achNotice(){const sv=logSave();if(!sv)return;const done=ACH.filter(a=>achDone(sv,a)).map(a=>a.id);
   if(achKnown){const fresh=done.filter(id=>!achKnown.includes(id));fresh.forEach((id,i)=>{const a=ACH.find(x=>x.id===id);setTimeout(()=>{showBanner('Achievement: '+a.n);chime(true);setTimeout(()=>chime(true),150);},700+i*2000);});}
-  achKnown=done;if(localCx&&sv.cx===localCx)localCx=null;if(!$('logov').hidden)renderLog();}
+  achKnown=done;if(localCx&&sv.cx===localCx)localCx=null;if(!$('logov').hidden)renderLog();renderStore();}
+/* ---- the shop: Founder's Pack, Season Pass and Lifetime No ads (the app: Google Play, checked by the referee) ---- */
+function shopOn(){const u=FB&&FB.user();return econServer()&&!!NET.srv&&!!u&&!!u.google&&(!!capPlug('NativePurchases')||!!window.__fakeShop);}
+const SHOP_DEF={founder:'€2.99',lifetime:'€9.99',pass:'€3.99'};
+function shopPrice(id){return ADST.prices&&ADST.prices[id]||SHOP_DEF[id];}
+function shopPrices(){const NP=capPlug('NativePurchases');if(!NP)return;const ids=Object.keys(STORE);
+  NP.getProducts({productIdentifiers:ids.map(k=>STORE[k].sku),productType:'inapp'}).then(r=>{ADST.prices={};for(const p of (r&&r.products)||[]){const k=ids.find(k=>STORE[k].sku===p.identifier);if(k&&p.priceString)ADST.prices[k]=p.priceString;}renderStore();}).catch(()=>{});}
+// purchases Google Play has taken but the referee hasn't confirmed yet are kept and sent again
+function shopPending(){try{return JSON.parse(localStorage.getItem('bb-buys')||'[]').filter(b=>b&&b.id&&b.tok&&Date.now()-b.t<7*86400000);}catch(e){return [];}}
+function shopPendingSet(a){try{localStorage.setItem('bb-buys',JSON.stringify(a.slice(-10)));}catch(e){}}
+function shopHas(sv,b){if(!sv)return false;if(b.id==='founder')return owns(sv,'founder');if(b.id==='lifetime')return owns(sv,'lifetime');return (sv.pp||[]).includes(seasonAt(b.t).no);}
+async function shopSync(){const sv=NET.srv;if(!sv||!shopOn())return;
+  const left=shopPending().filter(b=>!shopHas(sv,b));shopPendingSet(left);
+  for(const b of left)if(Date.now()-(b.sent||0)>60000){b.sent=Date.now();FB.request({k:'buy',id:b.id,tok:b.tok});}
+  shopPendingSet(left);
+  // a Founder's Pack or Lifetime No ads paid on this phone but never confirmed (the app closed too soon)
+  const NP=capPlug('NativePurchases');if(!NP||ADST.restored)return;ADST.restored=true;
+  try{const r=await NP.getPurchases({productType:'inapp'});for(const t of (r&&r.purchases)||[]){const k=['founder','lifetime'].find(k=>STORE[k].sku===t.productIdentifier),tok=t.purchaseToken||t.transactionId;
+    if(k&&tok&&!shopHas(NET.srv,{id:k})&&!shopPending().some(b=>b.tok===tok)){shopPendingSet(shopPending().concat([{id:k,tok,t:Date.now(),sent:Date.now()}]));FB.request({k:'buy',id:k,tok});}}}catch(e){}}
+async function shopBuy(id,say){const u=FB&&FB.user();
+  if(!u||!u.google){say('Sign in with Google first (Open sea), so your purchase follows you to any phone.');return;}
+  if(id==='founder'&&!shopFounderOpen()){say('The Founder\'s Pack is no longer on sale.');return;}
+  if(id==='pass'&&(NET.srv&&(NET.srv.pp||[]).includes(seasonAt(serverNowMs()).no))){say('You already have this season\'s pass.');return;}
+  if(window.__fakeShop){const tok='test-'+id+'-'+Date.now()+'-0000000000000';window.__fakeShop.bought=(window.__fakeShop.bought||[]).concat([id]);shopPendingSet(shopPending().concat([{id,tok,t:Date.now(),sent:Date.now()}]));FB.request({k:'buy',id,tok});say('Thank you! It arrives in a moment.');return;}
+  const NP=capPlug('NativePurchases');if(!NP){say('The shop is only in the Android app.');return;}
+  say('Opening Google Play…');
+  try{const t=await NP.purchaseProduct({productIdentifier:STORE[id].sku,productType:'inapp',quantity:1,isConsumable:id==='pass'});
+    const tok=t&&(t.purchaseToken||t.transactionId);if(!tok){say('');return;}
+    shopPendingSet(shopPending().concat([{id,tok,t:Date.now(),sent:Date.now()}]));FB.request({k:'buy',id,tok});
+    if(id==='lifetime')noAdsSet(NA_LIFETIME);
+    say(id==='founder'?'Welcome aboard, Founder! Your rewards arrive in a moment.':id==='pass'?'Season Pass unlocked! Claim your rewards below.':'Thank you! No ads, for life.');chime(true);
+  }catch(e){const m=String(e&&e.message||e);say(/cancel/i.test(m)?'':'Google Play said: '+m.slice(0,120));}}
+const shopFounderOpen=()=>serverNowMs()<STORE.founder.until;
+function rewardName(r){if(!r)return'';if(r.g)return r.g.toLocaleString()+' gold';const t=XTI.find(x=>x.id===r.o);if(t)return'Title: '+t.ti;
+  for(const k of ['trail','ball']){const o=COS[k].find(x=>x.o===r.o);if(o)return o.n;}return r.o;}
+function passXp(sv,n){return sv&&sv.px&&sv.px.n===n?sv.px.x|0:0;}
+function renderStore(){if($('storeov').hidden)return;const sv=logSave()||{},S=seasonAt(serverNowMs()),n=S.no,body=$('storebody');body.innerHTML='';
+  const box=(cls,title,tag)=>{const d=document.createElement('div');d.className='sbox '+cls;const h=document.createElement('h3');h.textContent=title;if(tag){const t=document.createElement('small');t.textContent=tag;h.appendChild(t);}d.appendChild(h);body.appendChild(d);return d;};
+  const btn=(d,txt,fn,ghost)=>{const b=document.createElement('button');b.className='btn'+(ghost?' ghost':'');b.textContent=txt;b.onclick=fn;d.appendChild(b);return b;};
+  const say=t=>{$('storemsg').textContent=t;};
+  // Founder's Pack (launch weeks only)
+  if(shopFounderOpen()||owns(sv,'founder')){const d=box('fnd','Founder\'s Pack',owns(sv,'founder')?'Yours ✓':'Until 30 Nov only');
+    const u=document.createElement('ul');['The title "Founder"','Founder\'s wake: gold and royal blue','Founder\'s shot: glowing blue cannonballs','2,000 gold'].forEach(t=>{const li=document.createElement('li');li.textContent=t;u.appendChild(li);});d.appendChild(u);
+    if(owns(sv,'founder')){const p=document.createElement('p');p.className='note';p.textContent='Thank you for backing Broadside Bay from the start! Choose your title and looks in the Captain\'s log.';d.appendChild(p);}
+    else{btn(d,'Become a Founder · '+shopPrice('founder'),()=>{audio();shopBuy('founder',say);});const p=document.createElement('p');p.className='note';p.textContent='Never sold again after 30 November.';d.appendChild(p);}}
+  // Season Pass
+  {const has=(sv.pp||[]).includes(n),xp=passXp(sv,n),top=PASS.step*PASS.tiers.length,step=Math.min(PASS.tiers.length,Math.floor(xp/PASS.step));
+    const d=box('','Season '+n+' Pass: '+S.n,S.weeksLeft+(S.weeksLeft===1?' week left':' weeks left'));
+    const p=document.createElement('p');p.className='note';p.textContent='Earn XP at sea to climb 10 steps. Everyone gets the free rewards; the pass adds this season\'s wake, cannonballs, title and more gold. Claim before the season ends.';d.appendChild(p);
+    const pr=document.createElement('div');pr.className='prog';pr.innerHTML='<i></i>';pr.firstChild.style.width=Math.min(100,xp/top*100)+'%';d.appendChild(pr);
+    const pt=document.createElement('p');pt.className='note';pt.textContent='Step '+step+' of 10 · '+Math.min(xp,top).toLocaleString()+' / '+top.toLocaleString()+' season XP';d.appendChild(pt);
+    if(!has)btn(d,'Get the Season Pass · '+shopPrice('pass'),()=>{audio();shopBuy('pass',say);});
+    const pc=sv.pc&&sv.pc.n===n?sv.pc:{f:0,p:0};
+    const tr=document.createElement('div');tr.className='ptrack';const hd=document.createElement('div');hd.className='phead';hd.innerHTML='<span></span><span>Free</span><span>Season Pass'+(has?' ✓':'')+'</span>';tr.appendChild(hd);
+    PASS.tiers.forEach((_,i)=>{const row=document.createElement('div');row.className='ptier';const st=document.createElement('div');st.className='st';st.innerHTML=(i+1)+'<small>'+((i+1)*PASS.step).toLocaleString()+' XP</small>';row.appendChild(st);
+      for(const prem of [false,true]){const r=passReward(n,i,prem),got=(pc[prem?'p':'f']>>i)&1,reach=xp>=(i+1)*PASS.step,can=reach&&!got&&(!prem||has);
+        const b=document.createElement('button');b.className='prew'+(prem?' prem':'')+(got?' got':can?' can':'')+(!reach||(prem&&!has)?' lock':'');b.id='pr-'+(prem?'p':'f')+i;
+        b.textContent=(got?'✓ ':can?'Claim: ':(prem&&!has)||!reach?'🔒 ':'')+rewardName(r);
+        b.onclick=()=>{if(!can){say(got?'Already claimed.':!reach?'Earn '+((i+1)*PASS.step-xp).toLocaleString()+' more XP this season to reach step '+(i+1)+'.':'Get the Season Pass to claim this.');return;}
+          econRequest({k:'pass',id:(prem?'p':'f')+i});b.className='prew got'+(prem?' prem':'');b.textContent='✓ '+rewardName(r);if(r.g){addGold(r.g);updHud();}chime(true);say(rewardName(r)+(r.o?' is yours. Pick it in the Captain\'s log.':' claimed.'));};
+        row.appendChild(b);}
+      tr.appendChild(row);});
+    d.appendChild(tr);}
+  // No ads
+  {const life=owns(sv,'lifetime');const d=box('','No ads',life?'Yours for life ✓':noAdsOn()?'On ✓':'');
+    const p=document.createElement('p');p.className='note';p.textContent=life?'No ads, ever. Videos for rewards are skipped and you still get the reward.':'No ads between battles, and every video reward without the video.';d.appendChild(p);
+    if(!life){btn(d,'No ads for life · '+shopPrice('lifetime'),()=>{audio();shopBuy('lifetime',say);});if(!noAdsOn())btn(d,'Or '+noAdsPrice()+' a month',()=>{audio();noAdsBuy(say);},true);}}}
+function openStore(){if(!shopOn())return;audio();$('menuov').hidden=true;$('storemsg').textContent='';$('storeov').hidden=false;renderStore();}
+$('menushop').onclick=openStore;$('storeclose').onclick=()=>{audio();$('storeov').hidden=true;$('menuov').hidden=false;};
 /* ---- fleets (the app: online Open sea, Google captains; the referee runs them) ---- */
 function fleetOn(){return econServer()&&!!NET.srv;}
 function fleetGoogle(){const u=FB&&FB.user();return !!(u&&u.google);}
@@ -2546,7 +2684,7 @@ function renderFleet(){if($('fleetov').hidden)return;const body=$('fleetbody');b
     const inv=document.createElement('button');inv.className='btn';inv.textContent='Invite friends';inv.onclick=async()=>{const txt=`Join my fleet [${mine.tag}] ${mine.n} in Broadside Bay, the online pirate battle game! Sail with me: https://broadsidebay.web.app`;
       try{if(navigator.share){await navigator.share({title:'Broadside Bay',text:txt});return;}}catch(e){return;}
       try{await navigator.clipboard.writeText(txt);$('fleetmsg').textContent='Invite copied. Paste it to your friends.';}catch(e){$('fleetmsg').textContent=txt;}};body.appendChild(inv);
-    const lv=document.createElement('button');lv.className='linkbtn'+(fleet.leaveArm?' warn':'');lv.textContent=fleet.leaveArm?'Tap again to leave '+mine.n:'Leave this fleet';lv.disabled=busy;
+    const lv=document.createElement('button');lv.className='linkbtn'+(fleet.leaveArm?' warn':'');lv.textContent=fleet.leaveArm?TAPW+' again to leave '+mine.n:'Leave this fleet';lv.disabled=busy;
     lv.onclick=()=>{if(!fleet.leaveArm){fleet.leaveArm=true;renderFleet();return;}fleet.leaveArm=false;fleetAsk({op:'leave'},'Leaving the fleet…');};body.appendChild(lv);portSection(body);return;}
   $('fleeth').textContent='Fleets';
   const ids=Object.keys(all).filter(id=>all[id]&&all[id].tag).sort((a,b)=>Object.keys(all[b].m||{}).length-Object.keys(all[a].m||{}).length);
@@ -2623,7 +2761,7 @@ function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.cl
   menuPaused=!onlineAtSea();if(menuPaused)state='paused';
   $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
   $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
-  $('menureport').hidden=!onlineAtSea();renderNoAds();$('menuerase').hidden=!eraseOn();eraseArm=false;$('menuerase').textContent='Delete my online data';$('menuerase').classList.remove('warn');$('menufriends').textContent=duelOn()?'Friends & duels':'Friends';$('menufriends').hidden=!friendsOn();$('menulog').hidden=!logOn();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
+  $('menureport').hidden=!onlineAtSea();renderNoAds();$('menuerase').hidden=!eraseOn();eraseArm=false;$('menuerase').textContent='Delete my online data';$('menuerase').classList.remove('warn');$('menufriends').textContent=duelOn()?'Friends & duels':'Friends';$('menufriends').hidden=!friendsOn();$('menulog').hidden=!logOn();$('menushop').hidden=!shopOn();$('menufleet').hidden=!fleetOn();$('menuboard').hidden=!boardOn();$('menudaily').hidden=!dailyOn();
   $('menuleave').textContent=MODE==='open'?'Main menu':'Leave battle';
   $('menuleavenote').textContent=MODE==='open'?'Your voyage is saved when you leave.':'';
   $('menuov').hidden=false;}
@@ -2650,7 +2788,7 @@ function handleBack(){
 try{const App=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;
   if(App)App.addListener('backButton',()=>{if(!handleBack())App.minimizeApp();});}catch(e){}
 $('menuleave').onclick=()=>{audio();
-  if(MODE!=='open'&&!leaveArm){leaveArm=true;$('menuleave').textContent='Tap again to leave';$('menuleavenote').textContent='This wave battle will end and its gold is not kept.';return;}
+  if(MODE!=='open'&&!leaveArm){leaveArm=true;$('menuleave').textContent=TAPW+' again to leave';$('menuleavenote').textContent='This wave battle will end and its gold is not kept.';return;}
   $('menuov').hidden=true;menuPaused=false;if(state==='paused')state='play';toMenu();};
 let aim='front';
 const canSide=()=>up.broadside>0||pw.side>0;
@@ -2672,10 +2810,10 @@ function refreshStart(){waveNote();storyNote();tutNote();seasonLine();
   const sv=loadOpen();$('savenote').hidden=!sv;$('newVoyage').hidden=!sv;$('newVoyage').textContent='Start a new voyage';$('newVoyage').classList.remove('warn');newArm=false;
   $('goOpen').textContent=sv?'Continue voyage':'Open sea';if(sv)$('savenote').textContent=`Saved voyage: ${RANKS[rankOf(sv.xp|0)].n} · ${shipById(sv.ship).name} · ${sv.gold|0} gold`;}
 let newArm=false;
-$('newVoyage').onclick=()=>{if(!newArm){newArm=true;$('newVoyage').textContent='Tap again to erase your saved voyage';$('newVoyage').classList.add('warn');return;}
+$('newVoyage').onclick=()=>{if(!newArm){newArm=true;$('newVoyage').textContent=TAPW+' again to erase your saved voyage';$('newVoyage').classList.add('warn');return;}
   if(FB){FB.request({k:'reset'});$('newVoyage').textContent='Starting a new voyage…';setTimeout(refreshStart,2500);return;}
   try{localStorage.removeItem(SAVE_KEY)}catch(e){}refreshStart();};
-function toMenu(){if(coop)endCoop();$('objective').hidden=true;$('objective').classList.remove('tut');tutGlow(null);story.on=false;story.tut=false;$('storyov').hidden=true;if(MODE==='open'&&state!=='over')saveOpen();if(MODE==='waves')saveWaves();$('rankrow').hidden=true;state='title';firing=false;joy=null;
+function toMenu(){if(coop)endCoop();$('fixbtn').hidden=true;$('objective').hidden=true;$('objective').classList.remove('tut');tutGlow(null);story.on=false;story.tut=false;$('storyov').hidden=true;if(MODE==='open'&&state!=='over')saveOpen();if(MODE==='waves')saveWaves();$('rankrow').hidden=true;state='title';firing=false;joy=null;
   ['over','shopov','dock','boss','hint','map','menuov'].forEach(id=>$(id).hidden=true);refreshStart();$('start').hidden=false;}
 function launchOpen(sv){const b=$('goOpen');b.disabled=true;b.textContent='Charting the sea…';
   setTimeout(()=>{try{if(localStorage.getItem('bb-starter')==='1'&&FB.user()&&FB.user().google&&econServer()){econRequest({k:'starter'});addGold(300);updHud();showBanner('Starter reward: 300 gold');localStorage.removeItem('bb-starter');}}catch(e){}},3500);
@@ -2704,6 +2842,25 @@ $('joinguest').onclick=async()=>{audio();const n=FB.cleanName($('guestname').val
   b.disabled=false;b.textContent='Sail as guest';};
 $('joinout').onclick=async()=>{closeOnline();await FB.signOut();refreshStart();showJoin();};
 $('goWaves').onclick=()=>{audio();musPlay();$('start').hidden=true;$('hint').hidden=false;reset();state='play'};
+// a video repairs the ship at sea (online Open sea), once every 5 minutes, when the hull is half gone
+const FIX_GAP=300000;
+function fixReady(){const sv=dailySave()||{},last=Math.max(AD.fix||0,sv.af||0);return serverNowMs()-last>=FIX_GAP;}
+function renderFix(near){const b=$('fixbtn'),show=MODE==='open'&&state==='play'&&!duel&&!near&&adsOn()&&econServer()&&P.hp>0&&P.hp<=maxHp()/2&&fixReady();
+  if(b.hidden===show){b.hidden=!show;if(show){b.textContent=noAdsOn()?'Repair now (No ads bonus)':'▶ Watch a video to repair';b.disabled=AD.busy;}}}
+$('fixbtn').onclick=async()=>{if(AD.busy||!fixReady()||state!=='play')return;audio();AD.busy=true;$('fixbtn').disabled=true;firing=false;joy=null;
+  const ok=noAdsOn()||await adReward();AD.busy=false;$('fixbtn').disabled=false;
+  if(!ok||state!=='play'||MODE!=='open')return;
+  AD.fix=serverNowMs();econRequest({k:'adfix'});P.hp=maxHp();updHud();$('fixbtn').hidden=true;chime(true);showBanner('Hull repaired');};
+// one more life in a Wave battle after a video (once per battle)
+function renderRevive(){const b=$('revivebtn');b.hidden=!(MODE==='waves'&&!coop&&state==='over'&&adsOn()&&!AD.revived);if(b.hidden)return;
+  b.textContent=noAdsOn()?'Keep fighting (No ads bonus)':'▶ Watch a video to keep fighting';b.disabled=AD.busy;}
+$('revivebtn').onclick=async()=>{if(AD.busy||AD.revived||state!=='over'||MODE!=='waves')return;audio();AD.busy=true;renderRevive();
+  const ok=noAdsOn()||await adReward();AD.busy=false;
+  if(!ok||state!=='over'){renderRevive();return;}
+  AD.revived=true;$('over').hidden=true;$('revivebtn').hidden=true;
+  sinking=sinking.filter(x=>x.g!==pship);pship.visible=true;pship.userData.ground.forEach(m=>m.visible=true);
+  balls.forEach(b=>scene.remove(b.m));balls=[];
+  P.hp=maxHp();P.inv=3;P.v=0;state='play';musPlay();updHud();chime(true);showBanner('Back in the fight!');};
 $('again').onclick=()=>{audio();$('over').hidden=true;if(coop){toMenu();return;}if(MODE==='open'&&duel){endDuel();return;}if(MODE==='open')respawn();else if(MODE==='story')startStory(story.i);else betweenBattles(()=>{musPlay();reset();state='play';});};
 $('overmenu').onclick=()=>{audio();toMenu();};$('shopmenu').onclick=()=>{audio();toMenu();};
 const stick=document.createElement('div'),knob=document.createElement('div');
@@ -2730,7 +2887,7 @@ function collideIslands(s){let hit=false;for(const r of islands){const dx=s.x-r.
 function steer(s,target,rate,dt){const d=angDiff(target,s.a);const st=Math.max(-rate*dt,Math.min(rate*dt,d));s.a+=st;return st/dt;}
 function hurtPlayer(){if(P.inv>0||state!=='play'||P.down)return;buzz('heavy');P.hp--;P.inv=1.2;shake=.9;updHud();noise(.4,400,.4);if(P.hp<=0){if(coop)coopDown();else gameOver();}}
 function gameOver(){
-  state='over';musLament();firing=false;joy=null;boom(P.x,P.z,true);sinking.push({g:pship,t:0,keep:true});hideGround(pship);$('boss').hidden=true;$('dock').hidden=true;pw.speed=pw.rapid=pw.side=0;updAim();updChips();
+  state='over';$('fixbtn').hidden=true;musLament();firing=false;joy=null;boom(P.x,P.z,true);sinking.push({g:pship,t:0,keep:true});hideGround(pship);$('boss').hidden=true;$('dock').hidden=true;pw.speed=pw.rapid=pw.side=0;updAim();updChips();
   if(MODE==='open'){NET.deaths++;if(NET.fb&&NET.room&&NET.room.reportDeath)NET.room.reportDeath();NET.killer=(NET.lastHitBy&&clock-NET.lastHitT<6)?NET.lastHitBy:null;
     const kr=NET.killer&&NET.peers.get(NET.killer),killerName=kr?remoteName(kr):null;
     if(duel){const d=duel;d.over=true;setTimeout(()=>{if(state!=='over')return;$('overeyebrow').textContent='Duel lost';$('overtxt').textContent=`${d.name} won this one. No gold was lost.`;$('overlbl').textContent='Duels are pure skill';$('os').textContent='';$('ob').textContent='';$('again').textContent='Return to port';$('over').hidden=false;},1400);return;}
@@ -2740,12 +2897,12 @@ function gameOver(){
   if(MODE==='story'){setTimeout(()=>{if(state!=='over')return;storyEnd(false,'Your ship went down.');},1400);return;}
   saveWaves();battleEnded();
   if(earned>best){best=earned;try{localStorage.setItem('bb-best',best)}catch(e){}}
-  setTimeout(()=>{if(state!=='over')return;$('overtxt').textContent=`She went down on wave ${wave}.`;$('overlbl').textContent='Gold plundered';$('again').textContent='Sail again';
+  setTimeout(()=>{if(state!=='over')return;renderRevive();$('overtxt').textContent=`She went down on wave ${wave}.`;$('overlbl').textContent='Gold plundered';$('again').textContent='Sail again';
     $('os').textContent=earned;$('ob').textContent=earned>=best&&earned>0?'A new record.':'Best: '+best;$('over').hidden=false},1400);
 }
 function freeSpot(near,minD,maxD){for(let k=0;k<20;k++){const a=rnd(0,TAU),d=rnd(minD,maxD),B=BOUND(),x=Math.max(-B+3,Math.min(B-3,near.x+Math.cos(a)*d)),z=Math.max(-B+3,Math.min(B-3,near.z+Math.sin(a)*d));
   if(islands.every(r=>Math.hypot(x-r.x,z-r.z)>r.r*1.5+2))return{x,z};}return null;}
-function wake(s,size,col){const bx=s.x-Math.cos(s.a)*2.6*size,bz=s.z-Math.sin(s.a)*2.6*size;
+function wake(s,size,col){if(Array.isArray(col))col=col[Math.random()*col.length|0];const bx=s.x-Math.cos(s.a)*2.6*size,bz=s.z-Math.sin(s.a)*2.6*size;
   spark(bx+rnd(-.3,.3),0,bz+rnd(-.3,.3),col&&col!=='#ffffff'?{flat:true,op:.8,s:1.3*size,life:2.2,grow:2.4,color:col,add:true}:{flat:true,op:.7,s:1.3*size,life:2.2,grow:2.4});
   if(s.v>7&&Math.random()<.5){const fx=s.x+Math.cos(s.a)*3*size,fz=s.z+Math.sin(s.a)*3*size;
     spark(fx,.4,fz,{tex:smokeTex,color:'#ffffff',op:.7,s:rnd(.5,.9)*size,life:.5,vx:Math.cos(s.a+Math.PI/2*(Math.random()<.5?1:-1))*2.5,vy:rnd(1.5,3),vz:Math.sin(s.a+Math.PI/2)*2.5,g:9});}}
@@ -2761,7 +2918,7 @@ function goOnline(){if(!FB||NET.room||NET.banned)return;const u=FB.user();if(!u)
   const R=FB.openRoom();NET.room=R;NET.ok=true;NET.myId=R.uid;NET.peers.forEach(dropRemoteShip);NET.peers.clear();NET.last=null;
   R.onConnection(c=>{NET.ok=c;netUiKey='';});
   R.onReward(r=>{NET.kills++;showBanner(r.d?'Duel won: +100 gold':'You sank '+(FB.cleanName(r.n)||'a captain'));chime(true);});
-  NET.pending=new Map();NET.srv=null;if(notifOn&&NET.pushToken)FB.saveToken(NET.pushToken);NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();fleetChanged();achNotice();if(sv&&(+sv.na||0)!==ADST.na&&!(ADST.na>Date.now()&&!sv.na&&ADST.na-Date.now()<3600000))noAdsSet(+sv.na||0);});
+  NET.pending=new Map();NET.srv=null;if(notifOn&&NET.pushToken)FB.saveToken(NET.pushToken);NET.unwatch=FB.watchSave(sv=>{NET.srv=sv;cacheSave(sv);econSync();dailyNotice();fleetChanged();achNotice();shopSync();if(sv&&(+sv.na||0)!==ADST.na&&!(ADST.na>Date.now()&&!sv.na&&ADST.na-Date.now()<3600000))noAdsSet(+sv.na||0);});
   NET.unworld=FB.watchWorld(w=>{NET.world=w;setWorldTier(worldTierWanted());});
   NET.fleets={};NET.unfleets=FB.watchFleets(f=>{NET.fleets=f;fleetChanged();});setTimeout(loadPorts,1500);
   NET.unduel=FB.duelWatch(duelInbox);NET.uncoop=FB.coopInboxWatch(coopInbox);

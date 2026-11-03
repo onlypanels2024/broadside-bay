@@ -104,7 +104,17 @@
     o.ks = {}; for (const k of ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark', 'treasure', 'escort', 'captain', 'duel']) { const v = s.ks && s.ks[k]; if (num(v) && v > 0) o.ks[k] = Math.floor(v); }
     if (!Object.keys(o.ks).length) delete o.ks;
     for (const k of ['dn', 'bs']) { if (num(s[k]) && s[k] > 0) o[k] = Math.floor(s[k]); else delete o[k]; }
-    if (typeof s.title === 'string' && ACH.some(a => a.id === s.title)) o.title = s.title; else delete o.title;
+    // things bought or won (Founder's Pack, Season Pass items), Season Passes bought (season numbers),
+    // XP earned this season {n: season, x}, pass rewards claimed this season {n, f: free bits, p: pass bits},
+    // last repair video (af) and last free-chest video (ac), in ms
+    if (Array.isArray(s.own)) o.own = [...new Set(s.own.filter(x => typeof x === 'string' && /^[a-z0-9]{2,16}$/.test(x)))].slice(0, 60); else delete o.own;
+    if (o.own && !o.own.length) delete o.own;
+    if (Array.isArray(s.pp)) o.pp = [...new Set(s.pp.filter(x => Number.isInteger(x) && x > 0))].slice(-30); else delete o.pp;
+    if (o.pp && !o.pp.length) delete o.pp;
+    if (s.px && Number.isInteger(s.px.n) && num(s.px.x)) o.px = { n: s.px.n, x: Math.max(0, Math.floor(s.px.x)) }; else delete o.px;
+    if (s.pc && Number.isInteger(s.pc.n)) o.pc = { n: s.pc.n, f: Number.isInteger(s.pc.f) ? s.pc.f & 1023 : 0, p: Number.isInteger(s.pc.p) ? s.pc.p & 1023 : 0 }; else delete o.pc;
+    for (const k of ['af', 'ac']) { if (num(s[k]) && s[k] > 0) o[k] = Math.floor(s[k]); else delete o[k]; }
+    if (typeof s.title === 'string' && (ACH.some(a => a.id === s.title) || (XTI.some(t => t.id === s.title) && owns(o, s.title)))) o.title = s.title; else delete o.title;
     if (typeof s.cx === 'string' && /^[0-9]{4}$/.test(s.cx)) o.cx = s.cx; else delete o.cx;
     if (s.sg0 === true) o.sg0 = true; else delete o.sg0;
     if (Array.isArray(s.sr)) o.sr = s.sr.filter(x => Number.isInteger(x) && x > 0).slice(-20); else delete o.sr;
@@ -190,10 +200,13 @@ const ACH=[
   {id:'champ',n:'Season Champion',d:'Finish a season in the top 10',st:'sr',need:1,ti:'Season Champion'},
   {id:'shark',n:'Shark Hunter',d:'Help destroy the megalodon',st:'ks.shark',need:1,ti:'Shark Hunter'},
 ];
-// Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (or nothing).
+// Titles from the shop and the Season Pass (not achievements): the captain has one when s.own lists its id.
+const XTI=[{id:'founder',ti:'Founder'},{id:'s1cap',ti:'Gold Rush Captain'},{id:'s2cap',ti:'Kraken Season Captain'}];
+const owns=(s,id)=>!!s&&Array.isArray(s.own)&&s.own.includes(id);
+// Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (a), something owned (o), or nothing.
 const COS={
-  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'},{n:'Steel wake',a:'shark'}],
-  ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'}],
+  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'},{n:'Steel wake',a:'shark'},{n:'Founder\'s wake',o:'founder'},{n:'Gold Rush wake',o:'s1wake'},{n:'Abyss wake',o:'s2wake'}],
+  ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'},{n:'Founder\'s shot',o:'founder'},{n:'Gold Rush shot',o:'s1shot'},{n:'Ink shot',o:'s2shot'}],
   fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
   pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
 };
@@ -201,7 +214,7 @@ const COS_SLOTS=['trail','ball','fig','pet'];
 function achStat(s,st){if(!s)return 0;if(st==='sr')return Array.isArray(s.sr)?s.sr.length:0;if(st.startsWith('ks.'))return (s.ks&&s.ks[st.slice(3)])|0;if(st==='ship.manowar')return s.ships&&s.ships.manowar?1:0;if(st==='fleet')return s.fleet?1:0;return s[st]|0;}
 const achDone=(s,a)=>achStat(s,a.st)>=a.need;
 function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return false;
-  return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
+  return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(o.o)return owns(s,o.o);if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
 /*ENDACHDEF*/
   /*SEASONDEF*/// Seasons last 6 weeks (season 1 began Monday 12 October 2026); each has a theme. Weekends bring an event.
 const SEASON0_WEEK=2963;
@@ -229,8 +242,22 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
   if(E&&E.id==='kraken2'&&kind==='kraken')m*=2;
   if(E&&E.id==='launch'&&['sloop','galleon','fireship','boss','merchant','kraken','shark'].includes(kind))m*=2;
   return m;}
+// The shop (Google Play): Founder's Pack (on sale until 30 Nov 2026, Malta time), Lifetime No ads, Season Pass.
+const STORE={founder:{sku:'founder_pack',g:2000,until:1796079600000},lifetime:{sku:'noads_lifetime'},pass:{sku:'season_pass'}};
+const NA_LIFETIME=4102444800000;   // "no ads until the year 2100"
+// The Season Pass: 10 steps, each needs PASS.step more XP earned this season. [free reward, pass reward]:
+// a number is gold; w/b/t are this season's wake, cannonballs and title (a season without its own items pays PASS.swap gold).
+const PASS={step:300,tiers:[[100,300],[100,'b'],[150,400],[150,500],[200,'t'],[200,600],[250,700],[250,800],[300,1000],[500,'w']],swap:750,
+  items:{1:{w:'s1wake',b:'s1shot',t:'s1cap'},2:{w:'s2wake',b:'s2shot',t:'s2cap'}}};
+function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const r=T[prem?1:0];if(typeof r==='number')return{g:r};const it=PASS.items[n];return it&&it[r]?{o:it[r]}:{g:PASS.swap};}
 /*ENDSEASONDEF*/
   const docked = p => !!p && inHarbour(p.x, p.z);
+  // XP also counts towards this season's Season Pass
+  function addXp(s, v, now) {
+    s.xp += v; const n = seasonAt(num(now) ? now : Date.now()).no;
+    if (!s.px || s.px.n !== n) s.px = { n, x: 0 };
+    s.px = { n, x: s.px.x + v };
+  }
   const atSea = (p, now) => !!p && p.al === 1 && num(p.t) && now - p.t <= RATE.freshMs && !inHarbour(p.x, p.z);
 
   // req = {k:'kill'|'up'|'repair'|'ship'|'look'|'reset', e?, id?, lk?, dw?}; player = this captain's /players record (or null)
@@ -264,7 +291,7 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
         const ship = ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark'].includes(req.e);
         s.ks = { ...(s.ks || {}), [req.e]: ((s.ks && s.ks[req.e]) | 0) + 1 };
         const g = Math.round(K.g * (opts && opts.goldMul || 1) * eventMul(req.e, now));
-        s.gold += g; s.earned += g; s.xp += K.xp; if (ship) s.sunk += 1;
+        s.gold += g; s.earned += g; addXp(s, K.xp, now); if (ship) s.sunk += 1;
         questEvent(s, req.e, 1, now); if (ship) questEvent(s, 'ship', 1, now); questEvent(s, 'gold', g, now);
         return { save: s, ok: true };
       }
@@ -306,7 +333,7 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
         if (d && d.d >= day) return no('already claimed today');
         const st = d && d.d === day - 1 ? d.st + 1 : 1;
         const g = DAILY_CHEST[Math.min(st, DAILY_CHEST.length) - 1];
-        s.daily = { d: day, st }; s.bs = Math.max(s.bs | 0, st); s.gold += g; s.xp += 10 * Math.min(st, 7);
+        s.daily = { d: day, st }; s.bs = Math.max(s.bs | 0, st); s.gold += g; addXp(s, 10 * Math.min(st, 7), now);
         return { save: s, ok: true, g };
       }
       case 'quest': {
@@ -314,11 +341,13 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
         const day = dayOf(now); const q = questDay(s, day); const Q = QUESTS[questsFor(day)[i]];
         if (q.c[i]) return no('already claimed');
         if (q.p[i] < Q.n) return no('quest not finished');
-        q.c[i] = true; s.gold += Q.g; s.xp += Q.xp;
+        q.c[i] = true; s.gold += Q.g; addXp(s, Q.xp, now);
         return { save: s, ok: true };
       }
       case 'title': {
         if (req.id === '' || req.id === 'none') { delete s.title; return { save: s, ok: true }; }
+        const x = XTI.find(t => t.id === req.id);
+        if (x) { if (!owns(s, x.id)) return no('title not earned'); s.title = x.id; return { save: s, ok: true }; }
         const a = ACH.find(x => x.id === req.id);
         if (!a || !achDone(s, a)) return no('title not earned');
         s.title = a.id; return { save: s, ok: true };
@@ -354,11 +383,50 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
       // the No ads subscription; the referee has already asked Google Play when it runs out (opts.noAdsUntil)
       case 'noads': {
         if (!(opts && num(opts.noAdsUntil))) return no('subscription not confirmed by Google Play');
-        if (opts.noAdsUntil > 0) s.na = Math.floor(opts.noAdsUntil); else delete s.na;
+        if (owns(s, 'lifetime')) s.na = NA_LIFETIME;
+        else if (opts.noAdsUntil > 0) s.na = Math.floor(opts.noAdsUntil); else delete s.na;
         return { save: s, ok: true };
       }
+      // a purchase Google Play has confirmed to the referee (opts.bought)
+      case 'buy': {
+        const id = req.id;
+        if (!STORE[id]) return no('unknown product');
+        if (!(opts && opts.bought && opts.bought.id === id)) return no('purchase not confirmed by Google Play');
+        const own = add => { s.own = [...new Set((s.own || []).concat([add]))]; };
+        if (id === 'founder') { if (owns(s, 'founder')) return no('already a Founder'); own('founder'); s.gold += STORE.founder.g; }
+        if (id === 'lifetime') { own('lifetime'); s.na = NA_LIFETIME; }
+        if (id === 'pass') { const n = seasonAt(now).no; if ((s.pp || []).includes(n)) return no('already have this season\'s pass'); s.pp = (s.pp || []).concat([n]).slice(-30); }
+        return { save: s, ok: true };
+      }
+      // claim a Season Pass reward: id 'f3' = free step 4, 'p3' = pass step 4
+      case 'pass': {
+        const m = /^([fp])([0-9])$/.exec(String(req.id || ''));
+        if (!m) return no('unknown reward');
+        const prem = m[1] === 'p', i = +m[2], n = seasonAt(now).no;
+        const xp = s.px && s.px.n === n ? s.px.x : 0;
+        if (xp < (i + 1) * PASS.step) return no('step not reached');
+        if (prem && !(s.pp || []).includes(n)) return no('no Season Pass');
+        const pc = s.pc && s.pc.n === n ? { ...s.pc } : { n, f: 0, p: 0 };
+        const bit = 1 << i, key = prem ? 'p' : 'f';
+        if (pc[key] & bit) return no('already claimed');
+        const r = passReward(n, i, prem);
+        pc[key] |= bit; s.pc = pc;
+        if (r.g) s.gold += r.g;
+        if (r.o) s.own = [...new Set((s.own || []).concat([r.o]))];
+        return { save: s, ok: true, g: r.g || 0 };
+      }
+      // a repair video at sea (or with No ads, the button): one every few minutes
+      case 'adfix': {
+        if (now - (s.af || 0) < ADS.fixGap) return no('repair video too soon');
+        s.af = now; return { save: s, ok: true };
+      }
+      // the free chest after a video, every few hours
+      case 'adchest': {
+        if (now - (s.ac || 0) < ADS.chestGap) return no('free chest not ready');
+        s.ac = now; s.gold += ADS.chest; return { save: s, ok: true, g: ADS.chest };
+      }
       case 'reset': {
-        const f = fresh(); if (s.rl) f.rl = s.rl; if (s.na) f.na = s.na; if (s.ad) f.ad = s.ad; if (s.sg0) f.sg0 = true; if (s.sr) f.sr = s.sr; for (const k of ['ks', 'dn', 'bs']) if (s[k]) f[k] = s[k];   // the captain's log survives a new voyage   // keep the rate limiter so a reset can't be used to farm
+        const f = fresh(); if (s.rl) f.rl = s.rl; if (s.na) f.na = s.na; if (s.ad) f.ad = s.ad; if (s.sg0) f.sg0 = true; if (s.sr) f.sr = s.sr; for (const k of ['ks', 'dn', 'bs', 'own', 'pp', 'px', 'pc', 'af', 'ac']) if (s[k]) f[k] = s[k];   // the captain's log survives a new voyage   // keep the rate limiter so a reset can't be used to farm
         const pt = s.paint && checkPaint(s.paint.lk, s.paint.dw, 0); if (pt) f.paint = pt;   // keep colours a Deckhand may use
         return { save: f, ok: true };
       }
@@ -366,7 +434,7 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
     }
   }
   // Video rewards: gold per video and videos per day
-  const ADS = { gold: 100, perDay: 5 };
+  const ADS = { gold: 100, perDay: 5, fixGap: 300000, chest: 150, chestGap: 4 * 3600000 };
   // Drawing checks cost a little money (AI), so each captain gets CHECKS.perHour of them.
   const CHECKS = { perHour: 15 };
   function checkQuota(saveIn, now) {
@@ -398,9 +466,9 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
   // A captain sank: they lose half the gold in their hold.
   function applyDeath(saveIn) { const s = norm(saveIn); s.gold -= Math.floor(s.gold / 2); s.dn = (s.dn | 0) + 1; return s; }
   // Won a duel both captains agreed to.
-  function applyDuelWin(saveIn) { const s = norm(saveIn); s.gold += DUEL.g; s.earned += DUEL.g; s.xp += DUEL.xp; s.ks = { ...(s.ks || {}), duel: ((s.ks && s.ks.duel) | 0) + 1 }; return s; }
+  function applyDuelWin(saveIn, now) { const s = norm(saveIn); s.gold += DUEL.g; s.earned += DUEL.g; addXp(s, DUEL.xp, now); s.ks = { ...(s.ks || {}), duel: ((s.ks && s.ks.duel) | 0) + 1 }; return s; }
   // A captain sank another captain (already confirmed by the hit referee).
-  function applyPvpKill(saveIn, now) { const s = norm(saveIn); s.gold += PVP.g; s.earned += PVP.g; s.xp += PVP.xp; s.sunk += 1; s.ks = { ...(s.ks || {}), captain: ((s.ks && s.ks.captain) | 0) + 1 };
+  function applyPvpKill(saveIn, now) { const s = norm(saveIn); s.gold += PVP.g; s.earned += PVP.g; addXp(s, PVP.xp, now); s.sunk += 1; s.ks = { ...(s.ks || {}), captain: ((s.ks && s.ks.captain) | 0) + 1 };
     if (num(now)) { questEvent(s, 'captain', 1, now); questEvent(s, 'ship', 1, now); questEvent(s, 'gold', PVP.g, now); } return s; }
 
   // Fleets: Google captains of rank 2 (Bosun) or more can found one for 500 gold; up to 20 captains each.
@@ -430,6 +498,6 @@ function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
   const portNear = (x, z) => num(x) && num(z) ? PORTS.findIndex(([px, pz]) => Math.hypot(x - px, z - pz) < PORT_R) : -1;
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { useShip, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, SHARK, sharkRises, LAUNCH, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { useShip, STORE, PASS, passReward, XTI, owns, NA_LIFETIME, addXp, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, SHARK, sharkRises, LAUNCH, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);
