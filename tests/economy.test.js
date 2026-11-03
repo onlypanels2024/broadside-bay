@@ -409,3 +409,68 @@ test('a spare treasure map pays 40 gold, no XP, at most once every 30 seconds', 
   assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'map' }, seaAt(NOW + 10000), NOW + 10000).ok, false);
   assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'map' }, seaAt(NOW + 31000), NOW + 31000).ok, true);
 });
+
+test('shop: Founder\'s Pack, Lifetime No ads and Season Pass only with a purchase Google Play confirmed', () => {
+  const ok = id => ({ bought: { id } });
+  let r = E.processRequest(null, { k: 'buy', id: 'founder' }, null, NOW, null);
+  assert.strictEqual(r.ok, false);                                     // no confirmation, nothing
+  r = E.processRequest(null, { k: 'buy', id: 'founder' }, null, NOW, ok('pass'));
+  assert.strictEqual(r.ok, false);                                     // confirmed for something else
+  r = E.processRequest(null, { k: 'buy', id: 'founder' }, null, NOW, ok('founder'));
+  assert.strictEqual(r.ok, true); assert.deepStrictEqual([r.save.own, r.save.gold], [['founder'], 2000]);
+  assert.strictEqual(E.processRequest(r.save, { k: 'buy', id: 'founder' }, null, NOW, ok('founder')).ok, false);   // only once
+  // Founder title and looks
+  let s = r.save;
+  assert.strictEqual(E.processRequest(s, { k: 'title', id: 'founder' }, null, NOW).ok, true);
+  assert.strictEqual(E.processRequest(null, { k: 'title', id: 'founder' }, null, NOW).ok, false);
+  assert.strictEqual(E.processRequest(s, { k: 'cos', cx: '6400' }, null, NOW).ok, true);
+  assert.strictEqual(E.processRequest(null, { k: 'cos', cx: '6400' }, null, NOW).ok, false);
+  assert.strictEqual(E.norm({ title: 'founder' }).title, undefined);    // can't be written in without owning it
+  // Lifetime No ads: survives the monthly subscription check finding nothing
+  r = E.processRequest(s, { k: 'buy', id: 'lifetime' }, null, NOW, ok('lifetime'));
+  assert.strictEqual(r.save.na, E.NA_LIFETIME);
+  r = E.processRequest(r.save, { k: 'noads' }, null, NOW, { noAdsUntil: 0 });
+  assert.strictEqual(r.save.na, E.NA_LIFETIME);
+  // a new voyage keeps everything bought
+  r = E.processRequest(r.save, { k: 'reset' }, null, NOW);
+  assert.deepStrictEqual([r.save.own, r.save.na], [['founder', 'lifetime'], E.NA_LIFETIME]);
+});
+
+test('Season Pass: XP this season climbs the steps; pass rewards need the pass; each claimed once; a new season starts over', () => {
+  const n = E.seasonAt(NOW).no;
+  let s = E.fresh();
+  for (let i = 0; i < 4; i++) s = E.processRequest(s, { k: 'kill', e: 'galleon' }, seaAt(NOW + i * 60000), NOW + i * 60000).save;
+  assert.deepStrictEqual(s.px, { n, x: 200 });
+  assert.strictEqual(E.processRequest(s, { k: 'pass', id: 'f0' }, null, NOW).ok, false);          // 200 < 300
+  s = E.norm({ ...s, px: { n, x: 1600 } });
+  let r = E.processRequest(s, { k: 'pass', id: 'f4' }, null, NOW);
+  assert.strictEqual(r.ok, true); assert.strictEqual(r.save.gold - s.gold, 200);
+  assert.strictEqual(E.processRequest(r.save, { k: 'pass', id: 'f4' }, null, NOW).ok, false);    // once
+  assert.strictEqual(E.processRequest(r.save, { k: 'pass', id: 'f5' }, null, NOW).ok, false);    // 1,600 < 1,800
+  assert.strictEqual(E.processRequest(r.save, { k: 'pass', id: 'p4' }, null, NOW).ok, false);    // no pass
+  r = E.processRequest(r.save, { k: 'buy', id: 'pass' }, null, NOW, { bought: { id: 'pass' } });
+  assert.deepStrictEqual(r.save.pp, [n]);
+  assert.strictEqual(E.processRequest(r.save, { k: 'buy', id: 'pass' }, null, NOW, { bought: { id: 'pass' } }).ok, false);
+  r = E.processRequest(r.save, { k: 'pass', id: 'p4' }, null, NOW);
+  assert.strictEqual(r.ok, true);
+  const item = E.passReward(n, 4, true);
+  if (item.o) { assert.ok(r.save.own.includes(item.o)); assert.strictEqual(E.processRequest(r.save, { k: 'title', id: item.o }, null, NOW).ok, true); }
+  // next season: XP, claims and the pass start over
+  const later = NOW + 7 * 7 * 86400000, n2 = E.seasonAt(later).no;
+  assert.ok(n2 > n);
+  assert.strictEqual(E.processRequest(r.save, { k: 'pass', id: 'f0' }, null, later).ok, false);
+  const q = E.processRequest(r.save, { k: 'daily' }, null, later).save;
+  assert.deepStrictEqual(q.px, { n: n2, x: 10 });
+  assert.strictEqual(E.passReward(99, 9, true).g, E.PASS.swap);         // a season without its own items pays gold
+});
+
+test('repair video every 5 minutes, free chest every 4 hours', () => {
+  let r = E.processRequest(null, { k: 'adfix' }, null, NOW);
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(E.processRequest(r.save, { k: 'adfix' }, null, NOW + 200000).ok, false);
+  assert.strictEqual(E.processRequest(r.save, { k: 'adfix' }, null, NOW + 300000).ok, true);
+  r = E.processRequest(null, { k: 'adchest' }, null, NOW);
+  assert.deepStrictEqual([r.ok, r.save.gold], [true, 150]);
+  assert.strictEqual(E.processRequest(r.save, { k: 'adchest' }, null, NOW + 3 * 3600000).ok, false);
+  assert.strictEqual(E.processRequest(r.save, { k: 'adchest' }, null, NOW + 4 * 3600000).ok, true);
+});

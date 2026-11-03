@@ -48,6 +48,33 @@ async function noAdsCheck(db, uid, tok) {
   }
 }
 
+// ---- one-off purchases (Founder's Pack, Lifetime No ads, Season Pass): Google Play says whether each was paid
+async function playProductPaid(sku, token) {
+  if (!playAuth) { const { GoogleAuth } = require('google-auth-library'); playAuth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/androidpublisher'] }); }
+  const client = await playAuth.getClient();
+  const r = await client.request({ url: `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${APP_ID}/purchases/products/${sku}/tokens/${encodeURIComponent(token)}` });
+  return !!r.data && r.data.purchaseState === 0;   // 0 = paid (1 = cancelled, 2 = pending)
+}
+// each purchase token counts once, for one captain
+async function buyCheck(db, uid, id, tok) {
+  const P = E.STORE[id];
+  if (!P) return { pre: 'unknown product' };
+  if (!(await isGoogle(uid))) return { pre: 'sign in with Google to buy' };
+  if (!(typeof tok === 'string' && /^[A-Za-z0-9._-]{20,600}$/.test(tok))) return { pre: 'no purchase found' };
+  const h = crypto.createHash('sha256').update(tok).digest('hex').slice(0, 40);
+  if ((await db.ref(`ref/buytok/${h}`).get()).val()) return { pre: 'purchase already used' };
+  try {
+    if (!(await playProductPaid(P.sku, tok))) return { pre: 'purchase not paid (yet)' };
+    await db.ref('status/billing').set({ ok: true, at: Date.now() });
+  } catch (e) {
+    const err = String(e && e.message || e).slice(0, 300);
+    logger.error('google play purchase check failed', { uid, id, err });
+    await db.ref('status/billing').set({ ok: false, err, at: Date.now() });
+    return { pre: 'could not reach Google Play' };
+  }
+  return { opts: { bought: { id } }, h };
+}
+
 admin.initializeApp();
 setGlobalOptions({ region: 'europe-west1', maxInstances: 10, memory: '256MiB' });
 
@@ -165,7 +192,7 @@ exports.refereeDeath = onValueCreated('/deaths/{id}', async (event) => {
   if (!verdict) return;
   const name = vp.n || 'a captain';
   if (duel) {
-    await db.ref(`saves/${verdict.killer}`).transaction(s => E.applyDuelWin(s));
+    await db.ref(`saves/${verdict.killer}`).transaction(s => E.applyDuelWin(s, Date.now()));
     await db.ref(`rewards/${verdict.killer}`).push({ g: E.DUEL.g, n: String(name).slice(0, 16), t: Date.now(), d: 1 });
     return;
   }
@@ -252,6 +279,8 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
     if (Number.isInteger(n) && n < E.seasonAt(Date.now()).no && top.includes(uid)) opts = { ...(opts || {}), seasonTop: n };
   }
   if (req.k === 'noads') { const c = await noAdsCheck(db, uid, req.tok); if (c.pre) pre = c.pre; else opts = { ...(opts || {}), ...c.opts }; }
+  let buyTok = null;
+  if (req.k === 'buy') { const c = await buyCheck(db, uid, req.id, req.tok); if (c.pre) pre = c.pre; else { opts = { ...(opts || {}), ...c.opts }; buyTok = c.h; } }
   let verdict = null;
   const res = await db.ref(`saves/${uid}`).transaction(save => {
     verdict = pre ? { save: E.norm(save), ok: false, reason: pre } : E.processRequest(save, req, player, Date.now(), opts);
@@ -261,6 +290,9 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
     return out;
   });
   if (verdict && !verdict.ok) logger.info('request refused', { uid, k: req.k, reason: verdict.reason });
+  if (verdict && verdict.ok && buyTok) await db.ref(`ref/buytok/${buyTok}`).set({ uid, id: req.id, at: Date.now() });
+  // a repaired ship starts counting hits afresh (otherwise hits from before the repair look like ignoring damage)
+  if (verdict && verdict.ok && (req.k === 'repair' || req.k === 'adfix')) await db.ref(`ref/lives/${uid}`).remove();
   if (verdict && verdict.ok && req.k === 'kill') await portScore(db, myFleet, port, E.PORT_PTS[req.e] || 0);
   if (verdict && verdict.ok && req.k === 'kill') await boardAdd(db, uid, player && player.n, { s: ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark'].includes(req.e) ? 1 : 0, g: E.KILL[req.e].g }, res.snapshot.val());
   else if (verdict && verdict.ok && (req.k === 'daily' || req.k === 'quest') && await isGoogle(uid)) await boardAdd(db, uid, player && player.n, {}, res.snapshot.val());
