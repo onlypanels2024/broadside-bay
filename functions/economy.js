@@ -36,6 +36,8 @@
     kraken: { g: 900, xp: 400, pts: 0, gap: 240000 },
     // the Ironfang: a rare shark (about once an hour)
     shark: { g: 1500, xp: 600, pts: 0, gap: 600000 },
+    // Santa's Evil Helper: a Christmas boss, once an evening in December
+    elf: { g: 2000, xp: 800, pts: 0, gap: 3600000 },
     // a spare treasure map (picked up while already following one) is traded for a little gold
     map: { g: 40, xp: 0, pts: 0, gap: 30000 },
   };
@@ -101,7 +103,7 @@
     if (s.ck && typeof s.ck === 'object' && num(s.ck.n) && num(s.ck.t)) o.ck = { n: s.ck.n, t: s.ck.t }; else delete o.ck;
     // daily chest {d: last day claimed, st: streak} and today's quests {d: day, p: [progress x3], c: [claimed x3]}
     // lifetime counts for the captain's log and achievements
-    o.ks = {}; for (const k of ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark', 'treasure', 'escort', 'captain', 'duel']) { const v = s.ks && s.ks[k]; if (num(v) && v > 0) o.ks[k] = Math.floor(v); }
+    o.ks = {}; for (const k of ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark', 'elf', 'treasure', 'escort', 'captain', 'duel']) { const v = s.ks && s.ks[k]; if (num(v) && v > 0) o.ks[k] = Math.floor(v); }
     if (!Object.keys(o.ks).length) delete o.ks;
     for (const k of ['dn', 'bs']) { if (num(s[k]) && s[k] > 0) o[k] = Math.floor(s[k]); else delete o[k]; }
     // things bought or won (Founder's Pack, Season Pass items), Season Passes bought (season numbers),
@@ -121,6 +123,9 @@
     if (o.sr && !o.sr.length) delete o.sr;
     if (typeof s.kl === 'string' && /^[0-9]{1,9}$/.test(s.kl)) o.kl = s.kl; else delete o.kl;
     if (typeof s.shl === 'string' && /^[0-9]{1,9}$/.test(s.shl)) o.shl = s.shl; else delete o.shl;
+    if (typeof s.ell === 'string' && /^[0-9]{1,9}$/.test(s.ell)) o.ell = s.ell; else delete o.ell;
+    // Advent calendar: doors opened (bit d-1 for 1-24 December) in the year ay
+    if (Number.isInteger(s.av) && Number.isInteger(s.ay)) { o.av = s.av & 0xffffff; o.ay = s.ay; } else { delete o.av; delete o.ay; }
     // video rewards today {d: day, n: gold videos, c: 1 when today's chest was doubled}; no-ads subscription paid until na (ms)
     if (s.ad && typeof s.ad === 'object' && num(s.ad.d)) o.ad = { d: s.ad.d, n: num(s.ad.n) ? Math.max(0, Math.floor(s.ad.n)) : 0, c: s.ad.c ? 1 : 0 }; else delete o.ad;
     if (num(s.na) && s.na > 0) o.na = Math.floor(s.na); else delete o.na;
@@ -199,14 +204,15 @@ const ACH=[
   {id:'duelist',n:'Duelist',d:'Win 5 duels',st:'ks.duel',need:5,ti:'the Duelist'},
   {id:'champ',n:'Season Champion',d:'Finish a season in the top 10',st:'sr',need:1,ti:'Season Champion'},
   {id:'shark',n:'Shark Hunter',d:'Help destroy the megalodon',st:'ks.shark',need:1,ti:'Shark Hunter'},
+  {id:'elf',n:'Naughty List',d:'Help sink Santa\'s Evil Helper',st:'ks.elf',need:1,ti:'Naughty List Breaker'},
 ];
 // Titles from the shop and the Season Pass (not achievements): the captain has one when s.own lists its id.
-const XTI=[{id:'founder',ti:'Founder'},{id:'s1cap',ti:'Gold Rush Captain'},{id:'s2cap',ti:'Kraken Season Captain'}];
+const XTI=[{id:'founder',ti:'Founder'},{id:'s1cap',ti:'Gold Rush Captain'},{id:'s2cap',ti:'Christmas Captain'},{id:'s3cap',ti:'Kraken Season Captain'}];
 const owns=(s,id)=>!!s&&Array.isArray(s.own)&&s.own.includes(id);
 // Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (a), something owned (o), or nothing.
 const COS={
-  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'},{n:'Steel wake',a:'shark'},{n:'Founder\'s wake',o:'founder'},{n:'Gold Rush wake',o:'s1wake'},{n:'Abyss wake',o:'s2wake'}],
-  ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'},{n:'Founder\'s shot',o:'founder'},{n:'Gold Rush shot',o:'s1shot'},{n:'Ink shot',o:'s2shot'}],
+  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'},{n:'Steel wake',a:'shark'},{n:'Founder\'s wake',o:'founder'},{n:'Gold Rush wake',o:'s1wake'},{n:'Candy cane wake',o:'s2wake'},{n:'Abyss wake',o:'s3wake'}],
+  ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'},{n:'Founder\'s shot',o:'founder'},{n:'Gold Rush shot',o:'s1shot'},{n:'Snowball shot',o:'s2shot'},{n:'Ink shot',o:'s3shot'},{n:'Star shot',o:'star'}],
   fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
   pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
 };
@@ -224,6 +230,19 @@ const SEASONS=[
   {id:'ghost',n:'Ghost Fleet',d:'Ghostly pirates haunt the sea. Every pirate sunk pays 25% more.'},
   {id:'storm',n:'Storm Season',d:'Storms roll in far more often. Hold on to your hat.'},
 ];
+// Season 2 is a one-off Christmas season (23 Nov 2026 - 3 Jan 2027); the cycle above carries on after it.
+const XMAS={id:'xmas',n:'Christmas is Coming',d:'Snow on the islands, lights on every ship, and treasure turns into presents that pay 50% more. In December, Santa\'s Evil Helper sails in every evening at 8pm (Malta time).'};
+// New Year party (31 Dec - 1 Jan, Malta time): a disco in the bay and double gold.
+const NEWYEAR={from:1798671600000,to:1798844400000,id:'newyear',n:'New Year party',d:'A disco in the bay! Every ship you sink pays double gold, the bosses too.'};
+// Malta's calendar date: December and the New Year are always UTC+1 there.
+const mtDate=now=>new Date(now+3600000);
+// Advent calendar, 1-24 December (Malta time): one door a day; open ADVENT.star doors to win the Star shot.
+const ADVENT={gold:[100,100,150,100,150,200,250,100,150,150,200,150,250,300,150,200,200,250,300,350,250,300,400,1000],star:20};
+function adventDay(now){const d=mtDate(now);return d.getUTCMonth()===11&&d.getUTCDate()<=24?d.getUTCDate():0;}
+// Santa's Evil Helper: a boss ship that sails in at 8pm Malta time every evening in December 2026 and stays 15 minutes.
+// Its slot is the day number (days since 1970); everyone shares its health.
+const ELF={hp:300,minHits:3,at:19*3600000,life:900000,from:1796083200000,to:1798761600000,n:'Santa\'s Evil Helper'};
+function elfSlot(now){if(now<ELF.from||now>=ELF.to)return -1;const d=Math.floor(now/86400000),t=now-d*86400000;return t>=ELF.at&&t<ELF.at+ELF.life?d:-1;}
 const WEEKENDS=[
   {id:'gold2',n:'Double gold weekend',d:'Every ship you sink pays double gold.'},
   {id:'kraken2',n:'Kraken weekend',d:'The kraken pays double, and stays longer.'},
@@ -231,16 +250,16 @@ const WEEKENDS=[
 ];
 const LAUNCH={from:1793574000000,to:1794783600000,id:'launch',n:'Launch double gold',d:'Every ship you sink pays double gold, the kraken and the megalodon too.'};
 const weekNo=now=>Math.floor((now/86400000+3)/7);
-function seasonAt(now){const w=weekNo(now)-SEASON0_WEEK,n=Math.floor(w/6),k=((n%SEASONS.length)+SEASONS.length)%SEASONS.length;return Object.assign({no:n+1,weeksLeft:6-(w-n*6)},SEASONS[k]);}
-function eventAt(now){if(LAUNCH.from&&now>=LAUNCH.from&&now<LAUNCH.to)return LAUNCH;const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}
+function seasonAt(now){const w=weekNo(now)-SEASON0_WEEK,n=Math.floor(w/6),c=n>1?n-1:n,k=((c%SEASONS.length)+SEASONS.length)%SEASONS.length;return Object.assign({no:n+1,weeksLeft:6-(w-n*6)},n===1?XMAS:SEASONS[k]);}
+function eventAt(now){if(LAUNCH.from&&now>=LAUNCH.from&&now<LAUNCH.to)return LAUNCH;if(now>=NEWYEAR.from&&now<NEWYEAR.to)return NEWYEAR;const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}
 // gold multiplier for a reward at a moment in time
 function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
-  if(S.id==='gold'&&kind==='treasure')m*=1.5;
+  if((S.id==='gold'||S.id==='xmas')&&kind==='treasure')m*=1.5;
   if(S.id==='kraken'&&kind==='kraken')m*=1.5;
   if(S.id==='ghost'&&['sloop','galleon','fireship','boss'].includes(kind))m*=1.25;
   if(E&&E.id==='gold2'&&['sloop','galleon','fireship','boss','merchant','kraken'].includes(kind))m*=2;
   if(E&&E.id==='kraken2'&&kind==='kraken')m*=2;
-  if(E&&E.id==='launch'&&['sloop','galleon','fireship','boss','merchant','kraken','shark'].includes(kind))m*=2;
+  if(E&&(E.id==='launch'||E.id==='newyear')&&['sloop','galleon','fireship','boss','merchant','kraken','shark','elf'].includes(kind))m*=2;
   return m;}
 // The shop (Google Play): Founder's Pack (on sale until 30 Nov 2026, Malta time), Lifetime No ads, Season Pass.
 const STORE={founder:{sku:'founder_pack',g:2000,until:1796079600000},lifetime:{sku:'noads_lifetime'},pass:{sku:'season_pass'}};
@@ -248,7 +267,7 @@ const NA_LIFETIME=4102444800000;   // "no ads until the year 2100"
 // The Season Pass: 10 steps, each needs PASS.step more XP earned this season. [free reward, pass reward]:
 // a number is gold; w/b/t are this season's wake, cannonballs and title (a season without its own items pays PASS.swap gold).
 const PASS={step:300,tiers:[[100,300],[100,'b'],[150,400],[150,500],[200,'t'],[200,600],[250,700],[250,800],[300,1000],[500,'w']],swap:750,
-  items:{1:{w:'s1wake',b:'s1shot',t:'s1cap'},2:{w:'s2wake',b:'s2shot',t:'s2cap'}}};
+  items:{1:{w:'s1wake',b:'s1shot',t:'s1cap'},2:{w:'s2wake',b:'s2shot',t:'s2cap'},3:{w:'s3wake',b:'s3shot',t:'s3cap'}}};
 function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const r=T[prem?1:0];if(typeof r==='number')return{g:r};const it=PASS.items[n];return it&&it[r]?{o:it[r]}:{g:PASS.swap};}
 /*ENDSEASONDEF*/
   const docked = p => !!p && inHarbour(p.x, p.z);
@@ -284,11 +303,12 @@ function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const r=T[
           if (now - (rl[key] || 0) < K.gap) return reject(req.e + ' claimed too soon');
           if (req.e === 'kraken') { if (!/^[0-9]{1,9}$/.test(String(req.id)) || String(s.kl) === String(req.id)) return reject('kraken already claimed'); s.kl = String(req.id); }
           if (req.e === 'shark') { if (!/^[0-9]{1,9}$/.test(String(req.id)) || String(s.shl) === String(req.id)) return reject('shark already claimed'); s.shl = String(req.id); }
+          if (req.e === 'elf') { if (!/^[0-9]{1,9}$/.test(String(req.id)) || String(s.ell) === String(req.id)) return reject('boss already claimed'); s.ell = String(req.id); }
           rl[key] = now;
         }
         else { if (rl.b < K.pts) return reject('sinking faster than pirates appear'); rl.b -= K.pts; }
         rl.rj = 0; s.rl = rl;
-        const ship = ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark'].includes(req.e);
+        const ship = ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark', 'elf'].includes(req.e);
         s.ks = { ...(s.ks || {}), [req.e]: ((s.ks && s.ks[req.e]) | 0) + 1 };
         const g = Math.round(K.g * (opts && opts.goldMul || 1) * eventMul(req.e, now));
         s.gold += g; s.earned += g; addXp(s, K.xp, now); if (ship) s.sunk += 1;
@@ -421,12 +441,23 @@ function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const r=T[
         s.af = now; return { save: s, ok: true };
       }
       // the free chest after a video, every few hours
+      case 'advent': {
+        const d = adventDay(now), y = mtDate(now).getUTCFullYear();
+        if (!d) return no('the Advent calendar is closed');
+        let bits = s.ay === y ? (s.av | 0) : 0;
+        if (bits & (1 << (d - 1))) return no('today\'s door is already open');
+        bits |= 1 << (d - 1); s.av = bits; s.ay = y;
+        const g = ADVENT.gold[d - 1]; s.gold += g;
+        let n = 0; for (let b = bits; b; b &= b - 1) n++;
+        if (n >= ADVENT.star && !owns(s, 'star')) s.own = (s.own || []).concat(['star']);
+        return { save: s, ok: true, g };
+      }
       case 'adchest': {
         if (now - (s.ac || 0) < ADS.chestGap) return no('free chest not ready');
         s.ac = now; s.gold += ADS.chest; return { save: s, ok: true, g: ADS.chest };
       }
       case 'reset': {
-        const f = fresh(); if (s.rl) f.rl = s.rl; if (s.na) f.na = s.na; if (s.ad) f.ad = s.ad; if (s.sg0) f.sg0 = true; if (s.sr) f.sr = s.sr; for (const k of ['ks', 'dn', 'bs', 'own', 'pp', 'px', 'pc', 'af', 'ac']) if (s[k]) f[k] = s[k];   // the captain's log survives a new voyage   // keep the rate limiter so a reset can't be used to farm
+        const f = fresh(); if (s.rl) f.rl = s.rl; if (s.na) f.na = s.na; if (s.ad) f.ad = s.ad; if (s.sg0) f.sg0 = true; if (s.sr) f.sr = s.sr; for (const k of ['ks', 'dn', 'bs', 'own', 'pp', 'px', 'pc', 'af', 'ac', 'av', 'ay']) if (s[k]) f[k] = s[k];   // the captain's log survives a new voyage   // keep the rate limiter so a reset can't be used to farm
         const pt = s.paint && checkPaint(s.paint.lk, s.paint.dw, 0); if (pt) f.paint = pt;   // keep colours a Deckhand may use
         return { save: f, ok: true };
       }
@@ -498,6 +529,6 @@ function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const r=T[
   const portNear = (x, z) => num(x) && num(z) ? PORTS.findIndex(([px, pz]) => Math.hypot(x - px, z - pz) < PORT_R) : -1;
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { useShip, STORE, PASS, passReward, XTI, owns, NA_LIFETIME, addXp, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, SHARK, sharkRises, LAUNCH, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { XMAS, NEWYEAR, ADVENT, adventDay, ELF, elfSlot, useShip, STORE, PASS, passReward, XTI, owns, NA_LIFETIME, addXp, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, SHARK, sharkRises, LAUNCH, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -92,6 +92,13 @@
           db.ref('kraken/' + slot + '/hits/' + u.uid).transaction(n => (n || 0) + 1).catch(() => {});
         },
         // The Ironfang shark: shared health like the kraken
+        // Santa's Evil Helper (Christmas boss): shared health, starts at 300
+        elfWatch(slot, cb) { const ref = db.ref('elf/' + slot + '/hp'), fn = s => cb(s.val()); ref.on('value', fn); return () => ref.off('value', fn); },
+        elfHit(slot) {
+          const u = auth.currentUser; if (!u) return;
+          db.ref('elf/' + slot + '/hp').transaction(h => (h === null ? 299 : h > 0 ? h - 1 : undefined)).catch(() => {});
+          db.ref('elf/' + slot + '/hits/' + u.uid).transaction(n => (n || 0) + 1).catch(() => {});
+        },
         sharkWatch(slot, cb) { const ref = db.ref('shark/' + slot + '/hp'), fn = s => cb(s.val()); ref.on('value', fn); return () => ref.off('value', fn); },
         sharkHit(slot) {
           const u = auth.currentUser; if (!u) return;

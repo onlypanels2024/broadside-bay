@@ -50,7 +50,7 @@
         let opts=null,port=-1,myF=null;if(req.k==='kill'&&player){port=E.portNear(player.x,player.z);myF=(await db.ref('saves/'+uid+'/fleet').get()).val();
           if(port>=0&&myF){const wk=E.weekOf(Date.now());const hb=(await db.ref('board/p'+(wk-1)+'/'+port).get()).val()||{};const top=Object.entries(hb).sort((a,b)=>b[1].s-a[1].s)[0];if(top&&top[0]===myF)opts={goldMul:E.PORT_BONUS};}}
         if(req.k==='buy'&&typeof req.tok==='string'&&req.tok.startsWith('test-')){const used=(await db.ref('ref/buytok/'+req.tok.replace(/[^A-Za-z0-9]/g,'')).get()).val();if(!used)opts={bought:{id:req.id}};}
-        await txn('saves/'+uid,sv=>{verdict=E.processRequest(sv,req,player,Date.now(),opts);const out=verdict.save;
+        await txn('saves/'+uid,sv=>{verdict=E.processRequest(sv,req,player,Date.now()+(window.__refShift||0),opts);const out=verdict.save;
           out.last=sv&&typeof sv.last==='string'&&sv.last>rid?sv.last:rid;return out;});
         window.__refLog.push(['req',req.k,req.e||req.id||'',verdict.ok,verdict.reason||'']);
         if(verdict.ok&&req.k==='buy')await db.ref('ref/buytok/'+req.tok.replace(/[^A-Za-z0-9]/g,'')).set(uid);

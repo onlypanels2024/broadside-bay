@@ -336,7 +336,12 @@ test('schooner costs 600 at Bosun; fire ships pay and count as ships', () => {
 test('seasons and weekend events', () => {
   const sat = Date.UTC(2026, 9, 17, 12), wed = Date.UTC(2026, 9, 14, 12);
   assert.strictEqual(E.seasonAt(wed).no, 1); assert.strictEqual(E.seasonAt(wed).id, 'gold');
-  assert.strictEqual(E.seasonAt(Date.UTC(2026, 10, 25)).id, 'kraken', 'season 2 after six weeks');
+  assert.strictEqual(E.seasonAt(Date.UTC(2026, 10, 25)).id, 'xmas', 'season 2 (Christmas) after six weeks');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 0, 6)).id, 'kraken', 'season 3 is the kraken');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 1, 17)).id, 'ghost');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 3, 1)).id, 'storm');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 4, 12)).id, 'gold', 'the cycle carries on without Christmas');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 5, 23)).id, 'kraken');
   assert.strictEqual(E.eventAt(wed), null); assert.ok(E.eventAt(sat));
   // a double gold weekend doubles a sloop's pay
   let t = sat; while (E.eventAt(t).id !== 'gold2') t += 7 * 86400000;
@@ -473,4 +478,36 @@ test('repair video every 5 minutes, free chest every 4 hours', () => {
   assert.deepStrictEqual([r.ok, r.save.gold], [true, 150]);
   assert.strictEqual(E.processRequest(r.save, { k: 'adchest' }, null, NOW + 3 * 3600000).ok, false);
   assert.strictEqual(E.processRequest(r.save, { k: 'adchest' }, null, NOW + 4 * 3600000).ok, true);
+});
+
+test('Christmas: presents pay more, New Year doubles gold, Advent calendar, Santa\'s Evil Helper', () => {
+  const xm = Date.UTC(2026, 11, 2, 12), at = { ...atSea };
+  // presents (treasure) pay 50% more in the Christmas season
+  assert.strictEqual(E.processRequest(null, { k: 'kill', e: 'treasure' }, { ...at, t: xm - 300 }, xm).save.gold, 600);
+  // New Year party: double gold, Malta time (31 Dec 00:00 to 2 Jan 00:00)
+  assert.notStrictEqual((E.eventAt(Date.UTC(2026, 11, 30, 22, 59)) || {}).id, 'newyear');
+  assert.strictEqual(E.eventAt(Date.UTC(2026, 11, 30, 23, 1)).id, 'newyear');
+  assert.strictEqual(E.eventAt(Date.UTC(2027, 0, 1, 22, 59)).id, 'newyear');
+  const ny = Date.UTC(2026, 11, 31, 12);
+  assert.strictEqual(E.processRequest(null, { k: 'kill', e: 'sloop' }, { ...at, t: ny - 300 }, ny).save.gold, 140);
+  // Advent: one door a day, 1-24 December, Malta time
+  assert.strictEqual(E.processRequest(null, { k: 'advent' }, null, Date.UTC(2026, 10, 30, 12)).ok, false, 'not before December');
+  let s = E.fresh(), r = E.processRequest(s, { k: 'advent' }, null, Date.UTC(2026, 10, 30, 23, 30));
+  assert.ok(r.ok, 'midnight in Malta opens door 1'); assert.strictEqual(r.g, 100); s = r.save;
+  assert.strictEqual(E.processRequest(s, { k: 'advent' }, null, Date.UTC(2026, 11, 1, 20)).ok, false, 'once a day');
+  assert.strictEqual(E.processRequest(s, { k: 'advent' }, null, Date.UTC(2026, 11, 25, 12)).ok, false, 'closed after the 24th');
+  for (let d = 2; d <= 20; d++) { r = E.processRequest(s, { k: 'advent' }, null, Date.UTC(2026, 11, d, 12)); assert.ok(r.ok); s = r.save; }
+  assert.ok(E.owns(s, 'star'), '20 doors win the Star shot'); assert.strictEqual(E.norm(s).av, (1 << 20) - 1);
+  r = E.processRequest(s, { k: 'reset' }, null, Date.UTC(2026, 11, 21, 12)); assert.strictEqual(r.save.av, (1 << 20) - 1, 'a new voyage keeps the calendar');
+  // Santa's Evil Helper: 8pm Malta (19:00 UTC) for 15 minutes, December only
+  assert.strictEqual(E.elfSlot(Date.UTC(2026, 11, 5, 19, 5)), Math.floor(Date.UTC(2026, 11, 5) / 86400000));
+  assert.strictEqual(E.elfSlot(Date.UTC(2026, 11, 5, 19, 16)), -1); assert.strictEqual(E.elfSlot(Date.UTC(2026, 10, 30, 19, 5)), -1);
+  const bt = Date.UTC(2026, 11, 5, 19, 10), id = String(Math.floor(bt / 86400000));
+  r = E.processRequest(null, { k: 'kill', e: 'elf', id }, { ...at, t: bt - 300 }, bt);
+  assert.ok(r.ok); assert.strictEqual(r.save.gold, 2000); assert.strictEqual(r.save.ks.elf, 1);
+  assert.strictEqual(E.processRequest(r.save, { k: 'kill', e: 'elf', id }, { ...at, t: bt + 3700000 }, bt + 3700300).ok, false, 'once per evening');
+  assert.ok(E.ACH.some(a => a.id === 'elf'));
+  // Christmas pass items and the kraken's moved to season 3
+  assert.deepStrictEqual(E.passReward(2, 9, true), { o: 's2wake' }); assert.deepStrictEqual(E.passReward(3, 9, true), { o: 's3wake' });
+  assert.ok(E.XTI.some(t => t.id === 's2cap' && t.ti === 'Christmas Captain'));
 });
