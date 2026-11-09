@@ -43,6 +43,18 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 .menubtn:focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
 .menulist{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:6px}
 .menulist .btn{min-width:230px}
+#menuov .menulist{align-items:stretch;gap:0;width:100%;max-width:420px;margin:6px auto 0}
+#menuov .menulist>.btn{width:100%;min-width:0}
+.msec{margin-top:14px}.mhead{display:flex;align-items:center;gap:10px;font:700 12px var(--body,sans-serif);letter-spacing:.22em;text-transform:uppercase;color:var(--brass-hi);opacity:.85;margin-bottom:8px}
+.mhead:before,.mhead:after{content:"";flex:1;height:1px;background:rgba(232,196,110,.3)}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#menuov .mgrid .btn{min-width:0;width:100%;margin:0;font-size:13px;letter-spacing:.06em;padding:12px 8px;line-height:1.2;display:flex;align-items:center;justify-content:center;text-align:center}
+#menuov .mgrid .btn.wide{grid-column:1/-1}
+.mset{display:flex;flex-direction:column;border:1px solid rgba(232,196,110,.28);border-radius:14px;overflow:hidden}
+.setrow{display:flex;justify-content:space-between;align-items:center;width:100%;background:rgba(255,255,255,.03);border:0;border-bottom:1px solid rgba(232,196,110,.16);color:var(--parch);
+  font:600 15px var(--body,sans-serif);padding:12px 16px;cursor:pointer;text-align:left}
+.setrow:last-child{border-bottom:0}.setrow:active{background:rgba(232,196,110,.1)}
+.setrow span{color:var(--brass-hi);font-weight:700}
 .menunote{font-size:14px;color:var(--muted);margin-top:4px}
 /* shipwright: a bottom sheet so the ship stays visible above it */
 body.dressing .viewctl{display:flex}
@@ -455,22 +467,30 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <p class="menunote" id="menunote">The game is paused.</p>
     <div class="menulist">
       <button class="btn" id="menuresume">Resume</button>
-      <button class="btn ghost" id="snd" aria-label="Music on or off">Music: <span id="sndv">On</span></button>
-      <button class="btn ghost" id="menufriends" hidden>Friends</button>
-      <button class="btn ghost" id="menulog" hidden>Captain's log</button>
-      <button class="btn ghost" id="menufleet" hidden>Fleet</button>
-      <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
-      <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
-      <button class="btn" id="menushop" hidden>Shop &amp; Season Pass</button>
-      <button class="btn ghost" id="noadsbtn" hidden>Remove ads</button>
-      <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
-      <button class="btn ghost" id="notiftog" hidden>Notifications: <span id="notifv">Off</span></button>
-      <button class="btn ghost" id="seatog">Sea sounds: <span id="seav">On</span></button>
-      <button class="btn ghost" id="buzztog">Vibration: <span id="buzzv">On</span></button>
-      <button class="btn ghost" id="wxtog">Rain &amp; lightning: <span id="wxtogv">On</span></button>
-      <button class="btn ghost" id="gfxtog">Graphics: <span id="gfxtogv">Balanced</span></button>
-      <button class="btn ghost" id="drawtog">Captains' drawings: <span id="drawtogv">Shown</span></button>
-      <button class="btn ghost" id="menuleave">Main menu</button>
+      <div class="msec"><div class="mhead">Rewards &amp; shop</div><div class="mgrid">
+        <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
+        <button class="btn" id="menushop" hidden>Shop &amp; Season Pass</button>
+        <button class="btn ghost wide" id="noadsbtn" hidden>Remove ads</button>
+      </div></div>
+      <div class="msec"><div class="mhead">Captains</div><div class="mgrid">
+        <button class="btn ghost" id="menufriends" hidden>Friends</button>
+        <button class="btn ghost" id="menufleet" hidden>Fleet</button>
+        <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
+        <button class="btn ghost" id="menulog" hidden>Captain's log</button>
+      </div></div>
+      <div class="msec"><div class="mhead">Settings</div><div class="mset">
+        <button class="setrow" id="snd" aria-label="Music on or off">Music <span id="sndv">On</span></button>
+        <button class="setrow" id="seatog">Sea sounds <span id="seav">On</span></button>
+        <button class="setrow" id="buzztog">Vibration <span id="buzzv">On</span></button>
+        <button class="setrow" id="notiftog" hidden>Notifications <span id="notifv">Off</span></button>
+        <button class="setrow" id="wxtog">Rain &amp; lightning <span id="wxtogv">On</span></button>
+        <button class="setrow" id="gfxtog">Graphics <span id="gfxtogv">Balanced</span></button>
+        <button class="setrow" id="drawtog">Captains' drawings <span id="drawtogv">Shown</span></button>
+      </div></div>
+      <div class="msec"><div class="mhead">More</div><div class="mgrid">
+        <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
+        <button class="btn ghost" id="menuleave">Main menu</button>
+      </div></div>
       <button class="linkbtn" id="menuerase" hidden>Delete my online data</button>
     </div>
     <p class="menunote" id="menuleavenote"></p>
@@ -2797,7 +2817,8 @@ $('repdone').onclick=()=>{audio();$('reportov').hidden=true;$('menuov').hidden=f
 $('drawtog').onclick=()=>{audio();hideDraw=!hideDraw;try{localStorage.setItem('bb-hidedraw',hideDraw?'1':'0')}catch(e){}updDrawTog();if(typeof NET!=='undefined')NET.last=null;};
 let menuPaused=false,leaveArm=false;
 const onlineAtSea=()=>MODE==='open'&&typeof NET!=='undefined'&&!!NET.room&&NET.ok;
-function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.classList.remove('on');leaveArm=false;
+function menuSections(){document.querySelectorAll('#menuov .msec').forEach(m=>{m.hidden=![...m.querySelectorAll('button')].some(b=>!b.hidden);});}
+function openMenu(){if(state!=='play')return;setTimeout(menuSections,0);audio();firing=false;joy=null;fb.classList.remove('on');leaveArm=false;
   menuPaused=!onlineAtSea();if(menuPaused)state='paused';
   $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
   $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
