@@ -31,6 +31,18 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 .menubtn:focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px}
 .menulist{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:6px}
 .menulist .btn{min-width:230px}
+#menuov .menulist{align-items:stretch;gap:0;width:100%;max-width:420px;margin:6px auto 0}
+#menuov .menulist>.btn{width:100%;min-width:0}
+.msec{margin-top:14px}.mhead{display:flex;align-items:center;gap:10px;font:700 12px var(--body,sans-serif);letter-spacing:.22em;text-transform:uppercase;color:var(--brass-hi);opacity:.85;margin-bottom:8px}
+.mhead:before,.mhead:after{content:"";flex:1;height:1px;background:rgba(232,196,110,.3)}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#menuov .mgrid .btn{min-width:0;width:100%;margin:0;font-size:13px;letter-spacing:.06em;padding:12px 8px;line-height:1.2;display:flex;align-items:center;justify-content:center;text-align:center}
+#menuov .mgrid .btn.wide{grid-column:1/-1}
+.mset{display:flex;flex-direction:column;border:1px solid rgba(232,196,110,.28);border-radius:14px;overflow:hidden}
+.setrow{display:flex;justify-content:space-between;align-items:center;width:100%;background:rgba(255,255,255,.03);border:0;border-bottom:1px solid rgba(232,196,110,.16);color:var(--parch);
+  font:600 15px var(--body,sans-serif);padding:12px 16px;cursor:pointer;text-align:left}
+.setrow:last-child{border-bottom:0}.setrow:active{background:rgba(232,196,110,.1)}
+.setrow span{color:var(--brass-hi);font-weight:700}
 .menunote{font-size:14px;color:var(--muted);margin-top:4px}
 /* shipwright: a bottom sheet so the ship stays visible above it */
 body.dressing .viewctl{display:flex}
@@ -131,6 +143,10 @@ body.dressing .top,body.dressing #map,body.dressing #fire,body.dressing #aim,bod
 .qchip{pointer-events:auto;cursor:pointer;font-family:var(--body);color:var(--brass-hi);border:1px solid rgba(214,178,98,.55);background:var(--glass);position:relative}
 .qchip .dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:#ff5a3a;box-shadow:0 0 8px #ff5a3a}
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px}
+#advbox h2{font-size:22px}.advdoors{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:10px}
+.advdoor{position:relative;aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font:700 13px var(--display,serif);color:#f3e6c4;background:linear-gradient(135deg,#7a1414,#3d0b0b);border:1px solid rgba(232,196,110,.35)}
+.advdoor.open{background:linear-gradient(135deg,#1f6b3a,#0e3a1f);color:#ffe7a8}.advdoor.open:after{content:'\2713';position:absolute;right:3px;bottom:1px;font-size:10px;color:#ffd23f}
+.advdoor.today{box-shadow:0 0 0 2px #ffd23f,0 0 14px rgba(255,210,63,.7)}.advdoor.later{opacity:.45}.advdoor.missed{opacity:.3;filter:grayscale(.6)}
 .day{border-radius:8px;padding:6px 0 5px;border:1px solid rgba(214,178,98,.3);background:rgba(255,255,255,.04);font-size:11px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
 .day b{font-family:var(--display);font-size:12px;color:var(--parch)}
 .day.done{background:rgba(120,200,140,.12);border-color:rgba(120,200,140,.5)}
@@ -435,22 +451,30 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <p class="menunote" id="menunote">The game is paused.</p>
     <div class="menulist">
       <button class="btn" id="menuresume">Resume</button>
-      <button class="btn ghost" id="snd" aria-label="Music on or off">Music: <span id="sndv">On</span></button>
-      <button class="btn ghost" id="menufriends" hidden>Friends</button>
-      <button class="btn ghost" id="menulog" hidden>Captain's log</button>
-      <button class="btn ghost" id="menufleet" hidden>Fleet</button>
-      <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
-      <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
-      <button class="btn" id="menushop" hidden>Shop &amp; Season Pass</button>
-      <button class="btn ghost" id="noadsbtn" hidden>Remove ads</button>
-      <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
-      <button class="btn ghost" id="notiftog" hidden>Notifications: <span id="notifv">Off</span></button>
-      <button class="btn ghost" id="seatog">Sea sounds: <span id="seav">On</span></button>
-      <button class="btn ghost" id="buzztog">Vibration: <span id="buzzv">On</span></button>
-      <button class="btn ghost" id="wxtog">Rain &amp; lightning: <span id="wxtogv">On</span></button>
-      <button class="btn ghost" id="gfxtog">Graphics: <span id="gfxtogv">Balanced</span></button>
-      <button class="btn ghost" id="drawtog">Captains' drawings: <span id="drawtogv">Shown</span></button>
-      <button class="btn ghost" id="menuleave">Main menu</button>
+      <div class="msec"><div class="mhead">Rewards &amp; shop</div><div class="mgrid">
+        <button class="btn ghost" id="menudaily" hidden>Daily chest &amp; quests</button>
+        <button class="btn" id="menushop" hidden>Shop &amp; Season Pass</button>
+        <button class="btn ghost wide" id="noadsbtn" hidden>Remove ads</button>
+      </div></div>
+      <div class="msec"><div class="mhead">Captains</div><div class="mgrid">
+        <button class="btn ghost" id="menufriends" hidden>Friends</button>
+        <button class="btn ghost" id="menufleet" hidden>Fleet</button>
+        <button class="btn ghost" id="menuboard" hidden>Leaderboards</button>
+        <button class="btn ghost" id="menulog" hidden>Captain's log</button>
+      </div></div>
+      <div class="msec"><div class="mhead">Settings</div><div class="mset">
+        <button class="setrow" id="snd" aria-label="Music on or off">Music <span id="sndv">On</span></button>
+        <button class="setrow" id="seatog">Sea sounds <span id="seav">On</span></button>
+        <button class="setrow" id="buzztog">Vibration <span id="buzzv">On</span></button>
+        <button class="setrow" id="notiftog" hidden>Notifications <span id="notifv">Off</span></button>
+        <button class="setrow" id="wxtog">Rain &amp; lightning <span id="wxtogv">On</span></button>
+        <button class="setrow" id="gfxtog">Graphics <span id="gfxtogv">Balanced</span></button>
+        <button class="setrow" id="drawtog">Captains' drawings <span id="drawtogv">Shown</span></button>
+      </div></div>
+      <div class="msec"><div class="mhead">More</div><div class="mgrid">
+        <button class="btn ghost" id="menureport" hidden>Report a drawing</button>
+        <button class="btn ghost" id="menuleave">Main menu</button>
+      </div></div>
       <button class="linkbtn" id="menuerase" hidden>Delete my online data</button>
     </div>
     <p class="menunote" id="menuleavenote"></p>
@@ -599,6 +623,7 @@ body.attitle .top,body.attitle #fire,body.attitle #aim,body.attitle .hint,body.a
     <button class="btn" id="chestbtn">Open chest</button>
     <button class="btn ghost adbtn" id="chest2btn" hidden></button>
     <button class="btn ghost adbtn" id="chest3btn" hidden></button>
+    <div id="advbox" hidden><div class="rule"></div><h2>Advent calendar</h2><p class="menunote" id="advnote"></p><div class="advdoors" id="advdoors"></div><button class="btn" id="advbtn"></button></div>
     <div class="rule"></div>
     <h2 style="font-size:22px">Today's quests</h2>
     <div class="qlist" id="qlist"></div>
@@ -923,7 +948,7 @@ const M={
   coconut:std({color:L('#5a3b1f'),roughness:.7}),
   plank:std({map:woodTex,color:L('#8a5a34'),roughness:.8}),
   ball:std({color:L('#1a1a1a'),metalness:.8,roughness:.35}),
-  fireball:std({color:L('#4a1606'),emissive:L('#ff6a1a'),emissiveIntensity:2.2,metalness:.4,roughness:.4}),purpleball:std({color:L('#2a1040'),emissive:L('#b25cff'),emissiveIntensity:2,metalness:.5,roughness:.35}),goldball:std({color:L('#ffcf55'),metalness:1,roughness:.2}),founderball:std({color:L('#0d1f5c'),emissive:L('#3d7bff'),emissiveIntensity:2,metalness:.6,roughness:.3}),rushball:std({color:L('#5a3300'),emissive:L('#ffae1a'),emissiveIntensity:2,metalness:.6,roughness:.3}),inkball:std({color:L('#07060c'),emissive:L('#6a2cff'),emissiveIntensity:1.2,metalness:.3,roughness:.5}),
+  fireball:std({color:L('#4a1606'),emissive:L('#ff6a1a'),emissiveIntensity:2.2,metalness:.4,roughness:.4}),purpleball:std({color:L('#2a1040'),emissive:L('#b25cff'),emissiveIntensity:2,metalness:.5,roughness:.35}),goldball:std({color:L('#ffcf55'),metalness:1,roughness:.2}),founderball:std({color:L('#0d1f5c'),emissive:L('#3d7bff'),emissiveIntensity:2,metalness:.6,roughness:.3}),rushball:std({color:L('#5a3300'),emissive:L('#ffae1a'),emissiveIntensity:2,metalness:.6,roughness:.3}),inkball:std({color:L('#07060c'),emissive:L('#6a2cff'),emissiveIntensity:1.2,metalness:.3,roughness:.5}),snowball:std({color:L('#f4f8fb'),emissive:L('#bfe3ff'),emissiveIntensity:.5,roughness:.6}),starball:std({color:L('#fff2a8'),emissive:L('#ffd23f'),emissiveIntensity:2.2,metalness:.6,roughness:.3}),
   parrotR:std({color:L('#d8261c'),roughness:.6}),parrotG:std({color:L('#2fae3c'),roughness:.6}),parrotB:std({color:L('#2d5fd0'),roughness:.6}),beak:std({color:L('#f2c230'),roughness:.5}),fur:std({color:L('#6b4423'),roughness:.9}),furL:std({color:L('#c9a27a'),roughness:.9}),
   hotball:std({color:L('#3a1208'),emissive:L('#ff4a1a'),emissiveIntensity:1.4,metalness:.5,roughness:.4}),
   coin:std({color:L('#ffcf55'),metalness:1,roughness:.22}),parch:std({color:L('#e9d9a8'),roughness:.9}),ribbon:std({color:L('#a3271c'),roughness:.6}),
@@ -988,8 +1013,8 @@ const LATEEN=(()=>{const g=new THREE.BufferGeometry(),P=[.15,.7,0, .15,5.2,0, -2
   g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute([1,0,1,1,0,0,.55,.45],2));
   g.setIndex([0,1,3,1,2,3,2,0,3]);g.computeVertexNormals();return g;})();
 const flagMats={};
-const TRAIL_COL=['#ffffff','#ffd65a','#c58bff','#5be3a0','#ff7a2e','#9fb4c8',['#ffd65a','#3d7bff'],['#ffcf33','#19d27a'],['#1b2cff','#00e5ff']];
-const ballMat=i=>[M.ball,M.fireball,M.purpleball,M.goldball,M.founderball,M.rushball,M.inkball][i|0]||M.ball;
+const TRAIL_COL=['#ffffff','#ffd65a','#c58bff','#5be3a0','#ff7a2e','#9fb4c8',['#ffd65a','#3d7bff'],['#ffcf33','#19d27a'],['#ff2b2b','#ffffff'],['#1b2cff','#00e5ff']];
+const ballMat=i=>[M.ball,M.fireball,M.purpleball,M.goldball,M.founderball,M.rushball,M.snowball,M.inkball,M.starball][i|0]||M.ball;
 // figureheads (1 mermaid, 2 lion, 3 eagle, 4 sea serpent) and pets (1 parrot, 2 monkey), all small and simple
 function addFigurehead(add,kind,x,y){const B=M.brass;
   if(kind===1){add(new THREE.CylinderGeometry(.12,.2,.55,10),B,x,y+.05,0).rotation.z=-.5;add(new THREE.SphereGeometry(.13,10,8),B,x+.16,y+.36,0);add(new THREE.ConeGeometry(.16,.3,8),B,x-.2,y-.25,0).rotation.z=2.4;}
@@ -1007,6 +1032,8 @@ function addPet(add,kind,x,y){
   else if(kind===2){add(new THREE.SphereGeometry(.13,10,8),M.fur,x,y+.12,0);add(new THREE.SphereGeometry(.1,10,8),M.fur,x+.02,y+.3,0);add(new THREE.SphereGeometry(.06,8,6),M.furL,x+.09,y+.28,0);
     [1,-1].forEach(s2=>add(new THREE.SphereGeometry(.04,8,6),M.furL,x,y+.33,s2*.1));add(new THREE.TorusGeometry(.12,.025,6,12,Math.PI*1.3),M.fur,x-.16,y+.1,0).rotation.y=Math.PI/2;}}
 const lampGlowM=new THREE.SpriteMaterial({map:softTex,color:L('#ffb85a'),transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+// Christmas / New Year state (see the Christmas section further down)
+const XM={on:false,ny:false,chk:0,snow:null,mats:null,disco:null,fw:0};
 function makeShip(o){
   const g=new THREE.Group(),inner=new THREE.Group();g.add(inner);
   const hullM=std({map:woodTex,vertexColors:true,roughness:.72,side:THREE.DoubleSide});
@@ -1065,6 +1092,7 @@ function makeShip(o){
   const collarM=new THREE.MeshBasicMaterial({map:collarTex,color:0xffffff,transparent:true,opacity:.75,depthWrite:false});
   const sh=new THREE.Mesh(GROUND,shadowM),co=new THREE.Mesh(GROUND,collarM);sh.renderOrder=1;co.renderOrder=2;scene.add(sh,co);
   g.userData={inner,hullM,sailM,sTex,guns,flag,ground:[sh,co],own:[hullM,deckM,castleM,sailM,shadowM,collarM].concat(o.own?[flagM,sTex,fTex]:[]),ownGeo:[rg]};
+  if(XM.on)xmasShip(g,true);
   scene.add(g);return g;
 }
 // Ships show their damage: torn sails at 2/3 hull, more holes and fire at 1/3.
@@ -1174,6 +1202,7 @@ function makeIsland(r,port){
     bt.position.set(Math.cos(a)*d,.55,Math.sin(a)*d);bt.rotation.order='YXZ';bt.rotation.set(Math.PI/2,a+Math.PI/2,Math.PI*.5+rnd(.2,.5));bt.scale.set(1,1,.6);bt.castShadow=true;g.add(bt);}
   const lamp=port?addPort(g,r):null;
   g.userData.ownGeo=bake(g);
+  if(port&&XM.on)xmasTree(g,r);
   if(lamp){const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:softTex,color:L('#ffc46a'),transparent:true,opacity:.85,blending:THREE.AdditiveBlending,depthWrite:false}));gl.position.copy(lamp);gl.scale.setScalar(3.2);g.add(gl);}
   scene.add(g);return g;
 }
@@ -1478,6 +1507,19 @@ const SEASONS=[
   {id:'ghost',n:'Ghost Fleet',d:'Ghostly pirates haunt the sea. Every pirate sunk pays 25% more.'},
   {id:'storm',n:'Storm Season',d:'Storms roll in far more often. Hold on to your hat.'},
 ];
+// Season 2 is a one-off Christmas season (23 Nov 2026 - 3 Jan 2027); the cycle above carries on after it.
+const XMAS={id:'xmas',n:'Christmas is Coming',d:'Snow on the islands, lights on every ship, and treasure turns into presents that pay 50% more. In December, Santa\'s Evil Helper sails in every evening at 8pm (Malta time).'};
+// New Year party (31 Dec - 1 Jan, Malta time): a disco in the bay and double gold.
+const NEWYEAR={from:1798671600000,to:1798844400000,id:'newyear',n:'New Year party',d:'A disco in the bay! Every ship you sink pays double gold, the bosses too.'};
+// Malta's calendar date: December and the New Year are always UTC+1 there.
+const mtDate=now=>new Date(now+3600000);
+// Advent calendar, 1-24 December (Malta time): one door a day; open ADVENT.star doors to win the Star shot.
+const ADVENT={gold:[100,100,150,100,150,200,250,100,150,150,200,150,250,300,150,200,200,250,300,350,250,300,400,1000],star:20};
+function adventDay(now){const d=mtDate(now);return d.getUTCMonth()===11&&d.getUTCDate()<=24?d.getUTCDate():0;}
+// Santa's Evil Helper: a boss ship that sails in at 8pm Malta time every evening in December 2026 and stays 15 minutes.
+// Its slot is the day number (days since 1970); everyone shares its health.
+const ELF={hp:300,minHits:3,at:19*3600000,life:900000,from:1796083200000,to:1798761600000,n:'Santa\'s Evil Helper'};
+function elfSlot(now){if(now<ELF.from||now>=ELF.to)return -1;const d=Math.floor(now/86400000),t=now-d*86400000;return t>=ELF.at&&t<ELF.at+ELF.life?d:-1;}
 const WEEKENDS=[
   {id:'gold2',n:'Double gold weekend',d:'Every ship you sink pays double gold.'},
   {id:'kraken2',n:'Kraken weekend',d:'The kraken pays double, and stays longer.'},
@@ -1485,16 +1527,16 @@ const WEEKENDS=[
 ];
 const LAUNCH={from:1793574000000,to:1794783600000,id:'launch',n:'Launch double gold',d:'Every ship you sink pays double gold, the kraken and the megalodon too.'};
 const weekNo=now=>Math.floor((now/86400000+3)/7);
-function seasonAt(now){const w=weekNo(now)-SEASON0_WEEK,n=Math.floor(w/6),k=((n%SEASONS.length)+SEASONS.length)%SEASONS.length;return Object.assign({no:n+1,weeksLeft:6-(w-n*6)},SEASONS[k]);}
-function eventAt(now){if(LAUNCH.from&&now>=LAUNCH.from&&now<LAUNCH.to)return LAUNCH;const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}
+function seasonAt(now){const w=weekNo(now)-SEASON0_WEEK,n=Math.floor(w/6),c=n>1?n-1:n,k=((c%SEASONS.length)+SEASONS.length)%SEASONS.length;return Object.assign({no:n+1,weeksLeft:6-(w-n*6)},n===1?XMAS:SEASONS[k]);}
+function eventAt(now){if(LAUNCH.from&&now>=LAUNCH.from&&now<LAUNCH.to)return LAUNCH;if(now>=NEWYEAR.from&&now<NEWYEAR.to)return NEWYEAR;const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}
 // gold multiplier for a reward at a moment in time
 function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
-  if(S.id==='gold'&&kind==='treasure')m*=1.5;
+  if((S.id==='gold'||S.id==='xmas')&&kind==='treasure')m*=1.5;
   if(S.id==='kraken'&&kind==='kraken')m*=1.5;
   if(S.id==='ghost'&&['sloop','galleon','fireship','boss'].includes(kind))m*=1.25;
   if(E&&E.id==='gold2'&&['sloop','galleon','fireship','boss','merchant','kraken'].includes(kind))m*=2;
   if(E&&E.id==='kraken2'&&kind==='kraken')m*=2;
-  if(E&&E.id==='launch'&&['sloop','galleon','fireship','boss','merchant','kraken','shark'].includes(kind))m*=2;
+  if(E&&(E.id==='launch'||E.id==='newyear')&&['sloop','galleon','fireship','boss','merchant','kraken','shark','elf'].includes(kind))m*=2;
   return m;}
 // The shop (Google Play): Founder's Pack (on sale until 30 Nov 2026, Malta time), Lifetime No ads, Season Pass.
 const STORE={founder:{sku:'founder_pack',g:2000,until:1796079600000},lifetime:{sku:'noads_lifetime'},pass:{sku:'season_pass'}};
@@ -1502,12 +1544,12 @@ const NA_LIFETIME=4102444800000;   // "no ads until the year 2100"
 // The Season Pass: 10 steps, each needs PASS.step more XP earned this season. [free reward, pass reward]:
 // a number is gold; w/b/t are this season's wake, cannonballs and title (a season without its own items pays PASS.swap gold).
 const PASS={step:300,tiers:[[100,300],[100,'b'],[150,400],[150,500],[200,'t'],[200,600],[250,700],[250,800],[300,1000],[500,'w']],swap:750,
-  items:{1:{w:'s1wake',b:'s1shot',t:'s1cap'},2:{w:'s2wake',b:'s2shot',t:'s2cap'}}};
+  items:{1:{w:'s1wake',b:'s1shot',t:'s1cap'},2:{w:'s2wake',b:'s2shot',t:'s2cap'},3:{w:'s3wake',b:'s3shot',t:'s3cap'}}};
 function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const r=T[prem?1:0];if(typeof r==='number')return{g:r};const it=PASS.items[n];return it&&it[r]?{o:it[r]}:{g:PASS.swap};}
 /*ENDSEASONDEF*/
-const XP_FOR={sloop:20,galleon:50,fireship:35,boss:250,player:120,treasure:60,merchant:80,escort:70,kraken:400,shark:600};
-const LOCAL_GOLD={sloop:50,galleon:150,fireship:100,boss:300,treasure:400,merchant:500,escort:300,kraken:900,shark:1500};
-const IS_SHIP=k=>['sloop','galleon','boss','fireship','merchant','kraken','shark'].includes(k);
+const XP_FOR={sloop:20,galleon:50,fireship:35,boss:250,player:120,treasure:60,merchant:80,escort:70,kraken:400,shark:600,elf:800};
+const LOCAL_GOLD={sloop:50,galleon:150,fireship:100,boss:300,treasure:400,merchant:500,escort:300,kraken:900,shark:1500,elf:2000};
+const IS_SHIP=k=>['sloop','galleon','boss','fireship','merchant','kraken','shark','elf'].includes(k);
 // Economy hooks. In this page everything is local. The Android app swaps these for versions that
 // ask the online referee, which alone decides gold, XP, upgrades and ships in online Open sea.
 function askReview(){try{if(localStorage.getItem('bb-rev'))return;}catch(e){}const P2=typeof CapP==='function'&&CapP();if(!P2||!P2.InAppReview)return;
@@ -1710,7 +1752,7 @@ function renderShop(){
   tutShopCheck();
 }
 $('next').onclick=()=>{audio();if(MODE==='story'&&story.tut){$('shopov').hidden=true;tutDone();return;}if(coop&&coopNextBlocked())return;MUS.mode='play';$('shopov').hidden=true;state='play';if(MODE==='open'){saveOpen();lastPortName='';}else if(coop&&coop.role==='guest')coop.rd=wave;else nextWave();};
-$('dock').onclick=()=>{audio();if(state==='play'&&(MODE==='open'||(MODE==='story'&&story.tut)))openShop();};
+$('dock').onclick=()=>{audio();if(state==='play'&&(MODE==='open'||(MODE==='story'&&story.tut))){if(MODE==='open')harbourAd(openShop);else openShop();}};
 
 /* ================= shipwright: choose a ship, paint it, pick or draw an emblem ================= */
 let showcase=false;
@@ -2003,7 +2045,7 @@ function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F
    the web version shows no ads (window.__fakeAds stands in for them in tests). */
 const ADS_GOLD=100,ADS_PER_DAY=5,AD_WAVE_MAX=2,AD_GAP=240000,AD_FREE_RUNS=3;
 const AD={busy:false,waveVids:0,day:-1,n:0,chest:-1,runs:0,last:0};
-try{AD.runs=+localStorage.getItem('bb-runs')||0;AD.last=+localStorage.getItem('bb-adlast')||0;}catch(e){}
+try{AD.runs=+localStorage.getItem('bb-runs')||0;AD.last=+localStorage.getItem('bb-adlast')||0;AD.docks=+localStorage.getItem('bb-docks')||0;}catch(e){}
 function adsOn(){return !!window.__fakeAds;}
 function noAdsOn(){return !!(window.__fakeAds&&window.__fakeAds.noAds);}
 function adReward(){const f=window.__fakeAds;if(f)f.rewarded=(f.rewarded|0)+1;return Promise.resolve(!!f);}
@@ -2021,6 +2063,18 @@ $('adgoldbtn').onclick=async()=>{if(AD.busy||adVideosLeft()<=0)return;audio();AD
   if(ok){if(econServer()){AD.n++;econRequest({k:'adgold'});}else AD.waveVids++;addGold(g);chime(true);setTimeout(()=>chime(true),160);updHud();renderShop();showBanner('+'+g+' gold');}
   renderAdGold();};
 const CHEST3={g:150,gap:4*3600000};
+// Advent calendar (1-24 December): one door a day, opened through the referee; 20 doors win the Star shot
+const ADV={y:0,bits:0};
+function advState(){const now=krakenNow(),d=adventDay(now),y=mtDate(now).getUTCFullYear(),sv=dailySave()||{};let bits=sv.ay===y?(sv.av|0):0;if(ADV.y===y)bits|=ADV.bits;return{d,y,bits};}
+function renderAdvent(){const box=$('advbox'),st=advState();if(!st.d){box.hidden=true;return;}box.hidden=false;
+  const can=econServer(),done=!!(st.bits&(1<<(st.d-1)));let n=0;for(let b=st.bits;b;b&=b-1)n++;
+  const wrap=$('advdoors');wrap.innerHTML='';for(let i=1;i<=24;i++){const el=document.createElement('div'),op=!!(st.bits&(1<<(i-1)));el.className='advdoor'+(op?' open':i===st.d?' today':i>st.d?' later':' missed');el.textContent=i;wrap.appendChild(el);}
+  $('advnote').textContent=can?(n>=ADVENT.star?'You opened '+n+' doors and won the Star shot! Wear it in Looks.':'Open a door every day until Christmas Eve. Open '+ADVENT.star+' doors to win the golden Star shot ('+n+' so far).')
+    :'Sign in with Google in Open sea to open the Advent calendar.';
+  const b=$('advbtn');b.hidden=!can;b.disabled=done;b.textContent=done?'Come back tomorrow for door '+Math.min(24,st.d+1):'Open door '+st.d+': +'+ADVENT.gold[st.d-1]+' gold';}
+$('advbtn').onclick=()=>{const st=advState();if(!st.d||!econServer()||(st.bits&(1<<(st.d-1))))return;audio();
+  const g=ADVENT.gold[st.d-1];econRequest({k:'advent'});if(ADV.y!==st.y){ADV.y=st.y;ADV.bits=0;}ADV.bits|=1<<(st.d-1);
+  addGold(g);updHud();chime(true);setTimeout(()=>chime(true),160);showBanner('Advent door '+st.d+': +'+g+' gold');renderAdvent();};
 function renderChest3(){const b=$('chest3btn');if(!(adsOn()&&econServer())){b.hidden=true;return;}const sv=dailySave()||{},last=Math.max(AD.chest3||0,sv.ac||0),wait=last+CHEST3.gap-serverNowMs();
   b.hidden=false;b.disabled=AD.busy||wait>0;
   b.textContent=wait>0?'Next free chest in '+(wait>=3600000?Math.ceil(wait/3600000)+' h':Math.ceil(wait/60000)+' min'):(noAdsOn()?'Free chest (No ads bonus): +':'▶ Watch a video for a free chest: +')+CHEST3.g+' gold';}
@@ -2038,6 +2092,13 @@ $('chest2btn').onclick=async()=>{const st=dailyState(),day=st.day;if(AD.busy||st
 // a short ad between Wave battles: never in a captain's first battles, never mid-fight, at most every few minutes
 function battleEnded(){if(MODE!=='waves'||coop)return;AD.runs++;try{localStorage.setItem('bb-runs',AD.runs)}catch(e){}}
 function betweenBattles(go){if(!adsOn()||noAdsOn()||MODE!=='waves'||coop||AD.runs<=AD_FREE_RUNS||Date.now()-AD.last<AD_GAP){go();return;}
+  AD.last=Date.now();try{localStorage.setItem('bb-adlast',AD.last)}catch(e){}adInter().then(go,go);}
+// Open sea: a short ad when you dock at a harbour. Never on a captain's first docks, never twice within a few minutes
+// (the same clock as the Wave battles ad), and never with No ads.
+const AD_FREE_DOCKS=2;
+function harbourAd(go){if(!adsOn()||noAdsOn()||MODE!=='open'){go();return;}
+  AD.docks=(AD.docks|0)+1;try{localStorage.setItem('bb-docks',AD.docks)}catch(e){}
+  if(AD.docks<=AD_FREE_DOCKS||Date.now()-AD.last<AD_GAP){go();return;}
   AD.last=Date.now();try{localStorage.setItem('bb-adlast',AD.last)}catch(e){}adInter().then(go,go);}
 function renderNoAds(){const on=adsOn(),txt=noAdsOn()?'No ads: on ✓':'Remove ads: '+noAdsPrice()+' a month';
   $('noadsbtn').hidden=!on;$('noadsbtn').textContent=txt;$('startnoads').hidden=!on;$('startnoads').textContent=txt;}
@@ -2082,7 +2143,7 @@ function renderDaily(){const st=dailyState();
     if(q.claimed){b.textContent='Claimed ✓';b.disabled=true;}else if(q.done){b.textContent='Claim';b.onclick=()=>claimQuest(q);}else{b.textContent='In progress';b.disabled=true;b.classList.add('ghost');}
     r.appendChild(b);const bar=document.createElement('div');bar.className='qbar';bar.innerHTML=`<i style="width:${Math.round(q.p/q.Q.n*100)}%"></i>`;r.appendChild(bar);ql.appendChild(r);}
   const left=86400000-(serverNowMs()%86400000),h=Math.floor(left/3600000),m=Math.floor(left%3600000/60000);
-  renderChest2(st);renderChest3();
+  renderChest2(st);renderChest3();renderAdvent();
   $('qreset').textContent=`New chest and quests in ${h} h ${m} min.`+(st.quests.some(q=>q.Q.ev==='captain')?' Captains sunk count only when the referee confirms them.':'');}
 function openDaily(from){if(!dailyOn())return;daily.from=from;audio();firing=false;joy=null;if(state==='play'&&!onlineAtSea())state='paused';
   ['menuov'].forEach(id=>$(id).hidden=true);renderDaily();$('dailyov').hidden=false;}
@@ -2118,14 +2179,15 @@ const ACH=[
   {id:'duelist',n:'Duelist',d:'Win 5 duels',st:'ks.duel',need:5,ti:'the Duelist'},
   {id:'champ',n:'Season Champion',d:'Finish a season in the top 10',st:'sr',need:1,ti:'Season Champion'},
   {id:'shark',n:'Shark Hunter',d:'Help destroy the megalodon',st:'ks.shark',need:1,ti:'Shark Hunter'},
+  {id:'elf',n:'Naughty List',d:'Help sink Santa\'s Evil Helper',st:'ks.elf',need:1,ti:'Naughty List Breaker'},
 ];
 // Titles from the shop and the Season Pass (not achievements): the captain has one when s.own lists its id.
-const XTI=[{id:'founder',ti:'Founder'},{id:'s1cap',ti:'Gold Rush Captain'},{id:'s2cap',ti:'Kraken Season Captain'}];
+const XTI=[{id:'founder',ti:'Founder'},{id:'s1cap',ti:'Gold Rush Captain'},{id:'s2cap',ti:'Christmas Captain'},{id:'s3cap',ti:'Kraken Season Captain'}];
 const owns=(s,id)=>!!s&&Array.isArray(s.own)&&s.own.includes(id);
 // Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (a), something owned (o), or nothing.
 const COS={
-  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'},{n:'Steel wake',a:'shark'},{n:'Founder\'s wake',o:'founder'},{n:'Gold Rush wake',o:'s1wake'},{n:'Abyss wake',o:'s2wake'}],
-  ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'},{n:'Founder\'s shot',o:'founder'},{n:'Gold Rush shot',o:'s1shot'},{n:'Ink shot',o:'s2shot'}],
+  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'},{n:'Steel wake',a:'shark'},{n:'Founder\'s wake',o:'founder'},{n:'Gold Rush wake',o:'s1wake'},{n:'Candy cane wake',o:'s2wake'},{n:'Abyss wake',o:'s3wake'}],
+  ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'},{n:'Founder\'s shot',o:'founder'},{n:'Gold Rush shot',o:'s1shot'},{n:'Snowball shot',o:'s2shot'},{n:'Ink shot',o:'s3shot'},{n:'Star shot',o:'star'}],
   fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
   pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
 };
@@ -2425,7 +2487,7 @@ function cosCode(c){return ''+c.trail+c.ball+c.fig+c.pet;}
 const COS_LABEL={trail:'Wake',ball:'Cannonballs',fig:'Figurehead',pet:'Ship\'s pet'};
 function renderLog(){const sv=logSave()||{};const st=(k)=>achStat(sv,k);
   const ks=k=>st('ks.'+k),tot=['sloop','galleon','boss','merchant','kraken'].reduce((a,k)=>a+ks(k),0)+ks('captain');
-  const rows=[['Ships sunk',sv.sunk|0],['Sloops',ks('sloop')],['Galleons',ks('galleon')],['Bosses',ks('boss')],['Merchants',ks('merchant')],['Krakens',ks('kraken')],['Megalodons',ks('shark')],
+  const rows=[['Ships sunk',sv.sunk|0],['Sloops',ks('sloop')],['Galleons',ks('galleon')],['Bosses',ks('boss')],['Merchants',ks('merchant')],['Krakens',ks('kraken')],['Megalodons',ks('shark')],['Santa\'s Evil Helpers',ks('elf')],
     ['Captains sunk',ks('captain')],['Treasures',ks('treasure')],['Convoys escorted',ks('escort')],['Gold earned',(sv.earned|0).toLocaleString()],['Times sunk',sv.dn|0],['Best chest streak',sv.bs|0]];
   $('logstats').innerHTML='';for(const [n,v] of rows){const d=document.createElement('div');d.className='stat';d.innerHTML=`<b>${v}</b><span>${n}</span>`;$('logstats').appendChild(d);}
   // titles
@@ -2599,7 +2661,8 @@ $('repdone').onclick=()=>{audio();$('reportov').hidden=true;$('menuov').hidden=f
 $('drawtog').onclick=()=>{audio();hideDraw=!hideDraw;try{localStorage.setItem('bb-hidedraw',hideDraw?'1':'0')}catch(e){}updDrawTog();if(typeof NET!=='undefined')NET.last=null;};
 let menuPaused=false,leaveArm=false;
 const onlineAtSea=()=>MODE==='open'&&typeof NET!=='undefined'&&!!NET.room&&NET.ok;
-function openMenu(){if(state!=='play')return;audio();firing=false;joy=null;fb.classList.remove('on');leaveArm=false;
+function menuSections(){document.querySelectorAll('#menuov .msec').forEach(m=>{m.hidden=![...m.querySelectorAll('button')].some(b=>!b.hidden);});}
+function openMenu(){if(state!=='play')return;setTimeout(menuSections,0);audio();firing=false;joy=null;fb.classList.remove('on');leaveArm=false;
   menuPaused=!onlineAtSea();if(menuPaused)state='paused';
   $('menueyebrow').textContent=menuPaused?'Paused':'At sea';
   $('menunote').textContent=menuPaused?'The game is paused.':'You are online, so the sea does not stop. Other captains can still see you.';
@@ -2914,6 +2977,7 @@ function update(dt){
     if(b.owner==='p'||b.owner==='p2'){for(const e of enemies){if(Math.hypot(b.x-e.x,b.z-e.z)<e.r+.5){b.life=0;if(e.proxy){boom(b.x,b.z,false);break;}e.hp--;e.flash=.15;onEnemyHit(e);boom(b.x,b.z,false);noise(.15,1500,.2);break;}}
       if(b.life>0&&kraken.on&&Math.hypot(b.x-kraken.x,b.z-kraken.z)<kraken.r+.6){b.life=0;krakenHurt(b);}
       if(b.life>0&&shark.on&&sharkDist(b.x,b.z)<3.6){b.life=0;sharkHurt(b);}
+      if(b.life>0&&elf.on&&Math.hypot(b.x-elf.x,b.z-elf.z)<elf.r){b.life=0;elfHurt(b);}
       if(b.life>0)for(const r of remoteShips()){if(!isMate(r.peer)&&Math.hypot(b.x-r.x,b.z-r.z)<1.7*(r.sc||1)+.5){b.life=0;boom(b.x,b.z,false);noise(.15,1500,.2);break;}}}
     else if(b.owner==='h'){for(const e of enemies){if(Math.hypot(b.x-e.x,b.z-e.z)<e.r+.5){b.life=0;boom(b.x,b.z,false);break;}}}
     else if(b.owner==='r'){
@@ -2962,6 +3026,7 @@ function update(dt){
 function addPickup(k,x,z,v){
   const m=new THREE.Group();let ring=null;
   if(k==='coin'){const c=new THREE.Mesh(COIN,M.coin);c.rotation.x=Math.PI/2;c.castShadow=true;m.add(c);}
+  else if(k==='map'&&XM.on)xmasPresentPickup(m);
   else if(k==='map'){const sc=new THREE.Mesh(SCROLL,M.parch);sc.rotation.z=Math.PI/2;sc.castShadow=true;m.add(sc);const rb=new THREE.Mesh(BAND,M.ribbon);rb.rotation.y=Math.PI/2;rb.scale.setScalar(.5);m.add(rb);
     const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:softTex,color:L('#ffd36a'),transparent:true,opacity:.7,blending:THREE.AdditiveBlending,depthWrite:false}));glow.scale.setScalar(3.4);m.add(glow);}
   else if(k==='barrel'){const b=new THREE.Mesh(BARREL,M.barrel);b.castShadow=true;m.add(b);[.38,-.38].forEach(y=>{const t=new THREE.Mesh(BAND,M.iron);t.rotation.x=Math.PI/2;t.position.y=y;m.add(t);});}
@@ -2995,7 +3060,7 @@ function startTreasure(){const c=islands.filter(i=>!i.port&&Math.hypot(i.x-P.x,i
     if(treasure){const I=treasure.isl,a=Math.atan2(-(I.z-P.z),I.x-P.x),dirs=['east','north-east','north','north-west','west','south-west','south','south-east'],dir=dirs[((Math.round(a/(Math.PI/4))%8)+8)%8],mins=Math.max(1,Math.ceil(treasure.t/60));
       treasure.pulse=3;hudNote(`Spare map: +40 gold. Your X is ${dir}, ${mins} min left`);}
     else hudNote('Faded map: +40 gold');return;}
-  const isl=c[Math.floor(Math.random()*c.length)];treasure={isl,t:360,dig:0};hudNote('Treasure map! Sail to the X on your map');}
+  const isl=c[Math.floor(Math.random()*c.length)];treasure={isl,t:360,dig:0};hudNote(XM.on?'A present map! Sail to the X and dig up the present':'Treasure map! Sail to the X on your map');}
 $('dig').onclick=()=>{audio();if(treasure&&!treasure.dig){treasure.dig=.001;chime();}};
 function spawnConvoy(){const sp=spawnSpot(110,150);if(!sp)return;
   let dest=PORTS.map(p=>({p,d:Math.hypot(p.x-sp.x,p.z-sp.z)})).filter(o=>o.d>140).sort((a,b)=>a.d-b.d)[0];if(!dest)return;dest=dest.p;
@@ -3143,6 +3208,167 @@ function krakenTick(dt){
   else if(kraken.bar){kraken.bar=false;$('boss').hidden=true;}
 }
 function krakenHurt(b){const hy=2+Math.random()*2;spark(b.x,hy,b.z,{color:'#ffb04a',add:true,s:1.6,life:.14});for(let i=0;i<3;i++)spark(b.x,hy,b.z,{color:'#ff7a26',add:true,s:rnd(.5,.9),life:rnd(.15,.3),vx:rnd(-3,3),vy:rnd(1,3),vz:rnd(-3,3)});smoke(b.x,hy,b.z,3,true,.8);noise(.15,900,.25);kraken.flash=.15;kraken.mine++;kraken.hp=Math.max(0,kraken.hp-1);if(MODE==='open')krakenHitShared(kraken.slot);}
+/* ================= Christmas (Season 2: Christmas is Coming) and the New Year party =================
+   Everything here only shows while the Christmas season or the New Year party runs; the rest of the year nothing changes. */
+function xmasOn(){if(window.__xmas!==undefined)return !!window.__xmas;return seasonAt(krakenNow()).id==='xmas';}
+function newYearOn(){if(window.__newyear!==undefined)return !!window.__newyear;const E=eventAt(krakenNow());return !!E&&E.id==='newyear';}
+// snow on the islands: grass, bushes, palms and rocks turn white and frosty
+function xmasIslands(on){if(!XM.mats)XM.mats={gm:M.grass.map,gc:M.grass.color.clone(),b:M.bush.color.clone(),b2:M.bush2.color.clone(),f:M.frond.color.clone(),r:M.rock.color.clone(),s:M.sand.color.clone()};const o=XM.mats;
+  if(on){M.grass.map=null;M.grass.color=L('#f2f7fb');M.bush.color=L('#e9f1f5');M.bush2.color=L('#dfe9ee');M.frond.color=L('#c9e4d6');M.rock.color=L('#dfe6ea');M.sand.color=L('#f4f1ea');}
+  else{M.grass.map=o.gm;M.grass.color.copy(o.gc);M.bush.color.copy(o.b);M.bush2.color.copy(o.b2);M.frond.color.copy(o.f);M.rock.color.copy(o.r);M.sand.color.copy(o.s);}
+  M.grass.needsUpdate=true;}
+// fairy lights: one cloud of points per ship (a bright core and a soft glow), so they cost very little
+const XBULB=['#ff2b2b','#2bff5a','#ffd23f','#3d8bff','#ff7ad9'].map(c=>L(c)),XWARM=L('#ffe2a0');
+let xCoreM=null,xGlowM=null;
+function xBulbs(pts,cols){if(!xCoreM){xCoreM=new THREE.PointsMaterial({size:.3,vertexColors:true,transparent:true,depthWrite:false});
+    xGlowM=new THREE.PointsMaterial({map:softTex,size:1.3,vertexColors:true,transparent:true,opacity:.55,blending:THREE.AdditiveBlending,depthWrite:false});}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+  const grp=new THREE.Group(),a=new THREE.Points(geo,xCoreM),b=new THREE.Points(geo,xGlowM);a.renderOrder=6;b.renderOrder=6;grp.add(a,b);grp.userData.geo=geo;return grp;}
+function xmasShip(g,on){const u=g&&g.userData;if(!u||!u.inner)return;if(u.xl){u.inner.remove(u.xl);u.xl.userData.geo.dispose();u.xl=null;}if(!on)return;
+  let ls=null;u.inner.traverse(o=>{if(o.isLineSegments)ls=o;});if(!ls)return;
+  const p=ls.geometry.attributes.position,pts=[],cols=[];let k=0;const push=(x,y,z,c)=>{pts.push(x,y,z);cols.push(c.r,c.g,c.b);};
+  for(let i=0;i+1<p.count;i+=2){const ax=p.getX(i),ay=p.getY(i),az=p.getZ(i),bx=p.getX(i+1),by=p.getY(i+1),bz=p.getZ(i+1),n=Math.max(3,Math.round(Math.hypot(bx-ax,by-ay,bz-az)/.45));
+    for(let j=1;j<n;j++){const t=j/n;push(ax+(bx-ax)*t,ay+(by-ay)*t-Math.sin(t*Math.PI)*.12,az+(bz-az)*t,XBULB[k++%XBULB.length]);}}
+  // a warm garland along both sides of the hull
+  for(const sd of [1,-1])for(let x=-LS+.3;x<=LB-.3;x+=.3){const e=edge(x);push(x,e.yt-.12-Math.abs(Math.sin(x*3))*.08,sd*(e.w+.04),k++%3?XWARM:XBULB[1]);}
+  u.xl=xBulbs(pts,cols);u.inner.add(u.xl);}
+function allShips(){const out=[];scene.children.forEach(o=>{if(o.userData&&o.userData.inner)out.push(o);});return out;}
+// a Christmas tree in every harbour, with presents underneath
+const XTREE=L('#1f6b3a');let xTreeM=null,xStarM=null;
+function xmasTree(g,r){if(!xTreeM){xTreeM=std({color:XTREE,roughness:.9,flatShading:true});xStarM=new THREE.MeshBasicMaterial({color:L('#ffe066')});}
+  const t=new THREE.Group();t.position.set(r*.15,.75,-r*.05);t.scale.setScalar(1.35);g.add(t);
+  [[1.5,1.9,1.3],[1.15,1.6,2.4],[.8,1.3,3.4]].forEach(([rr,h,y])=>{const c=new THREE.Mesh(new THREE.ConeGeometry(rr,h,9),xTreeM);c.position.y=y;c.castShadow=true;t.add(c);g.userData.ownGeo.push(c.geometry);});
+  const tr=new THREE.Mesh(new THREE.CylinderGeometry(.22,.26,.8,8),M.bark);tr.position.y=.4;t.add(tr);g.userData.ownGeo.push(tr.geometry);
+  const st=new THREE.Mesh(new THREE.OctahedronGeometry(.32,0),xStarM);st.position.y=4.35;t.add(st);g.userData.ownGeo.push(st.geometry);
+  const sg=new THREE.Sprite(new THREE.SpriteMaterial({map:softTex,color:L('#ffd23f'),transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));sg.position.y=4.35;sg.scale.setScalar(1.8);t.add(sg);
+  const pts=[],cols=[];for(let i=0;i<46;i++){const y=.9+i/46*3.2,rr=1.45*(1-(y-.9)/3.6)+.08,a=i*2.4,c=XBULB[i%XBULB.length];pts.push(Math.cos(a)*rr,y,Math.sin(a)*rr);cols.push(c.r,c.g,c.b);}
+  const bl=xBulbs(pts,cols);t.add(bl);g.userData.ownGeo.push(bl.userData.geo);
+  [['#d62828','#ffd23f',1.1,.3],['#1f8a4c','#f4f4f4',-.9,.8],['#2f5dd6','#ffd23f',.2,-1.2]].forEach(([c,rb,x,z])=>{const p=xPresent(c,rb,.55);p.position.set(x,.15,z);t.add(p);});}
+let XPBOX=null,XPRIB1,XPRIB2,XPBOW;const xPM={};   // made on first use
+function xPresent(col,rib,s){if(!XPBOX){XPBOX=new THREE.BoxGeometry(.9,.7,.9);XPRIB1=new THREE.BoxGeometry(.95,.72,.16);XPRIB2=new THREE.BoxGeometry(.16,.72,.95);XPBOW=new THREE.TorusGeometry(.16,.06,6,10);}const pm=c=>xPM[c]||(xPM[c]=std({color:L(c),roughness:.55}));const g=new THREE.Group();g.scale.setScalar(s||1);
+  const b=new THREE.Mesh(XPBOX,pm(col));b.position.y=.2;b.castShadow=true;g.add(b);[XPRIB1,XPRIB2].forEach(G2=>{const m=new THREE.Mesh(G2,pm(rib));m.position.y=.2;g.add(m);});
+  const bow=new THREE.Mesh(XPBOW,pm(rib));bow.position.y=.62;g.add(bow);return g;}
+function xmasHarbours(){for(const i of islands)if(i.g&&i.port){dropIsland(i);buildIsland(i);}}
+// gentle snowfall around your ship
+function xmasSnow(dt,on){if(!on){if(XM.snow){scene.remove(XM.snow);XM.snow.geometry.dispose();XM.snow=null;}return;}
+  if(!XM.snow){const N=1000,pos=new Float32Array(N*3);for(let i=0;i<N;i++){pos[i*3]=rnd(-34,34);pos[i*3+1]=rnd(0,20);pos[i*3+2]=rnd(-34,34);}
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    XM.snow=new THREE.Points(geo,new THREE.PointsMaterial({map:softTex,color:0xffffff,size:.6,transparent:true,opacity:1,depthWrite:false}));XM.snow.frustumCulled=false;XM.snow.renderOrder=7;scene.add(XM.snow);}
+  const a=XM.snow.geometry.attributes.position,p=a.array;
+  for(let i=0;i<p.length;i+=3){p[i+1]-=dt*(1.1+(i%7)*.14);p[i]+=Math.sin(clock*.7+i)*dt*.35;if(p[i+1]<0)p[i+1]+=20;}
+  a.needsUpdate=true;XM.snow.position.set(P.x,0,P.z);}
+// treasure maps become presents
+function xmasPresentPickup(m){m.add(xPresent(['#d62828','#1f8a4c','#2f5dd6'][Math.floor(Math.random()*3)],'#ffd23f',.75));
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:softTex,color:L('#ffd36a'),transparent:true,opacity:.7,blending:THREE.AdditiveBlending,depthWrite:false}));glow.scale.setScalar(3.4);m.add(glow);}
+// New Year party: a disco ball over the nearest harbour, coloured beams and fireworks in the sky
+const XDISCO=['#ff2bd6','#2be8ff','#ffe02b','#7a2bff','#2bff7a'];
+function xmasDisco(dt,on){
+  if(!on){if(XM.disco){scene.remove(XM.disco.g);XM.disco.own.forEach(x=>x.dispose());XM.disco=null;}return;}
+  if(!XM.disco){const g=new THREE.Group(),own=[];
+    const bg=new THREE.IcosahedronGeometry(1.6,2),ball=new THREE.Mesh(bg,std({color:L('#d8dde6'),metalness:1,roughness:.15,flatShading:true,emissive:L('#3a3f55'),emissiveIntensity:.6}));g.add(ball);own.push(bg,ball.material);
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:softTex,color:0xffffff,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false}));sp.scale.setScalar(6);g.add(sp);
+    const beams=[];for(let k=0;k<7;k++){const L2=20,cg=new THREE.ConeGeometry(2,L2,16,1,true);cg.translate(0,-L2/2,0);own.push(cg);
+      const m=new THREE.MeshBasicMaterial({color:L(XDISCO[k%XDISCO.length]),transparent:true,opacity:.15,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});own.push(m);
+      const cn=new THREE.Mesh(cg,m);cn.rotation.order='YXZ';cn.userData.k=k;g.add(cn);beams.push(cn);}
+    scene.add(g);XM.disco={g,ball,beams,own};}
+  const D=XM.disco,tx=P.x+4,tz=P.z-17;if(!D.placed){D.placed=1;D.g.position.set(tx,11,tz);}D.g.position.x+=(tx-D.g.position.x)*Math.min(1,dt*.8);D.g.position.z+=(tz-D.g.position.z)*Math.min(1,dt*.8);D.ball.rotation.y+=dt*.8;
+  D.beams.forEach(b=>{const k=b.userData.k;b.rotation.set(.6+.25*Math.sin(clock*.9+k*1.7),k/7*TAU+clock*.6,0);});
+  XM.fw-=dt;if(XM.fw<=0&&state==='play'){XM.fw=rnd(.7,1.5);const x=P.x+rnd(-14,14),z=P.z-rnd(8,30),y=rnd(7,14),c=XDISCO[Math.floor(Math.random()*XDISCO.length)];
+    for(let i=0;i<36;i++){const u=rnd(0,TAU),v=Math.acos(rnd(-1,1)),s=rnd(5,8);spark(x,y,z,{color:c,add:true,s:rnd(.5,.9),life:rnd(.9,1.4),vx:Math.sin(v)*Math.cos(u)*s,vy:Math.cos(v)*s,vz:Math.sin(v)*Math.sin(u)*s,g:3});}
+    if(Math.random()<.5)noise(.35,90,.25);}}
+function xmasTick(dt){
+  XM.chk-=dt;if(XM.chk<=0){XM.chk=5;const on=xmasOn(),ny=newYearOn();
+    if(on!==XM.on){XM.on=on;xmasIslands(on);allShips().forEach(g=>xmasShip(g,on));xmasHarbours();}
+    XM.ny=ny;}
+  xmasSnow(dt,XM.on&&!wxNoSnow());
+  if(xCoreM){const n=typeof lampGlowM!=='undefined'?lampGlowM.opacity:0;xGlowM.opacity=.35+.4*n+.12*Math.sin(clock*3);}
+  xmasDisco(dt,!!XM.ny);}
+function wxNoSnow(){return false;}
+/* ---- Santa's Evil Helper: a Christmas boss ship. 8pm Malta time every evening in December, the same one for everyone online ---- */
+const ELF_MODEL=null;   // file name in models/ once the 3D model is ready (after tools/prepare_model.py); until then a festive pirate ship stands in
+const ELF_ROT=0;        // turn the model so its bow points along +x, like the game's own ships
+let elfModel=null,elfLoading=false;
+function elfLoad(){if(!ELF_MODEL||elfModel||elfLoading||!THREE.GLTFLoader)return;elfLoading=true;
+  new THREE.GLTFLoader().load(MODEL_BASE+ELF_MODEL,gl=>{const m=gl.scene,lights=[];m.traverse(o=>{if(o.isLight)lights.push(o);});lights.forEach(o=>o.parent&&o.parent.remove(o));
+    m.traverse(o=>{if(o.isMesh)o.castShadow=true;});m.rotation.y=ELF_ROT;
+    // fit it to about 14 units long, centred, sitting in the water
+    const box=new THREE.Box3().setFromObject(m),sz=box.getSize(new THREE.Vector3()),k=14/Math.max(sz.x,sz.z);m.scale.multiplyScalar(k);
+    const b2=new THREE.Box3().setFromObject(m),c=b2.getCenter(new THREE.Vector3());m.position.set(-c.x,-b2.min.y-.6,-c.z);
+    const w=new THREE.Group();w.add(m);elfModel=w;},undefined,()=>{elfLoading=false;});}
+// fairy lights for the 3D model: a garland round the rail and strings from bow and stern up to the masthead
+function elfModelLights(g){const box=new THREE.Box3().setFromObject(g),sz=box.getSize(new THREE.Vector3()),c=box.getCenter(new THREE.Vector3()),pts=[],cols=[];let k=0;
+  const hx=sz.x/2*.92,hz=sz.z/2*.85,ry=box.min.y+sz.y*.22,top=box.max.y*.97,push=(x,y,z,col)=>{pts.push(x-c.x,y,z-c.z);cols.push(col.r,col.g,col.b);};
+  for(let i=0;i<120;i++){const a=i/120*TAU;push(c.x+Math.cos(a)*hx,ry-Math.abs(Math.sin(i*.9))*.15,c.z+Math.sin(a)*hz,i%3?XWARM:XBULB[1]);}
+  for(const [x0,z0] of [[hx,0],[-hx,0],[0,hz],[0,-hz]])for(let j=1;j<28;j++){const t=j/28;push(c.x+x0*(1-t),ry+(top-ry)*t-Math.sin(t*Math.PI)*.4,c.z+z0*(1-t),XBULB[k++%XBULB.length]);}
+  const l=xBulbs(pts,cols);l.position.set(c.x-g.position.x,0,c.z-g.position.z);g.add(l);}
+const elf={on:false,slot:-1,x:0,z:0,a:0,hp:ELF.hp,max:ELF.hp,mine:0,g:null,dead:false,claimed:-1,announced:-1,rise:0,cool:3,cx:0,cz:0,bar:false,r:5.2,v:4,flash:0};
+let elfOff=null;
+function elfWatch(slot,cb){return ()=>{};}
+function elfHitShared(slot){}
+function elfBuild(){elfLoad();
+  if(elfModel){const g=new THREE.Group();g.add(elfModel.clone());scene.add(g);g.updateMatrixWorld(true);elfModelLights(g);g.userData={model:true};return g;}
+  const g=makeShip(Object.assign({},LOOKS.boss,{side:'#4a1c14',bottom:'#2a0f0a',trim:'#e8c25a',deck:'#6a4a32',sail:'#d23447',stripe:'#f6f0e8',flag:'#141414',emblem:'skull',lamp:'#ffd23f',scale:2.4,tiers:3,gallery:true}));
+  xmasShip(g,true);elfDecor(g);return g;}
+// the boss's Christmas dressing: lights all over the sails, green garlands with bulbs along the rails,
+// a candy-cane figurehead, a Santa hat on the main masthead, a wreath on the stern and presents on deck
+let elfCaneTex=null;
+function elfDecor(g){const u=g.userData,inner=u.inner,pts=[],cols=[];const push=(v,c)=>{pts.push(v.x,v.y,v.z);cols.push(c.r,c.g,c.b);};
+  inner.children.forEach(m=>{if(!m.isMesh||m.material!==u.sailM)return;m.updateMatrix();const p=m.geometry.attributes.position,n=Math.min(70,p.count);
+    for(let i=0;i<n;i++){const k=(i*7919)%p.count,v=new THREE.Vector3(p.getX(k),p.getY(k),p.getZ(k)).applyMatrix4(m.matrix);v.x+=.04;push(v,i%4?XWARM:XBULB[i%XBULB.length]);}});
+  const gm=std({color:L('#1d5a2c'),roughness:.9}),own=u.own,og=u.ownGeo;own.push(gm);
+  for(const sd of [1,-1]){let x=-LS+.25;while(x<LB-.45){const x2=Math.min(LB-.35,x+1.05),a=edge(x),b=edge(x2),mid=(x+x2)/2,em=edge(mid);
+      const cv=new THREE.QuadraticBezierCurve3(new THREE.Vector3(x,a.yt-.04,sd*(a.w+.05)),new THREE.Vector3(mid,em.yt-.5,sd*(em.w+.13)),new THREE.Vector3(x2,b.yt-.04,sd*(b.w+.05)));
+      const t=new THREE.Mesh(new THREE.TubeGeometry(cv,10,.075,5,false),gm);inner.add(t);og.push(t.geometry);
+      for(let j=1;j<7;j++)push(cv.getPoint(j/7),j%2?XBULB[0]:XWARM);x=x2;}}
+  // candy-cane figurehead
+  if(!elfCaneTex){const c=document.createElement('canvas');c.width=64;c.height=256;const x=c.getContext('2d');x.fillStyle='#f8f4ee';x.fillRect(0,0,64,256);x.fillStyle='#d0142c';
+    for(let y=-64;y<256;y+=32){x.beginPath();x.moveTo(0,y);x.lineTo(64,y+32);x.lineTo(64,y+48);x.lineTo(0,y+16);x.fill();}elfCaneTex=new THREE.CanvasTexture(c);elfCaneTex.wrapS=elfCaneTex.wrapT=THREE.RepeatWrapping;elfCaneTex.repeat.set(1,3);}
+  const cm=std({map:elfCaneTex,roughness:.4});own.push(cm);const bt=edge(LB-.2);
+  const cane=new THREE.CatmullRomCurve3([new THREE.Vector3(LB-.1,bt.yt-.1,0),new THREE.Vector3(LB+.25,bt.yt+.7,0),new THREE.Vector3(LB+.35,bt.yt+1.35,0),new THREE.Vector3(LB+.75,bt.yt+1.6,0),new THREE.Vector3(LB+1.05,bt.yt+1.3,0)]);
+  const cn=new THREE.Mesh(new THREE.TubeGeometry(cane,24,.13,8,false),cm);inner.add(cn);og.push(cn.geometry);
+  // Santa hat on the main masthead
+  const red=std({color:L('#c8102e'),roughness:.8}),wht=std({color:L('#f6f6f6'),roughness:.9});own.push(red,wht);
+  const mx=.05,top=edge(mx).yt-.1+7.0,hat=new THREE.Group();hat.position.set(mx,top,0);hat.rotation.z=-.25;inner.add(hat);
+  const hc=new THREE.ConeGeometry(.42,1.1,12),hb=new THREE.TorusGeometry(.4,.12,8,16),hp=new THREE.SphereGeometry(.17,10,8);og.push(hc,hb,hp);
+  const c1=new THREE.Mesh(hc,red);c1.position.y=.55;hat.add(c1);const b1=new THREE.Mesh(hb,wht);b1.rotation.x=Math.PI/2;hat.add(b1);const p1=new THREE.Mesh(hp,wht);p1.position.y=1.12;hat.add(p1);
+  // a wreath on the stern
+  const se=edge(-LS+.15),wg=new THREE.TorusGeometry(.42,.13,8,18),wb=new THREE.SphereGeometry(.12,8,6);og.push(wg,wb);
+  const wr=new THREE.Mesh(wg,gm);wr.position.set(-LS-.02,se.yt-.55,0);wr.rotation.y=Math.PI/2;inner.add(wr);const wbw=new THREE.Mesh(wb,red);wbw.position.set(-LS-.08,se.yt-.2,0);inner.add(wbw);
+  for(let i=0;i<10;i++){const a=i/10*TAU;push(new THREE.Vector3(-LS-.1,se.yt-.55+Math.sin(a)*.42,Math.cos(a)*.42),XBULB[i%XBULB.length]);}
+  // presents on deck
+  [['#d62828','#ffd23f',-.9,.35],['#1f8a4c','#f4f4f4',-1.25,-.3],['#2f5dd6','#ffd23f',.75,.25],['#f4f4f4','#d62828',1.05,-.35]].forEach(([c,r,x,z])=>{const pr=xPresent(c,r,.42);pr.position.set(x,edge(x).yt-.32,z*edge(x).w);inner.add(pr);});
+  const l=xBulbs(pts,cols);inner.add(l);og.push(l.userData.geo);}
+function elfTick(dt){
+  if(MODE!=='open'&&!window.__elfForce){if(elf.g){disposeGroup(elf.g);elf.g=null;elf.on=false;}if(elf.bar){elf.bar=false;$('boss').hidden=true;}return;}
+  const now=krakenNow(),slot=window.__elfForce?Math.floor(now/86400000):elfSlot(now),up=slot>=0;
+  if(up&&slot!==elf.slot){if(elfOff){elfOff();elfOff=null;}const sp=krakenSpot(slot*13+5,40);Object.assign(elf,{slot,hp:ELF.hp,max:ELF.hp,mine:0,dead:false,cx:sp.x,cz:sp.z,cool:3});
+    if(MODE==='open')elfOff=elfWatch(slot,v=>{if(typeof v==='number'&&v<elf.hp)elf.hp=v;});}
+  const show=up&&slot===elf.slot&&!elf.dead;
+  if(show&&!elf.g){elf.g=elfBuild();elf.rise=0;}
+  if(!show&&elf.g){elf.rise-=dt*.5;if(elf.rise<=0){disposeGroup(elf.g);elf.g=null;}}
+  elf.on=show&&!!elf.g;
+  if(show&&elf.announced!==slot&&state==='play'&&elf.g){elf.announced=slot;hudNote('Santa\'s Evil Helper has sailed into the bay! Sink it together');noise(1.6,45,.55);}
+  if(!elf.g)return;
+  if(show)elf.rise=Math.min(1,elf.rise+dt*.4);
+  // it sails a slow circle, the same for everyone
+  const pa=now/1000*.045+slot;elf.x=elf.cx+Math.cos(pa)*38;elf.z=elf.cz+Math.sin(pa)*38;elf.a=pa+Math.PI/2;
+  const d=Math.hypot(P.x-elf.x,P.z-elf.z);
+  if(show&&elf.hp<=0){elf.dead=true;boom(elf.x,elf.z,true,3);noise(1.4,110,.6);shake=Math.max(shake,1.1);
+    if(d<120&&state==='play'){hudNote('Santa\'s Evil Helper is sunk! Merry Christmas, captain');
+      if(MODE==='open'&&elf.mine>=ELF.minHits&&elf.claimed!==slot){elf.claimed=slot;econKill('elf',String(slot));chime(true);setTimeout(()=>chime(true),180);updHud();
+        for(let i=0;i<16;i++)addPickup('coin',elf.x+rnd(-7,7),elf.z+rnd(-7,7),20);}}}
+  // broadsides at captains who come close (never inside a harbour)
+  if(show&&state==='play'&&d<34&&!inSafe(P)){elf.cool-=dt;if(elf.cool<=0){const angry=elf.hp<elf.max/2;elf.cool=angry?rnd(1.6,2.2):rnd(2.4,3.2);
+      const to=Math.atan2(P.z-elf.z,P.x-elf.x),side=Math.sin(to-elf.a)>0?1:-1;[-2.6,-.9,.9,2.6].forEach(o=>shoot(elf,elf.a+side*Math.PI/2+rnd(-.06,.06),21,'b',true,o));noise(.5,500,.4);}}
+  if(elf.g.userData.model){elf.g.position.set(elf.x,Math.sin(clock*1.3)*.15,elf.z);elf.g.rotation.set(Math.sin(clock*.9)*.03,-elf.a,Math.sin(clock*1.1)*.04);}else poseShip(elf.g,elf.x,elf.z,elf.a,clock,slot,0);
+  elf.g.position.y-=6*(1-elf.rise);
+  elf.flash=Math.max(0,elf.flash-dt);
+  if(show&&d<elf.r+P.r){const nx=(P.x-elf.x)||1,nz=P.z-elf.z,nl=Math.hypot(nx,nz)||1;P.x+=nx/nl*.8;P.z+=nz/nl*.8;P.v*=.6;}
+  if(show){const near=d<90;if(near){$('bossname').textContent='Santa\'s Evil Helper';$('bossfill').style.width=(Math.max(0,elf.hp)/(elf.max||ELF.hp)*100)+'%';}
+    if(near!==elf.bar){elf.bar=near;$('boss').hidden=!near&&!kraken.bar&&!shark.bar&&!enemies.some(e=>e.kind==='boss'&&Math.hypot(e.x-P.x,e.z-P.z)<80);}}
+  else if(elf.bar){elf.bar=false;$('boss').hidden=true;}
+}
+function elfHurt(b){boom(b.x,b.z,false);noise(.15,1500,.2);elf.mine++;elf.flash=.15;elf.hp=Math.max(0,elf.hp-1);if(MODE==='open')elfHitShared(elf.slot);}
 /* ---- the Ironfang: a rare armoured shark. The same one for everyone online: it may surface in any 10-minute window (about one in six) and hunts for 3 minutes ---- */
 const SH={slot:600000,life:180000,hp:150,odds:6,len:13};
 const MODEL_BASE='models/';
@@ -3233,7 +3459,7 @@ function seaEventsTick(dt){
   if(!convoy){if(MODE==='open'){convoyT-=dt;if(convoyT<=0){convoyT=360;spawnConvoy();}}}
   else if(!convoy.m||convoy.m.hp<=0||!enemies.includes(convoy.m)){convoy=null;}
   else if(Math.hypot(convoy.m.x-P.x,convoy.m.z-P.z)>260){for(const e of [convoy.m,...convoy.esc])if(e.hp>0){e.hp=-99;e.silent=true;}convoy=null;}
-  krakenTick(dt);sharkTick(dt);
+  krakenTick(dt);sharkTick(dt);elfTick(dt);xmasTick(dt);
 }
 
 function seaEventsMap(g,tx,tz,S,edge){
