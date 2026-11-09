@@ -1732,7 +1732,7 @@ function renderShop(){
   tutShopCheck();
 }
 $('next').onclick=()=>{audio();if(MODE==='story'&&story.tut){$('shopov').hidden=true;tutDone();return;}if(coop&&coopNextBlocked())return;MUS.mode='play';$('shopov').hidden=true;state='play';if(MODE==='open'){saveOpen();lastPortName='';}else if(coop&&coop.role==='guest')coop.rd=wave;else nextWave();};
-$('dock').onclick=()=>{audio();if(state==='play'&&(MODE==='open'||(MODE==='story'&&story.tut)))openShop();};
+$('dock').onclick=()=>{audio();if(state==='play'&&(MODE==='open'||(MODE==='story'&&story.tut))){if(MODE==='open')harbourAd(openShop);else openShop();}};
 
 /* ================= shipwright: choose a ship, paint it, pick or draw an emblem ================= */
 let showcase=false;
@@ -2025,7 +2025,7 @@ function questsFor(day){let a=(day*2654435761)>>>0;const rnd=()=>{a=(a+0x6D2B79F
    the web version shows no ads (window.__fakeAds stands in for them in tests). */
 const ADS_GOLD=100,ADS_PER_DAY=5,AD_WAVE_MAX=2,AD_GAP=240000,AD_FREE_RUNS=3;
 const AD={busy:false,waveVids:0,day:-1,n:0,chest:-1,runs:0,last:0};
-try{AD.runs=+localStorage.getItem('bb-runs')||0;AD.last=+localStorage.getItem('bb-adlast')||0;}catch(e){}
+try{AD.runs=+localStorage.getItem('bb-runs')||0;AD.last=+localStorage.getItem('bb-adlast')||0;AD.docks=+localStorage.getItem('bb-docks')||0;}catch(e){}
 function adsOn(){return !!window.__fakeAds;}
 function noAdsOn(){return !!(window.__fakeAds&&window.__fakeAds.noAds);}
 function adReward(){const f=window.__fakeAds;if(f)f.rewarded=(f.rewarded|0)+1;return Promise.resolve(!!f);}
@@ -2072,6 +2072,13 @@ $('chest2btn').onclick=async()=>{const st=dailyState(),day=st.day;if(AD.busy||st
 // a short ad between Wave battles: never in a captain's first battles, never mid-fight, at most every few minutes
 function battleEnded(){if(MODE!=='waves'||coop)return;AD.runs++;try{localStorage.setItem('bb-runs',AD.runs)}catch(e){}}
 function betweenBattles(go){if(!adsOn()||noAdsOn()||MODE!=='waves'||coop||AD.runs<=AD_FREE_RUNS||Date.now()-AD.last<AD_GAP){go();return;}
+  AD.last=Date.now();try{localStorage.setItem('bb-adlast',AD.last)}catch(e){}adInter().then(go,go);}
+// Open sea: a short ad when you dock at a harbour. Never on a captain's first docks, never twice within a few minutes
+// (the same clock as the Wave battles ad), and never with No ads.
+const AD_FREE_DOCKS=2;
+function harbourAd(go){if(!adsOn()||noAdsOn()||MODE!=='open'){go();return;}
+  AD.docks=(AD.docks|0)+1;try{localStorage.setItem('bb-docks',AD.docks)}catch(e){}
+  if(AD.docks<=AD_FREE_DOCKS||Date.now()-AD.last<AD_GAP){go();return;}
   AD.last=Date.now();try{localStorage.setItem('bb-adlast',AD.last)}catch(e){}adInter().then(go,go);}
 function renderNoAds(){const on=adsOn(),txt=noAdsOn()?'No ads: on ✓':'Remove ads: '+noAdsPrice()+' a month';
   $('noadsbtn').hidden=!on;$('noadsbtn').textContent=txt;$('startnoads').hidden=!on;$('startnoads').textContent=txt;}
@@ -3257,12 +3264,29 @@ function xmasTick(dt){
   xmasDisco(dt,!!XM.ny);}
 function wxNoSnow(){return false;}
 /* ---- Santa's Evil Helper: a Christmas boss ship. 8pm Malta time every evening in December, the same one for everyone online ---- */
-const ELF_MODEL=null;   // file name in models/ once the 3D model is ready; until then a festive pirate ship stands in
+const ELF_MODEL=null;   // file name in models/ once the 3D model is ready (after tools/prepare_model.py); until then a festive pirate ship stands in
+const ELF_ROT=0;        // turn the model so its bow points along +x, like the game's own ships
+let elfModel=null,elfLoading=false;
+function elfLoad(){if(!ELF_MODEL||elfModel||elfLoading||!THREE.GLTFLoader)return;elfLoading=true;
+  new THREE.GLTFLoader().load(MODEL_BASE+ELF_MODEL,gl=>{const m=gl.scene,lights=[];m.traverse(o=>{if(o.isLight)lights.push(o);});lights.forEach(o=>o.parent&&o.parent.remove(o));
+    m.traverse(o=>{if(o.isMesh)o.castShadow=true;});m.rotation.y=ELF_ROT;
+    // fit it to about 14 units long, centred, sitting in the water
+    const box=new THREE.Box3().setFromObject(m),sz=box.getSize(new THREE.Vector3()),k=14/Math.max(sz.x,sz.z);m.scale.multiplyScalar(k);
+    const b2=new THREE.Box3().setFromObject(m),c=b2.getCenter(new THREE.Vector3());m.position.set(-c.x,-b2.min.y-.6,-c.z);
+    const w=new THREE.Group();w.add(m);elfModel=w;},undefined,()=>{elfLoading=false;});}
+// fairy lights for the 3D model: a garland round the rail and strings from bow and stern up to the masthead
+function elfModelLights(g){const box=new THREE.Box3().setFromObject(g),sz=box.getSize(new THREE.Vector3()),c=box.getCenter(new THREE.Vector3()),pts=[],cols=[];let k=0;
+  const hx=sz.x/2*.92,hz=sz.z/2*.85,ry=box.min.y+sz.y*.22,top=box.max.y*.97,push=(x,y,z,col)=>{pts.push(x-c.x,y,z-c.z);cols.push(col.r,col.g,col.b);};
+  for(let i=0;i<120;i++){const a=i/120*TAU;push(c.x+Math.cos(a)*hx,ry-Math.abs(Math.sin(i*.9))*.15,c.z+Math.sin(a)*hz,i%3?XWARM:XBULB[1]);}
+  for(const [x0,z0] of [[hx,0],[-hx,0],[0,hz],[0,-hz]])for(let j=1;j<28;j++){const t=j/28;push(c.x+x0*(1-t),ry+(top-ry)*t-Math.sin(t*Math.PI)*.4,c.z+z0*(1-t),XBULB[k++%XBULB.length]);}
+  const l=xBulbs(pts,cols);l.position.set(c.x-g.position.x,0,c.z-g.position.z);g.add(l);}
 const elf={on:false,slot:-1,x:0,z:0,a:0,hp:ELF.hp,max:ELF.hp,mine:0,g:null,dead:false,claimed:-1,announced:-1,rise:0,cool:3,cx:0,cz:0,bar:false,r:5.2,v:4,flash:0};
 let elfOff=null;
 function elfWatch(slot,cb){return ()=>{};}
 function elfHitShared(slot){}
-function elfBuild(){const g=makeShip(Object.assign({},LOOKS.boss,{side:'#4a1c14',trim:'#e8c25a',sail:'#c8102e',stripe:'#f4f4f4',flag:'#141414',emblem:'skull',lamp:'#ffd23f',scale:2.4}));
+function elfBuild(){elfLoad();
+  if(elfModel){const g=new THREE.Group();g.add(elfModel.clone());scene.add(g);g.updateMatrixWorld(true);elfModelLights(g);g.userData={model:true};return g;}
+  const g=makeShip(Object.assign({},LOOKS.boss,{side:'#4a1c14',trim:'#e8c25a',sail:'#c8102e',stripe:'#f4f4f4',flag:'#141414',emblem:'skull',lamp:'#ffd23f',scale:2.4}));
   xmasShip(g,true);return g;}
 function elfTick(dt){
   if(MODE!=='open'&&!window.__elfForce){if(elf.g){disposeGroup(elf.g);elf.g=null;elf.on=false;}if(elf.bar){elf.bar=false;$('boss').hidden=true;}return;}
@@ -3286,7 +3310,8 @@ function elfTick(dt){
   // broadsides at captains who come close (never inside a harbour)
   if(show&&state==='play'&&d<34&&!inSafe(P)){elf.cool-=dt;if(elf.cool<=0){const angry=elf.hp<elf.max/2;elf.cool=angry?rnd(1.6,2.2):rnd(2.4,3.2);
       const to=Math.atan2(P.z-elf.z,P.x-elf.x),side=Math.sin(to-elf.a)>0?1:-1;[-2.6,-.9,.9,2.6].forEach(o=>shoot(elf,elf.a+side*Math.PI/2+rnd(-.06,.06),21,'b',true,o));noise(.5,500,.4);}}
-  poseShip(elf.g,elf.x,elf.z,elf.a,clock,slot,0);elf.g.position.y-=6*(1-elf.rise);
+  if(elf.g.userData.model){elf.g.position.set(elf.x,Math.sin(clock*1.3)*.15,elf.z);elf.g.rotation.set(Math.sin(clock*.9)*.03,-elf.a,Math.sin(clock*1.1)*.04);}else poseShip(elf.g,elf.x,elf.z,elf.a,clock,slot,0);
+  elf.g.position.y-=6*(1-elf.rise);
   elf.flash=Math.max(0,elf.flash-dt);
   if(show&&d<elf.r+P.r){const nx=(P.x-elf.x)||1,nz=P.z-elf.z,nl=Math.hypot(nx,nz)||1;P.x+=nx/nl*.8;P.z+=nz/nl*.8;P.v*=.6;}
   if(show){const near=d<90;if(near){$('bossname').textContent='Santa\'s Evil Helper';$('bossfill').style.width=(Math.max(0,elf.hp)/(elf.max||ELF.hp)*100)+'%';}
