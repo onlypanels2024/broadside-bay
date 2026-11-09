@@ -3511,8 +3511,37 @@ function elfWatch(slot,cb){return FB&&NET.room?FB.elfWatch(slot,cb):()=>{};}
 function elfHitShared(slot){if(FB&&NET.room)FB.elfHit(slot);}
 function elfBuild(){elfLoad();
   if(elfModel){const g=new THREE.Group();g.add(elfModel.clone());scene.add(g);g.updateMatrixWorld(true);elfModelLights(g);g.userData={model:true};return g;}
-  const g=makeShip(Object.assign({},LOOKS.boss,{side:'#4a1c14',trim:'#e8c25a',sail:'#c8102e',stripe:'#f4f4f4',flag:'#141414',emblem:'skull',lamp:'#ffd23f',scale:2.4}));
-  xmasShip(g,true);return g;}
+  const g=makeShip(Object.assign({},LOOKS.boss,{side:'#4a1c14',bottom:'#2a0f0a',trim:'#e8c25a',deck:'#6a4a32',sail:'#d23447',stripe:'#f6f0e8',flag:'#141414',emblem:'skull',lamp:'#ffd23f',scale:2.4,tiers:3,gallery:true}));
+  xmasShip(g,true);elfDecor(g);return g;}
+// the boss's Christmas dressing: lights all over the sails, green garlands with bulbs along the rails,
+// a candy-cane figurehead, a Santa hat on the main masthead, a wreath on the stern and presents on deck
+let elfCaneTex=null;
+function elfDecor(g){const u=g.userData,inner=u.inner,pts=[],cols=[];const push=(v,c)=>{pts.push(v.x,v.y,v.z);cols.push(c.r,c.g,c.b);};
+  inner.children.forEach(m=>{if(!m.isMesh||m.material!==u.sailM)return;m.updateMatrix();const p=m.geometry.attributes.position,n=Math.min(70,p.count);
+    for(let i=0;i<n;i++){const k=(i*7919)%p.count,v=new THREE.Vector3(p.getX(k),p.getY(k),p.getZ(k)).applyMatrix4(m.matrix);v.x+=.04;push(v,i%4?XWARM:XBULB[i%XBULB.length]);}});
+  const gm=std({color:L('#1d5a2c'),roughness:.9}),own=u.own,og=u.ownGeo;own.push(gm);
+  for(const sd of [1,-1]){let x=-LS+.25;while(x<LB-.45){const x2=Math.min(LB-.35,x+1.05),a=edge(x),b=edge(x2),mid=(x+x2)/2,em=edge(mid);
+      const cv=new THREE.QuadraticBezierCurve3(new THREE.Vector3(x,a.yt-.04,sd*(a.w+.05)),new THREE.Vector3(mid,em.yt-.5,sd*(em.w+.13)),new THREE.Vector3(x2,b.yt-.04,sd*(b.w+.05)));
+      const t=new THREE.Mesh(new THREE.TubeGeometry(cv,10,.075,5,false),gm);inner.add(t);og.push(t.geometry);
+      for(let j=1;j<7;j++)push(cv.getPoint(j/7),j%2?XBULB[0]:XWARM);x=x2;}}
+  // candy-cane figurehead
+  if(!elfCaneTex){const c=document.createElement('canvas');c.width=64;c.height=256;const x=c.getContext('2d');x.fillStyle='#f8f4ee';x.fillRect(0,0,64,256);x.fillStyle='#d0142c';
+    for(let y=-64;y<256;y+=32){x.beginPath();x.moveTo(0,y);x.lineTo(64,y+32);x.lineTo(64,y+48);x.lineTo(0,y+16);x.fill();}elfCaneTex=new THREE.CanvasTexture(c);elfCaneTex.wrapS=elfCaneTex.wrapT=THREE.RepeatWrapping;elfCaneTex.repeat.set(1,3);}
+  const cm=std({map:elfCaneTex,roughness:.4});own.push(cm);const bt=edge(LB-.2);
+  const cane=new THREE.CatmullRomCurve3([new THREE.Vector3(LB-.1,bt.yt-.1,0),new THREE.Vector3(LB+.25,bt.yt+.7,0),new THREE.Vector3(LB+.35,bt.yt+1.35,0),new THREE.Vector3(LB+.75,bt.yt+1.6,0),new THREE.Vector3(LB+1.05,bt.yt+1.3,0)]);
+  const cn=new THREE.Mesh(new THREE.TubeGeometry(cane,24,.13,8,false),cm);inner.add(cn);og.push(cn.geometry);
+  // Santa hat on the main masthead
+  const red=std({color:L('#c8102e'),roughness:.8}),wht=std({color:L('#f6f6f6'),roughness:.9});own.push(red,wht);
+  const mx=.05,top=edge(mx).yt-.1+7.0,hat=new THREE.Group();hat.position.set(mx,top,0);hat.rotation.z=-.25;inner.add(hat);
+  const hc=new THREE.ConeGeometry(.42,1.1,12),hb=new THREE.TorusGeometry(.4,.12,8,16),hp=new THREE.SphereGeometry(.17,10,8);og.push(hc,hb,hp);
+  const c1=new THREE.Mesh(hc,red);c1.position.y=.55;hat.add(c1);const b1=new THREE.Mesh(hb,wht);b1.rotation.x=Math.PI/2;hat.add(b1);const p1=new THREE.Mesh(hp,wht);p1.position.y=1.12;hat.add(p1);
+  // a wreath on the stern
+  const se=edge(-LS+.15),wg=new THREE.TorusGeometry(.42,.13,8,18),wb=new THREE.SphereGeometry(.12,8,6);og.push(wg,wb);
+  const wr=new THREE.Mesh(wg,gm);wr.position.set(-LS-.02,se.yt-.55,0);wr.rotation.y=Math.PI/2;inner.add(wr);const wbw=new THREE.Mesh(wb,red);wbw.position.set(-LS-.08,se.yt-.2,0);inner.add(wbw);
+  for(let i=0;i<10;i++){const a=i/10*TAU;push(new THREE.Vector3(-LS-.1,se.yt-.55+Math.sin(a)*.42,Math.cos(a)*.42),XBULB[i%XBULB.length]);}
+  // presents on deck
+  [['#d62828','#ffd23f',-.9,.35],['#1f8a4c','#f4f4f4',-1.25,-.3],['#2f5dd6','#ffd23f',.75,.25],['#f4f4f4','#d62828',1.05,-.35]].forEach(([c,r,x,z])=>{const pr=xPresent(c,r,.42);pr.position.set(x,edge(x).yt-.32,z*edge(x).w);inner.add(pr);});
+  const l=xBulbs(pts,cols);inner.add(l);og.push(l.userData.geo);}
 function elfTick(dt){
   if(MODE!=='open'&&!window.__elfForce){if(elf.g){disposeGroup(elf.g);elf.g=null;elf.on=false;}if(elf.bar){elf.bar=false;$('boss').hidden=true;}return;}
   const now=krakenNow(),slot=window.__elfForce?Math.floor(now/86400000):elfSlot(now),up=slot>=0;
