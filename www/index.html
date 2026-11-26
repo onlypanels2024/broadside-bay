@@ -984,8 +984,13 @@ function drawEmblem(g,id,col,bg,dw){
     g.beginPath();for(let i=0;i<256;i++)if(dwBit(dw,i))g.rect(36+(i&15)*3.5,36+(i>>4)*3.5,3.5,3.5);g.fill();}
   g.restore();
 }
-function sailTex(base,stripe,emblem,ecol,dw,fresh){const key=base+stripe+emblem+(ecol||'');if(!fresh&&sailCache[key])return sailCache[key];
+function sailTex(base,stripe,emblem,ecol,dw,fresh,weave){const key=base+stripe+emblem+(ecol||'')+(weave?'|w':'');if(!fresh&&sailCache[key])return sailCache[key];
   const t=canvasTex((g,s)=>{g.fillStyle=base;g.fillRect(0,0,s,s);
+    // woven: warm natural fibre, fine diagonal plaiting (over-under strands with a shadowed edge), lashed panel seams
+    if(weave){g.fillStyle='rgba(196,158,96,.42)';g.fillRect(0,0,s,s);g.save();g.translate(s/2,s/2);g.rotate(Math.PI/4);const st=s/38;
+      for(let i=-30;i<30;i++)for(let j=-30;j<30;j++){const x=i*st,y=j*st,o=(i+j)&1;g.fillStyle=o?'rgba(95,62,24,.15)':'rgba(255,244,214,.13)';g.fillRect(x,y,st,st);
+        g.fillStyle='rgba(55,32,10,.2)';if(o)g.fillRect(x,y+st-1,st,1);else g.fillRect(x+st-1,y,1,st);}
+      g.restore();g.fillStyle='rgba(70,45,15,.3)';for(let k=1;k<4;k++){g.fillRect(0,s*k/4-1.5,s,3);for(let x=0;x<s;x+=s/32)g.fillRect(x,s*k/4-4,2,8);}}
     for(let i=0;i<9000;i++){g.fillStyle=Math.random()<.5?'rgba(0,0,0,.05)':'rgba(255,255,255,.05)';g.fillRect(Math.random()*s,Math.random()*s,1,1);}
     // plain cloth: no seam lines (they looked like a grid over the emblem)
     if(stripe){g.fillStyle=stripe;g.globalAlpha=.9;g.fillRect(0,s*.44,s,s*.12);g.globalAlpha=1;}
@@ -1118,7 +1123,7 @@ function makeShip(o){
   const hullM=std({map:woodTex,vertexColors:true,roughness:.72,side:THREE.DoubleSide});
   const deckM=std({map:woodTex,color:L(o.deck),roughness:.85,side:THREE.DoubleSide});
   const castleM=std({map:woodTex,color:L(o.side),roughness:.75});
-  const sTex=sailTex(o.sail,o.stripe,o.emblem,o.ecol,o.dw,o.own),fTex=o.fflag?flagTex(o.fflag,o.fem,o.fecol,'',o.own):flagTex(o.flag,o.emblem,o.ecol,o.dw,o.own);
+  const sTex=sailTex(o.sail,o.stripe,o.emblem,o.ecol,o.dw,o.own,o.weave),fTex=o.fflag?flagTex(o.fflag,o.fem,o.fecol,'',o.own):flagTex(o.flag,o.emblem,o.ecol,o.dw,o.own);
   const sailM=std({map:sTex,side:THREE.DoubleSide,roughness:.95});
   const flagM=o.own?std({map:fTex,side:THREE.DoubleSide,roughness:.9}):(flagMats[o.flag+o.emblem]||(flagMats[o.flag+o.emblem]=std({map:fTex,side:THREE.DoubleSide,roughness:.9})));
   const add=(geo,m,x,y,z,parent=inner)=>{const me=new THREE.Mesh(geo,m);me.position.set(x,y,z);me.castShadow=true;me.receiveShadow=true;parent.add(me);return me;};
@@ -1918,9 +1923,10 @@ const STORE={founder:{sku:'founder_pack',g:2000,until:1796079600000},lifetime:{s
 const NA_LIFETIME=4102444800000;   // "no ads until the year 2100"
 // The Season Pass: 10 steps, each needs PASS.step more XP earned this season. [free reward, pass reward]:
 // a number is gold; w/b/t are this season's wake, cannonballs and title (a season without its own items pays PASS.swap gold).
-const PASS={step:300,tiers:[[100,300],[100,'b'],[150,400],[150,500],[200,'t'],[200,600],[250,700],[250,800],[300,1000],[500,'w']],swap:750,
-  items:{1:{w:'s1wake',b:'s1shot',t:'s1cap'},2:{w:'s2wake',b:'s2shot',t:'s2cap'},3:{w:'s3wake',b:'s3shot',t:'s3cap'}}};
-function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const r=T[prem?1:0];if(typeof r==='number')return{g:r};const it=PASS.items[n];return it&&it[r]?{o:it[r]}:{g:PASS.swap};}
+const PASS={sailTier:7,step:300,tiers:[[100,300],[100,'b'],[150,400],[150,500],[200,'t'],[200,600],[250,700],[250,800],[300,1000],[500,'w']],swap:750,
+  items:{1:{w:'s1wake',b:'s1shot',t:'s1cap'},2:{w:'s2wake',b:'s2shot',t:'s2cap'},3:{w:'s3wake',b:'s3shot',t:'s3cap',s:'s3sail'}}};
+// a season with its own sails gives them on the pass at step PASS.sailTier+1 (instead of that step's gold)
+function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const it0=PASS.items[n];if(prem&&i===PASS.sailTier&&it0&&it0.s)return{o:it0.s};const r=T[prem?1:0];if(typeof r==='number')return{g:r};const it=PASS.items[n];return it&&it[r]?{o:it[r]}:{g:PASS.swap};}
 /*ENDSEASONDEF*/
 const XP_FOR={sloop:20,galleon:50,fireship:35,boss:250,player:120,treasure:60,merchant:80,escort:70,kraken:400,shark:600,elf:800};
 const LOCAL_GOLD={sloop:50,galleon:150,fireship:100,boss:300,treasure:400,merchant:500,escort:300,kraken:900,shark:1500,elf:2000};
@@ -2645,11 +2651,14 @@ const COS={
   ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'},{n:'Founder\'s shot',o:'founder'},{n:'Gold Rush shot',o:'s1shot'},{n:'Snowball shot',o:'s2shot'},{n:'Ink shot',o:'s3shot'},{n:'Star shot',o:'star'}],
   fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
   pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
+  // a 5th, optional digit of the look code (older codes have 4 digits and mean plain sails)
+  sail:[{n:'Plain sails'},{n:'Woven sails',o:'s3sail'}],
 };
 const COS_SLOTS=['trail','ball','fig','pet'];
 function achStat(s,st){if(!s)return 0;if(st==='sr')return Array.isArray(s.sr)?s.sr.length:0;if(st.startsWith('ks.'))return (s.ks&&s.ks[st.slice(3)])|0;if(st==='ship.manowar')return s.ships&&s.ships.manowar?1:0;if(st==='fleet')return s.fleet?1:0;return s[st]|0;}
 const achDone=(s,a)=>achStat(s,a.st)>=a.need;
-function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return false;
+function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4,5}$/.test(cx))return false;
+  if(cx.length===5){const o=COS.sail[+cx[4]];if(!o||(o.o&&!owns(s,o.o)))return false;}
   return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(o.o)return owns(s,o.o);if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
 /*ENDACHDEF*/
 function reportDrawing(tg,dw){if(FB)FB.report(tg,dw);}
@@ -2943,12 +2952,12 @@ $('menufriends').onclick=openFriends;$('friendclose').onclick=()=>{audio();$('fr
 function logOn(){return econServer()&&!!NET.srv;}
 function logSave(){return NET.srv;}
 const titleOf=id=>{const a=ACH.find(x=>x.id===id)||XTI.find(x=>x.id===id);return a?a.ti:'';};
-function cosOf(cx){const c=typeof cx==='string'&&/^[0-9]{4}$/.test(cx)?cx:'0000';return{trail:+c[0],ball:+c[1],fig:+c[2],pet:+c[3]};}
-const cosShip=c=>({fig:c.fig||0,pet:c.pet||0});
+function cosOf(cx){const c=typeof cx==='string'&&/^[0-9]{4,5}$/.test(cx)?cx:'0000';return{trail:+c[0],ball:+c[1],fig:+c[2],pet:+c[3],sail:+(c[4]||0)};}
+const cosShip=c=>({fig:c.fig||0,pet:c.pet||0,weave:c.sail===1});
 let localCx=null;   // what I just chose, until the referee's copy catches up
 function myCos(){const sv=logSave();return cosOf(localCx||(sv&&sv.cx)||'0000');}
-function cosCode(c){return ''+c.trail+c.ball+c.fig+c.pet;}
-const COS_LABEL={trail:'Wake',ball:'Cannonballs',fig:'Figurehead',pet:'Ship\'s pet'};
+function cosCode(c){return ''+c.trail+c.ball+c.fig+c.pet+(c.sail?c.sail:'');}
+const COS_LABEL={trail:'Wake',ball:'Cannonballs',fig:'Figurehead',pet:'Ship\'s pet',sail:'Sails'};
 function renderLog(){const sv=logSave()||{};const st=(k)=>achStat(sv,k);
   const ks=k=>st('ks.'+k),tot=['sloop','galleon','boss','merchant','kraken'].reduce((a,k)=>a+ks(k),0)+ks('captain');
   const rows=[['Ships sunk',sv.sunk|0],['Sloops',ks('sloop')],['Galleons',ks('galleon')],['Bosses',ks('boss')],['Merchants',ks('merchant')],['Krakens',ks('kraken')],['Megalodons',ks('shark')],['Santa\'s Evil Helpers',ks('elf')],
@@ -2960,7 +2969,7 @@ function renderLog(){const sv=logSave()||{};const st=(k)=>achStat(sv,k);
   for(const a of [...ACH.filter(a=>achDone(sv,a)),...XTI.filter(t=>owns(sv,t.id))]){const b=document.createElement('button');b.className='tchip'+(cur===a.id?' on':'');b.textContent=a.ti;b.onclick=()=>{econRequest({k:'title',id:a.id});$('logmsg').textContent='Other captains now see you as "'+a.ti+'".';};tbox.appendChild(b);}
   // looks
   const cb=$('logcos');cb.innerHTML='';const mc=myCos();
-  for(const k of COS_SLOTS){const sec=document.createElement('div');sec.className='dsec';sec.innerHTML=`<div class="lbl">${COS_LABEL[k]} <span>${COS[k][mc[k]].n}</span></div>`;const row=document.createElement('div');row.className='chiprow wrap';
+  for(const k of COS_SLOTS.concat(owns(sv,'s3sail')?['sail']:[])){const sec=document.createElement('div');sec.className='dsec';sec.innerHTML=`<div class="lbl">${COS_LABEL[k]} <span>${COS[k][mc[k]].n}</span></div>`;const row=document.createElement('div');row.className='chiprow wrap';
     COS[k].forEach((o,i)=>{const a=o.a&&ACH.find(x=>x.id===o.a),ok=o.o?owns(sv,o.o):!a||achDone(sv,a);
       if(o.o&&!ok&&!(o.o==='founder'&&shopFounderOpen()))return;   // shop and pass looks only show once owned (or while on sale)
       const b=document.createElement('button');b.className='tchip'+(mc[k]===i?' on':'')+(ok?'':' locked');b.id='cos-'+k+i;b.textContent=(ok?'':'🔒 ')+o.n;
@@ -3012,7 +3021,7 @@ async function shopBuy(id,say){const u=FB&&FB.user();
   }catch(e){const m=String(e&&e.message||e);say(/cancel/i.test(m)?'':'Google Play said: '+m.slice(0,120));}}
 const shopFounderOpen=()=>serverNowMs()<STORE.founder.until;
 function rewardName(r){if(!r)return'';if(r.g)return r.g.toLocaleString()+' gold';const t=XTI.find(x=>x.id===r.o);if(t)return'Title: '+t.ti;
-  for(const k of ['trail','ball']){const o=COS[k].find(x=>x.o===r.o);if(o)return o.n;}return r.o;}
+  for(const k of ['trail','ball','sail']){const o=COS[k].find(x=>x.o===r.o);if(o)return o.n;}return r.o;}
 function passXp(sv,n){return sv&&sv.px&&sv.px.n===n?sv.px.x|0:0;}
 function renderStore(){if($('storeov').hidden)return;const sv=logSave()||{},S=seasonAt(serverNowMs()),n=S.no,body=$('storebody');body.innerHTML='';
   const box=(cls,title,tag)=>{const d=document.createElement('div');d.className='sbox '+cls;const h=document.createElement('h3');h.textContent=title;if(tag){const t=document.createElement('small');t.textContent=tag;h.appendChild(t);}d.appendChild(h);body.appendChild(d);return d;};
@@ -3026,7 +3035,7 @@ function renderStore(){if($('storeov').hidden)return;const sv=logSave()||{},S=se
   // Season Pass
   {const has=(sv.pp||[]).includes(n),xp=passXp(sv,n),top=PASS.step*PASS.tiers.length,step=Math.min(PASS.tiers.length,Math.floor(xp/PASS.step));
     const d=box('','Season '+n+' Pass: '+S.n,S.weeksLeft+(S.weeksLeft===1?' week left':' weeks left'));
-    const p=document.createElement('p');p.className='note';p.textContent='Earn XP at sea to climb 10 steps. Everyone gets the free rewards; the pass adds this season\'s wake, cannonballs, title and more gold. Claim before the season ends.';d.appendChild(p);
+    const p=document.createElement('p');p.className='note';p.textContent='Earn XP at sea to climb 10 steps. Everyone gets the free rewards; the pass adds this season\'s wake, cannonballs, title'+(PASS.items[n]&&PASS.items[n].s?', sails':'')+' and more gold. Claim before the season ends.';d.appendChild(p);
     const pr=document.createElement('div');pr.className='prog';pr.innerHTML='<i></i>';pr.firstChild.style.width=Math.min(100,xp/top*100)+'%';d.appendChild(pr);
     const pt=document.createElement('p');pt.className='note';pt.textContent='Step '+step+' of 10 · '+Math.min(xp,top).toLocaleString()+' / '+top.toLocaleString()+' season XP';d.appendChild(pt);
     if(!has)btn(d,'Get the Season Pass · '+shopPrice('pass'),()=>{audio();shopBuy('pass',say);});

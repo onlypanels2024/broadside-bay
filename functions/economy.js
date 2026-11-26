@@ -219,11 +219,14 @@ const COS={
   ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'},{n:'Founder\'s shot',o:'founder'},{n:'Gold Rush shot',o:'s1shot'},{n:'Snowball shot',o:'s2shot'},{n:'Ink shot',o:'s3shot'},{n:'Star shot',o:'star'}],
   fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
   pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
+  // a 5th, optional digit of the look code (older codes have 4 digits and mean plain sails)
+  sail:[{n:'Plain sails'},{n:'Woven sails',o:'s3sail'}],
 };
 const COS_SLOTS=['trail','ball','fig','pet'];
 function achStat(s,st){if(!s)return 0;if(st==='sr')return Array.isArray(s.sr)?s.sr.length:0;if(st.startsWith('ks.'))return (s.ks&&s.ks[st.slice(3)])|0;if(st==='ship.manowar')return s.ships&&s.ships.manowar?1:0;if(st==='fleet')return s.fleet?1:0;return s[st]|0;}
 const achDone=(s,a)=>achStat(s,a.st)>=a.need;
-function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4}$/.test(cx))return false;
+function cosOk(s,cx){if(typeof cx!=='string'||!/^[0-9]{4,5}$/.test(cx))return false;
+  if(cx.length===5){const o=COS.sail[+cx[4]];if(!o||(o.o&&!owns(s,o.o)))return false;}
   return COS_SLOTS.every((k,i)=>{const o=COS[k][+cx[i]];if(!o)return false;if(o.o)return owns(s,o.o);if(!o.a)return true;const a=ACH.find(x=>x.id===o.a);return !!a&&achDone(s,a);});}
 /*ENDACHDEF*/
   /*SEASONDEF*/// Seasons last 6 weeks (season 1 began Monday 12 October 2026); each has a theme. Weekends bring an event.
@@ -273,9 +276,10 @@ const STORE={founder:{sku:'founder_pack',g:2000,until:1796079600000},lifetime:{s
 const NA_LIFETIME=4102444800000;   // "no ads until the year 2100"
 // The Season Pass: 10 steps, each needs PASS.step more XP earned this season. [free reward, pass reward]:
 // a number is gold; w/b/t are this season's wake, cannonballs and title (a season without its own items pays PASS.swap gold).
-const PASS={step:300,tiers:[[100,300],[100,'b'],[150,400],[150,500],[200,'t'],[200,600],[250,700],[250,800],[300,1000],[500,'w']],swap:750,
-  items:{1:{w:'s1wake',b:'s1shot',t:'s1cap'},2:{w:'s2wake',b:'s2shot',t:'s2cap'},3:{w:'s3wake',b:'s3shot',t:'s3cap'}}};
-function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const r=T[prem?1:0];if(typeof r==='number')return{g:r};const it=PASS.items[n];return it&&it[r]?{o:it[r]}:{g:PASS.swap};}
+const PASS={sailTier:7,step:300,tiers:[[100,300],[100,'b'],[150,400],[150,500],[200,'t'],[200,600],[250,700],[250,800],[300,1000],[500,'w']],swap:750,
+  items:{1:{w:'s1wake',b:'s1shot',t:'s1cap'},2:{w:'s2wake',b:'s2shot',t:'s2cap'},3:{w:'s3wake',b:'s3shot',t:'s3cap',s:'s3sail'}}};
+// a season with its own sails gives them on the pass at step PASS.sailTier+1 (instead of that step's gold)
+function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const it0=PASS.items[n];if(prem&&i===PASS.sailTier&&it0&&it0.s)return{o:it0.s};const r=T[prem?1:0];if(typeof r==='number')return{g:r};const it=PASS.items[n];return it&&it[r]?{o:it[r]}:{g:PASS.swap};}
 /*ENDSEASONDEF*/
   const docked = p => !!p && inHarbour(p.x, p.z);
   // XP also counts towards this season's Season Pass

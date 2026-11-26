@@ -357,6 +357,22 @@ test('Season 3 canoes: for sale only in the Voyagers season, kept for good', () 
   assert.strictEqual(E.COS.trail[9].n, 'Wayfinder wake');
 });
 
+test('Woven sails: a Season 3 pass reward (step 8), and a 5th look digit only if owned', () => {
+  assert.deepStrictEqual(E.passReward(3, 7, true), { o: 's3sail' }, 'Season 3 pass step 8 gives the sails');
+  assert.deepStrictEqual(E.passReward(3, 7, false), { g: 250 }, 'the free reward at step 8 stays gold');
+  assert.deepStrictEqual(E.passReward(2, 7, true), { g: 800 }, 'Season 2 is unchanged');
+  assert.deepStrictEqual(E.passReward(1, 7, true), { g: 800 }, 'Season 1 is unchanged');
+  const none = { ...E.fresh() }, own = { ...E.fresh(), own: ['s3sail'] };
+  assert.strictEqual(E.cosOk(none, '0000'), true); assert.strictEqual(E.cosOk(none, '00001'), false, 'not owned');
+  assert.strictEqual(E.cosOk(own, '00001'), true); assert.strictEqual(E.cosOk(own, '00002'), false, 'no such sail');
+  // claiming it on the pass through the referee
+  const jan = Date.UTC(2027, 0, 20, 12), n = E.seasonAt(jan).no;
+  const s = { ...E.fresh(), pp: [n], px: { n, x: 3000 } };
+  const r = E.processRequest(s, { k: 'pass', id: 'p7' }, null, jan);
+  assert.strictEqual(r.ok, true); assert.ok(r.save.own.includes('s3sail'));
+  assert.strictEqual(E.processRequest(r.save, { k: 'cos', cx: '00001' }, null, jan).save.cx, '00001');
+});
+
 test('seasons and weekend events', () => {
   const sat = Date.UTC(2026, 9, 17, 12), wed = Date.UTC(2026, 9, 14, 12);
   assert.strictEqual(E.seasonAt(wed).no, 1); assert.strictEqual(E.seasonAt(wed).id, 'gold');
