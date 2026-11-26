@@ -1422,7 +1422,7 @@ function canoeBuild(kind){if(canoeParts[kind])return canoeParts[kind];const K=ca
   const g=kind==='outrigger'?K.outrigger():kind==='double'?K.double():K.drua();const [w,spots]=CANOE_CREW[kind];K.crew(g,w,spots);
   return canoeParts[kind]=canoeMerge(g);}
 function makeCanoe(o){const kind=o.canoe,F=CANOE_FIT[kind],parts=canoeBuild(kind),K=canoeKit();
-  const g=new THREE.Group(),inner=new THREE.Group(),body=new THREE.Group();g.add(inner);inner.add(body);body.scale.setScalar(F.k);body.position.y=F.lift*F.k-.1;
+  const g=new THREE.Group(),inner=new THREE.Group(),body=new THREE.Group();g.add(inner);inner.add(body);body.scale.setScalar(F.k);body.position.y=F.lift*F.k+.24;
   const hullM=K.m[F.hull].clone();
   for(const p of parts){const me=new THREE.Mesh(p.geo,p.m===K.m[F.hull]?hullM:p.m);me.castShadow=true;me.receiveShadow=true;body.add(me);}
   const guns=new THREE.Group();inner.add(guns);
