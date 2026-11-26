@@ -264,6 +264,16 @@ test('schooners: only if owned, and their hull is 4 plus armour', () => {
   assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh: 5, mx: 4, hp: 4 }), T0).allowed, false);
 });
 
+test('Season 3 canoes: only if owned, with their own hull strength', () => {
+  const owns = targaryen.database(rules, { saves: { A: { ships: { brig: true, outrigger: true, drua: true, doublecanoe: true }, up: { hull: 0 } } } }, T0);
+  for (const [sh, hull] of [[6, 4], [7, 8], [8, 11]]) {
+    assert.strictEqual(writeAs(owns, 'A', '/players/A', ship(21, 0, { sh, mx: hull, hp: hull }), T0).allowed, true, 'canoe ' + sh);
+    assert.strictEqual(writeAs(owns, 'A', '/players/A', ship(21, 0, { sh, mx: hull + 2, hp: hull }), T0).allowed, false, 'no extra hull ' + sh);
+    assert.strictEqual(writeAs(empty(), 'A', '/players/A', ship(21, 0, { sh, mx: hull, hp: hull }), T0).allowed, false, 'not owned ' + sh);
+  }
+  assert.strictEqual(writeAs(owns, 'A', '/players/A', ship(21, 0, { sh: 9, mx: 4, hp: 4 }), T0).allowed, false, 'no ship 9');
+});
+
 test('notification tokens: only your own', () => {
   assert.strictEqual(writeAs(empty(), 'A', '/tokens/A', { t: 'abc' }, T0).allowed, true);
   assert.strictEqual(writeAs(empty(), 'A', '/tokens/B', { t: 'abc' }, T0).allowed, false);

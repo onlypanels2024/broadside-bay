@@ -13,8 +13,12 @@
     galleon: { rank: 5, price: 4500, hull: 12 },
     manowar: { rank: 7, price: 9000, hull: 15 },
     schooner: { rank: 2, price: 600, hull: 4 },
+    // Season 3 canoes: for sale only in the Voyagers season, kept for good once bought
+    outrigger: { rank: 2, price: 700, hull: 4, season: 'voyagers' },
+    drua: { rank: 3, price: 1900, hull: 8, season: 'voyagers' },
+    doublecanoe: { rank: 5, price: 4200, hull: 11, season: 'voyagers' },
   };
-  const SHIP_ORDER = ['brig', 'corvette', 'frigate', 'galleon', 'manowar', 'schooner'];
+  const SHIP_ORDER = ['brig', 'corvette', 'frigate', 'galleon', 'manowar', 'schooner', 'outrigger', 'drua', 'doublecanoe'];
   const UPGRADES = {
     broadside: { max: 1, price: () => 350 },
     reload: { max: 3, price: l => 140 + l * 110 },
@@ -207,11 +211,11 @@ const ACH=[
   {id:'elf',n:'Naughty List',d:'Help sink Santa\'s Evil Helper',st:'ks.elf',need:1,ti:'Naughty List Breaker'},
 ];
 // Titles from the shop and the Season Pass (not achievements): the captain has one when s.own lists its id.
-const XTI=[{id:'founder',ti:'Founder'},{id:'s1cap',ti:'Gold Rush Captain'},{id:'s2cap',ti:'Christmas Captain'},{id:'s3cap',ti:'Kraken Season Captain'}];
+const XTI=[{id:'founder',ti:'Founder'},{id:'s1cap',ti:'Gold Rush Captain'},{id:'s2cap',ti:'Christmas Captain'},{id:'s3cap',ti:'Navigator'}];
 const owns=(s,id)=>!!s&&Array.isArray(s.own)&&s.own.includes(id);
 // Looks, 4 slots: wake trail, cannonball, figurehead, pet. Each option needs an achievement (a), something owned (o), or nothing.
 const COS={
-  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'},{n:'Steel wake',a:'shark'},{n:'Founder\'s wake',o:'founder'},{n:'Gold Rush wake',o:'s1wake'},{n:'Candy cane wake',o:'s2wake'},{n:'Abyss wake',o:'s3wake'}],
+  trail:[{n:'White foam'},{n:'Golden wake',a:'treasure'},{n:'Purple wake',a:'kraken'},{n:'Emerald wake',a:'guardian'},{n:'Champion\'s blaze',a:'champ'},{n:'Steel wake',a:'shark'},{n:'Founder\'s wake',o:'founder'},{n:'Gold Rush wake',o:'s1wake'},{n:'Candy cane wake',o:'s2wake'},{n:'Wayfinder wake',o:'s3wake'}],
   ball:[{n:'Iron'},{n:'Fireballs',a:'hunter'},{n:'Purple shot',a:'kraken'},{n:'Gold shot',a:'rich'},{n:'Founder\'s shot',o:'founder'},{n:'Gold Rush shot',o:'s1shot'},{n:'Snowball shot',o:'s2shot'},{n:'Ink shot',o:'s3shot'},{n:'Star shot',o:'star'}],
   fig:[{n:'None'},{n:'Mermaid',a:'faithful'},{n:'Lion',a:'admiral'},{n:'Eagle',a:'bosses'},{n:'Sea serpent',a:'raider'}],
   pet:[{n:'None'},{n:'Parrot',a:'first'},{n:'Monkey',a:'boss'}],
@@ -230,8 +234,11 @@ const SEASONS=[
   {id:'ghost',n:'Ghost Fleet',d:'Ghostly pirates haunt the sea. Every pirate sunk pays 25% more.'},
   {id:'storm',n:'Storm Season',d:'Storms roll in far more often. Hold on to your hat.'},
 ];
-// Season 2 is a one-off Christmas season (23 Nov 2026 - 3 Jan 2027); the cycle above carries on after it.
+// Season 2 is a one-off Christmas season (23 Nov 2026 - 3 Jan 2027) and season 3 a one-off Voyagers season (4 Jan - 14 Feb 2027);
+// the cycle above carries on after them, starting with Kraken Season.
 const XMAS={id:'xmas',n:'Christmas is Coming',d:'Snow on the islands, lights on every ship, and treasure turns into presents that pay 50% more. In December, Santa\'s Evil Helper sails in every evening at 8pm (Malta time).'};
+// Season 3: Pacific voyaging canoes for sale (kept for good), and Te Wheke the giant octopus rises in place of the kraken.
+const VOYAGERS={id:'voyagers',n:'Season of the Voyagers',d:'Pacific voyaging canoes join the bay: buy one with gold this season and keep it for good. Te Wheke, the giant octopus, rises in place of the kraken.'};
 // New Year party (31 Dec - 1 Jan, Malta time): a disco in the bay and double gold.
 const NEWYEAR={from:1798671600000,to:1798844400000,id:'newyear',n:'New Year party',d:'A disco in the bay! Every ship you sink pays double gold, the bosses too.'};
 // Malta's calendar date: December and the New Year are always UTC+1 there.
@@ -250,7 +257,7 @@ const WEEKENDS=[
 ];
 const LAUNCH={from:1793574000000,to:1794783600000,id:'launch',n:'Launch double gold',d:'Every ship you sink pays double gold, the kraken and the megalodon too.'};
 const weekNo=now=>Math.floor((now/86400000+3)/7);
-function seasonAt(now){const w=weekNo(now)-SEASON0_WEEK,n=Math.floor(w/6),c=n>1?n-1:n,k=((c%SEASONS.length)+SEASONS.length)%SEASONS.length;return Object.assign({no:n+1,weeksLeft:6-(w-n*6)},n===1?XMAS:SEASONS[k]);}
+function seasonAt(now){const w=weekNo(now)-SEASON0_WEEK,n=Math.floor(w/6),c=n>2?n-2:n,k=((c%SEASONS.length)+SEASONS.length)%SEASONS.length;return Object.assign({no:n+1,weeksLeft:6-(w-n*6)},n===1?XMAS:n===2?VOYAGERS:SEASONS[k]);}
 function eventAt(now){if(LAUNCH.from&&now>=LAUNCH.from&&now<LAUNCH.to)return LAUNCH;if(now>=NEWYEAR.from&&now<NEWYEAR.to)return NEWYEAR;const d=(Math.floor(now/86400000)+4)%7;if(d!==6&&d!==0)return null;return WEEKENDS[((weekNo(now)%WEEKENDS.length)+WEEKENDS.length)%WEEKENDS.length];}
 // gold multiplier for a reward at a moment in time
 function eventMul(kind,now){const S=seasonAt(now),E=eventAt(now);let m=1;
@@ -337,6 +344,7 @@ function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const r=T[
         // switching to a ship you already own: in harbour, or before setting sail (from the main menu)
         if (s.ships[req.id]) { if (atSea(player, now)) return no('not in harbour'); useShip(s, req.id); return { save: s, ok: true }; }
         if (!docked(player)) return no('not in harbour');
+        if (S.season && seasonAt(now).id !== S.season) return no('only for sale in its season');
         if (rankIdx(s.xp) + 1 < S.rank) return no('rank too low');
         if (s.gold < S.price) return no('not enough gold');
         s.gold -= S.price; s.ships[req.id] = true; useShip(s, req.id);
@@ -529,6 +537,6 @@ function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const r=T[
   const portNear = (x, z) => num(x) && num(z) ? PORTS.findIndex(([px, pz]) => Math.hypot(x - px, z - pz) < PORT_R) : -1;
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { XMAS, NEWYEAR, ADVENT, adventDay, ELF, elfSlot, useShip, STORE, PASS, passReward, XTI, owns, NA_LIFETIME, addXp, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, SHARK, sharkRises, LAUNCH, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { XMAS, VOYAGERS, NEWYEAR, ADVENT, adventDay, ELF, elfSlot, useShip, STORE, PASS, passReward, XTI, owns, NA_LIFETIME, addXp, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, SHARK, sharkRises, LAUNCH, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

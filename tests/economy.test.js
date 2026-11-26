@@ -333,15 +333,44 @@ test('schooner costs 600 at Bosun; fire ships pay and count as ships', () => {
   assert.deepStrictEqual([k.save.gold, k.save.sunk, k.save.ks.fireship], [120, 1, 1]);
 });
 
+test('Season 3 canoes: for sale only in the Voyagers season, kept for good', () => {
+  const jan = Date.UTC(2027, 0, 6, 12), march = Date.UTC(2027, 2, 3, 12);
+  const port = t => ({ ...inPort, t: t - 500 });
+  const rich = { ...E.fresh(), gold: 10000, xp: 9000 };
+  // too early: not for sale before the season
+  assert.strictEqual(E.processRequest(rich, { k: 'ship', id: 'outrigger' }, port(NOW), NOW).ok, false);
+  // in the season: prices 700 / 1,900 / 4,200
+  let s = rich;
+  for (const [id, price] of [['outrigger', 700], ['drua', 1900], ['doublecanoe', 4200]]) {
+    const r = E.processRequest(s, { k: 'ship', id }, port(jan), jan);
+    assert.strictEqual(r.ok, true, id); assert.strictEqual(s.gold - r.save.gold, price, id + ' price'); s = r.save;
+  }
+  // rank still counts
+  assert.strictEqual(E.processRequest({ ...E.fresh(), gold: 9000, xp: 0 }, { k: 'ship', id: 'doublecanoe' }, port(jan), jan).ok, false);
+  // after the season: no new sales, but your own canoe is still yours to sail
+  assert.strictEqual(E.processRequest({ ...E.fresh(), gold: 9000, xp: 9000 }, { k: 'ship', id: 'drua' }, port(march), march).ok, false);
+  const sw = E.processRequest(s, { k: 'ship', id: 'outrigger' }, port(march), march);
+  assert.strictEqual(sw.ok, true); assert.strictEqual(sw.save.ship, 'outrigger');
+  assert.strictEqual(E.norm(sw.save).ships.doublecanoe, true, 'kept in the save');
+  // the season pass items for season 3
+  assert.strictEqual(E.XTI.find(x => x.id === 's3cap').ti, 'Navigator');
+  assert.strictEqual(E.COS.trail[9].n, 'Wayfinder wake');
+});
+
 test('seasons and weekend events', () => {
   const sat = Date.UTC(2026, 9, 17, 12), wed = Date.UTC(2026, 9, 14, 12);
   assert.strictEqual(E.seasonAt(wed).no, 1); assert.strictEqual(E.seasonAt(wed).id, 'gold');
   assert.strictEqual(E.seasonAt(Date.UTC(2026, 10, 25)).id, 'xmas', 'season 2 (Christmas) after six weeks');
-  assert.strictEqual(E.seasonAt(Date.UTC(2027, 0, 6)).id, 'kraken', 'season 3 is the kraken');
-  assert.strictEqual(E.seasonAt(Date.UTC(2027, 1, 17)).id, 'ghost');
-  assert.strictEqual(E.seasonAt(Date.UTC(2027, 3, 1)).id, 'storm');
-  assert.strictEqual(E.seasonAt(Date.UTC(2027, 4, 12)).id, 'gold', 'the cycle carries on without Christmas');
-  assert.strictEqual(E.seasonAt(Date.UTC(2027, 5, 23)).id, 'kraken');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 0, 6)).id, 'voyagers', 'season 3 is the Voyagers');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 0, 3, 23)).id, 'xmas', 'Christmas runs to the end of 3 January');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 1, 14, 22)).id, 'voyagers', 'Voyagers runs to the end of 14 February');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 1, 17)).id, 'kraken', 'Kraken Season comes next');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 3, 1)).id, 'ghost');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 4, 12)).id, 'storm');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 5, 23)).id, 'gold', 'the cycle carries on after the one-off seasons');
+  assert.strictEqual(E.seasonAt(Date.UTC(2027, 7, 4)).id, 'kraken');
+  // every season number is used once and in order, from now to 2030
+  let last = 0; for (let t = Date.UTC(2026, 9, 12, 12); t < Date.UTC(2030, 0, 1); t += 86400000) { const n = E.seasonAt(t).no; assert.ok(n === last || n === last + 1, 'season ' + n + ' after ' + last); last = n; }
   assert.strictEqual(E.eventAt(wed), null); assert.ok(E.eventAt(sat));
   // a double gold weekend doubles a sloop's pay
   let t = sat; while (E.eventAt(t).id !== 'gold2') t += 7 * 86400000;
