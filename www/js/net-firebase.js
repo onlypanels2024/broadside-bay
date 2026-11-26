@@ -105,6 +105,13 @@
           db.ref('shark/' + slot + '/hp').transaction(h => (h === null ? 149 : h > 0 ? h - 1 : undefined)).catch(() => {});
           db.ref('shark/' + slot + '/hits/' + u.uid).transaction(n => (n || 0) + 1).catch(() => {});
         },
+        // Season 3 sea monsters: shared health like the megalodon
+        seamWatch(slot, cb) { const ref = db.ref('seam/' + slot + '/hp'), fn = s => cb(s.val()); ref.on('value', fn); return () => ref.off('value', fn); },
+        seamHit(slot) {
+          const u = auth.currentUser; if (!u) return;
+          db.ref('seam/' + slot + '/hp').transaction(h => (h === null ? 149 : h > 0 ? h - 1 : undefined)).catch(() => {});
+          db.ref('seam/' + slot + '/hits/' + u.uid).transaction(n => (n || 0) + 1).catch(() => {});
+        },
         // Friends: my list (uid -> name) and requests to me (uid -> {n}); both followed live.
         watchFriends(cb) {
           const u = auth.currentUser; if (!u) return () => {};

@@ -40,6 +40,8 @@
     kraken: { g: 900, xp: 400, pts: 0, gap: 240000 },
     // the Ironfang: a rare shark (about once an hour)
     shark: { g: 1500, xp: 600, pts: 0, gap: 600000 },
+    // Season 3 sea monsters (Giant Clam, Reef Serpent, Storm Bird): paid like the megalodon, about once an hour
+    seam: { g: 1500, xp: 600, pts: 0, gap: 600000 },
     // Santa's Evil Helper: a Christmas boss, once an evening in December
     elf: { g: 2000, xp: 800, pts: 0, gap: 3600000 },
     // a spare treasure map (picked up while already following one) is traded for a little gold
@@ -107,7 +109,7 @@
     if (s.ck && typeof s.ck === 'object' && num(s.ck.n) && num(s.ck.t)) o.ck = { n: s.ck.n, t: s.ck.t }; else delete o.ck;
     // daily chest {d: last day claimed, st: streak} and today's quests {d: day, p: [progress x3], c: [claimed x3]}
     // lifetime counts for the captain's log and achievements
-    o.ks = {}; for (const k of ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark', 'elf', 'treasure', 'escort', 'captain', 'duel']) { const v = s.ks && s.ks[k]; if (num(v) && v > 0) o.ks[k] = Math.floor(v); }
+    o.ks = {}; for (const k of ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark', 'seam', 'elf', 'treasure', 'escort', 'captain', 'duel']) { const v = s.ks && s.ks[k]; if (num(v) && v > 0) o.ks[k] = Math.floor(v); }
     if (!Object.keys(o.ks).length) delete o.ks;
     for (const k of ['dn', 'bs']) { if (num(s[k]) && s[k] > 0) o[k] = Math.floor(s[k]); else delete o[k]; }
     // things bought or won (Founder's Pack, Season Pass items), Season Passes bought (season numbers),
@@ -127,6 +129,7 @@
     if (o.sr && !o.sr.length) delete o.sr;
     if (typeof s.kl === 'string' && /^[0-9]{1,9}$/.test(s.kl)) o.kl = s.kl; else delete o.kl;
     if (typeof s.shl === 'string' && /^[0-9]{1,9}$/.test(s.shl)) o.shl = s.shl; else delete o.shl;
+    if (typeof s.sml === 'string' && /^[0-9]{1,9}$/.test(s.sml)) o.sml = s.sml; else delete o.sml;
     if (typeof s.ell === 'string' && /^[0-9]{1,9}$/.test(s.ell)) o.ell = s.ell; else delete o.ell;
     // Advent calendar: doors opened (bit d-1 for 1-24 December) in the year ay
     if (Number.isInteger(s.av) && Number.isInteger(s.ay)) { o.av = s.av & 0xffffff; o.ay = s.ay; } else { delete o.av; delete o.ay; }
@@ -253,6 +256,13 @@ function adventDay(now){const d=mtDate(now);return d.getUTCMonth()===11&&d.getUT
 // Its slot is the day number (days since 1970); everyone shares its health.
 const ELF={hp:300,minHits:3,at:19*3600000,life:900000,from:1796083200000,to:1798761600000,n:'Santa\'s Evil Helper'};
 function elfSlot(now){if(now<ELF.from||now>=ELF.to)return -1;const d=Math.floor(now/86400000),t=now-d*86400000;return t>=ELF.at&&t<ELF.at+ELF.life?d:-1;}
+// Season 3 sea monsters (Giant Clam, Reef Serpent, Storm Bird), only in the Season of the Voyagers. One may come out in any
+// 10-minute window (never with the megalodon), about once an hour and stays 3 minutes; everyone shares its health.
+// The clam has a pearl one time in four (+300 gold). The Storm Bird brings a storm with it.
+const SEAM={slot:600000,life:180000,hp:150,odds:5,minHits:3,pearl:300,kinds:['clam','serpent','bird'],n:{clam:'The Giant Clam',serpent:'The Reef Serpent',bird:'The Storm Bird'}};
+function seamHash(slot,k){let a=(slot^k)>>>0;a^=a>>>16;a=Math.imul(a,0x85ebca6b)>>>0;a^=a>>>13;a=Math.imul(a,0xc2b2ae35)>>>0;a^=a>>>16;return a>>>0;}
+function seamKind(slot){if(seasonAt(slot*SEAM.slot).id!=='voyagers'||sharkRises(slot)||seamHash(slot,0x27d4eb2f)%SEAM.odds!==0)return null;return SEAM.kinds[seamHash(slot,0x165667b1)%3];}
+function seamPearl(slot){return seamKind(slot)==='clam'&&seamHash(slot,0x3c6ef372)%4===0;}
 const WEEKENDS=[
   {id:'gold2',n:'Double gold weekend',d:'Every ship you sink pays double gold.'},
   {id:'kraken2',n:'Kraken weekend',d:'The kraken pays double, and stays longer.'},
@@ -314,15 +324,17 @@ function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const it0=
           if (now - (rl[key] || 0) < K.gap) return reject(req.e + ' claimed too soon');
           if (req.e === 'kraken') { if (!/^[0-9]{1,9}$/.test(String(req.id)) || String(s.kl) === String(req.id)) return reject('kraken already claimed'); s.kl = String(req.id); }
           if (req.e === 'shark') { if (!/^[0-9]{1,9}$/.test(String(req.id)) || String(s.shl) === String(req.id)) return reject('shark already claimed'); s.shl = String(req.id); }
+          if (req.e === 'seam') { if (!/^[0-9]{1,9}$/.test(String(req.id)) || String(s.sml) === String(req.id)) return reject('monster already claimed'); s.sml = String(req.id); }
           if (req.e === 'elf') { if (!/^[0-9]{1,9}$/.test(String(req.id)) || String(s.ell) === String(req.id)) return reject('boss already claimed'); s.ell = String(req.id); }
           rl[key] = now;
         }
         else { if (rl.b < K.pts) return reject('sinking faster than pirates appear'); rl.b -= K.pts; }
         rl.rj = 0; s.rl = rl;
-        const ship = ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark', 'elf'].includes(req.e);
+        const ship = ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark', 'seam', 'elf'].includes(req.e);
         s.ks = { ...(s.ks || {}), [req.e]: ((s.ks && s.ks[req.e]) | 0) + 1 };
         const g = Math.round(K.g * (opts && opts.goldMul || 1) * eventMul(req.e, now));
         s.gold += g; s.earned += g; addXp(s, K.xp, now); if (ship) s.sunk += 1;
+        if (req.e === 'seam' && seamPearl(Number(req.id))) { s.gold += SEAM.pearl; s.earned += SEAM.pearl; }
         questEvent(s, req.e, 1, now); if (ship) questEvent(s, 'ship', 1, now); questEvent(s, 'gold', g, now);
         return { save: s, ok: true };
       }
@@ -541,6 +553,6 @@ function passReward(n,i,prem){const T=PASS.tiers[i];if(!T)return null;const it0=
   const portNear = (x, z) => num(x) && num(z) ? PORTS.findIndex(([px, pz]) => Math.hypot(x - px, z - pz) < PORT_R) : -1;
   // Leaderboard weeks start on Monday 00:00 UTC.
   const weekOf = now => Math.floor((now / 86400000 + 3) / 7);
-  const api = { XMAS, VOYAGERS, NEWYEAR, ADVENT, adventDay, ELF, elfSlot, useShip, STORE, PASS, passReward, XTI, owns, NA_LIFETIME, addXp, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, SHARK, sharkRises, LAUNCH, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
+  const api = { XMAS, VOYAGERS, NEWYEAR, ADVENT, adventDay, ELF, elfSlot, useShip, STORE, PASS, passReward, XTI, owns, NA_LIFETIME, addXp, ADS, seasonAt, eventAt, eventMul, SEASONS, WEEKENDS, DUEL, applyDuelWin, PORT_R, PORT_BONUS, PORT_PTS, portNear, ACH, COS, COS_SLOTS, achDone, achStat, cosOk, KRAKEN, SHARK, sharkRises, SEAM, seamKind, seamPearl, LAUNCH, FLEET, fleetForm, fleetPay, weekOf, processRequest, questsFor, dayOf, QUESTS, DAILY_CHEST, applyDeath, applyPvpKill, fresh, norm, rankIdx, inHarbour, checkPaint, drawRules, checkQuota, applyCheck, removeDrawing, CHECKS, PAINT_RANK, SHIPS, SHIP_ORDER, UPGRADES, KILL, RATE, PVP, RANK_XP, REPAIR };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ECONOMY = api;
 })(typeof self !== 'undefined' ? self : this);

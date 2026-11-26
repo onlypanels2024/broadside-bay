@@ -556,3 +556,26 @@ test('Christmas: presents pay more, New Year doubles gold, Advent calendar, Sant
   assert.deepStrictEqual(E.passReward(2, 9, true), { o: 's2wake' }); assert.deepStrictEqual(E.passReward(3, 9, true), { o: 's3wake' });
   assert.ok(E.XTI.some(t => t.id === 's2cap' && t.ti === 'Christmas Captain'));
 });
+
+test('Season 3 sea monsters: about once an hour, only in the season, never with the megalodon, pay 1500 (+300 for a pearl)', () => {
+  const a = Math.floor(Date.UTC(2027, 0, 4) / E.SEAM.slot), b = Math.floor(Date.UTC(2027, 1, 15) / E.SEAM.slot);
+  const c = { clam: 0, serpent: 0, bird: 0 }; let n = 0, pearls = 0, pearlSlot = null, plainSlot = null;
+  for (let s = a; s < b; s++) { const k = E.seamKind(s); if (!k) continue; n++; c[k]++; assert.ok(!E.sharkRises(s), 'not with the megalodon');
+    if (E.seamPearl(s)) { pearls++; pearlSlot = pearlSlot || s; } else if (k !== 'clam' || plainSlot === null) plainSlot = plainSlot || s; }
+  const hours = (b - a) / 6;
+  assert.ok(n > hours * .85 && n < hours * 1.2, 'about once an hour: ' + n + ' in ' + hours + ' hours');
+  for (const k in c) assert.ok(c[k] > n / 3 * .8, 'each monster takes its turn: ' + JSON.stringify(c));
+  assert.ok(pearls > c.clam * .15 && pearls < c.clam * .35, 'about one clam in four has a pearl');
+  // none outside Season 3
+  for (let s = Math.floor(Date.UTC(2026, 10, 1) / E.SEAM.slot), e = s + 3000; s < e; s++) assert.strictEqual(E.seamKind(s), null);
+  for (let s = b; s < b + 3000; s++) assert.strictEqual(E.seamKind(s), null);
+  // the reward: once per monster, 1500 gold and 600 XP, plus 300 when the clam had a pearl
+  const T = pearlSlot * E.SEAM.slot + 120000;
+  let s = { ...E.fresh(), xp: 9500 };
+  let r = E.processRequest(s, { k: 'kill', e: 'seam', id: String(plainSlot) }, seaAt(T), T); assert.strictEqual(r.ok, true); s = r.save;
+  assert.strictEqual(s.gold, 1500); assert.strictEqual(s.ks.seam, 1);
+  assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'seam', id: String(plainSlot) }, seaAt(T + 700000), T + 700000).ok, false, 'same monster twice');
+  assert.strictEqual(E.processRequest(s, { k: 'kill', e: 'seam', id: String(pearlSlot) }, seaAt(T + 60000), T + 60000).ok, false, 'too soon');
+  r = E.processRequest(s, { k: 'kill', e: 'seam', id: String(pearlSlot) }, seaAt(T + 700000), T + 700000); assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.save.gold, 1500 + 1500 + 300, 'pearl bonus');
+});

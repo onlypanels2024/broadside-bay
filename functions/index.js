@@ -265,6 +265,13 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
     if (!fresh || !sh || sh.hp > 0 || !sh.hits || (sh.hits[uid] | 0) < E.SHARK.minHits) pre = 'shark not earned';
     if (Number.isFinite(sl)) await db.ref(`shark/${sl - 4}`).remove();
   }
+  // a Season 3 sea monster: a real monster window, its shared health at 0, and this captain to have hit it
+  if (req.k === 'kill' && req.e === 'seam') {
+    const sm = (await db.ref(`seam/${req.id}`).get()).val(), sl = Number(req.id);
+    const fresh = Number.isInteger(sl) && Math.abs(Date.now() - sl * E.SEAM.slot) < 1800000 && !!E.seamKind(sl);
+    if (!fresh || !sm || sm.hp > 0 || !sm.hits || (sm.hits[uid] | 0) < E.SEAM.minHits) pre = 'monster not earned';
+    if (Number.isInteger(sl)) await db.ref(`seam/${sl - 4}`).remove();
+  }
   // Santa's Evil Helper: a real evening window, its shared health at 0, and this captain hit it at least ELF.minHits times
   if (req.k === 'kill' && req.e === 'elf') {
     const sl = Number(req.id), b = Number.isInteger(sl) ? (await db.ref(`elf/${sl}`).get()).val() : null;
@@ -301,7 +308,7 @@ exports.refereeRequest = onValueCreated({ ref: '/requests/{uid}/{rid}', timeoutS
   // a repaired ship starts counting hits afresh (otherwise hits from before the repair look like ignoring damage)
   if (verdict && verdict.ok && (req.k === 'repair' || req.k === 'adfix')) await db.ref(`ref/lives/${uid}`).remove();
   if (verdict && verdict.ok && req.k === 'kill') await portScore(db, myFleet, port, E.PORT_PTS[req.e] || 0);
-  if (verdict && verdict.ok && req.k === 'kill') await boardAdd(db, uid, player && player.n, { s: ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark', 'elf'].includes(req.e) ? 1 : 0, g: E.KILL[req.e].g }, res.snapshot.val());
+  if (verdict && verdict.ok && req.k === 'kill') await boardAdd(db, uid, player && player.n, { s: ['sloop', 'galleon', 'boss', 'fireship', 'merchant', 'kraken', 'shark', 'seam', 'elf'].includes(req.e) ? 1 : 0, g: E.KILL[req.e].g }, res.snapshot.val());
   else if (verdict && verdict.ok && (req.k === 'daily' || req.k === 'quest') && await isGoogle(uid)) await boardAdd(db, uid, player && player.n, {}, res.snapshot.val());
   if (verdict && verdict.strike) await strike(db, uid, 'claims: ' + verdict.reason);
 });

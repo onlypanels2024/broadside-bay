@@ -279,3 +279,13 @@ test('notification tokens: only your own', () => {
   assert.strictEqual(writeAs(empty(), 'A', '/tokens/B', { t: 'abc' }, T0).allowed, false);
   assert.strictEqual(empty().as({ uid: 'B' }).read('/tokens/A').allowed, false);
 });
+
+test('shared Season 3 monster: starts at 149 after the first hit and only goes down one at a time', () => {
+  assert.strictEqual(targaryen.database(rules, {}, T0).as({ uid: 'A' }).write('/seam/9/hp', 149, { now: T0 }).allowed, true);
+  assert.strictEqual(targaryen.database(rules, {}, T0).as({ uid: 'A' }).write('/seam/9/hp', 99, { now: T0 }).allowed, false);
+  const db = targaryen.database(rules, { seam: { 9: { hp: 40, hits: { A: 2 } } } }, T0);
+  assert.strictEqual(db.as({ uid: 'A' }).write('/seam/9/hp', 39, { now: T0 }).allowed, true);
+  assert.strictEqual(db.as({ uid: 'A' }).write('/seam/9/hp', 0, { now: T0 }).allowed, false);
+  assert.strictEqual(db.as({ uid: 'A' }).write('/seam/9/hits/A', 3, { now: T0 }).allowed, true);
+  assert.strictEqual(db.as({ uid: 'A' }).write('/seam/9/hits/B', 1, { now: T0 }).allowed, false);
+});
