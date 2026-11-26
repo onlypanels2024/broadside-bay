@@ -35,7 +35,7 @@ with sync_playwright() as pw:
         E(f"window.__wxShift={t}-Date.now();window.__refShift=window.__wxShift;P.inv=1e9;0")
         A.wait_for_function("__t.ev('seam.on&&!!seam.g')", timeout=60000)
         assert E("seam.kind") == kind and E("seam.slot") == slot
-        E("P.x=seam.cx+(seam.kind==='clam'?12:30);P.z=seam.cz+6;P.v=0;0"); A.wait_for_timeout(2500)
+        E("P.x=seam.cx+30;P.z=seam.cz+6;P.v=0;0"); A.wait_for_timeout(2500)
         assert E("$('bossname').textContent") == E("SEAM.n[seam.kind]"), 'boss bar'
         if kind == 'bird':
             assert E("weatherAt(krakenNow()).rain") > .9, 'the Storm Bird brings a storm'
@@ -46,7 +46,7 @@ with sync_playwright() as pw:
         # it hurts a ship that comes close
         E("P.inv=0;P.hp=P.max||9;window.__p0=P.hp;0")
         if kind == 'clam':
-            E("P.x=seam.x+9;P.z=seam.z;P.v=0;seam.shut=false;0"); A.wait_for_function("__t.ev('seam.shut')", timeout=15000)
+            E("P.x=seam.x+20;P.z=seam.z;P.v=0;seam.shut=false;0"); A.wait_for_function("__t.ev('seam.shut')", timeout=15000)
         elif kind == 'serpent':
             E("seam.bit=0;seam.y=0;0"); A.wait_for_timeout(50); E("P.x=seam.x+Math.cos(seam.a)*14;P.z=seam.z+Math.sin(seam.a)*14;P.v=0;0"); A.wait_for_timeout(600)
         else:

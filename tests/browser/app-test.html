@@ -1548,7 +1548,7 @@ MZ.clam=(open)=>{const g=new THREE.Group(),R=3.6,NF=5;
   const coralA=std({color:L('#ff6f61'),roughness:.7}),coralB=std({color:L('#ffb24c'),roughness:.7}),coralC=std({color:L('#c45ad6'),roughness:.7});
   for(let i=0;i<18;i++){const a=rnd()*Math.PI*2,r=R*(1.05+rnd()*.35),M=[coralA,coralB,coralC][i%3],c=new THREE.Group();
     for(let k=0;k<5;k++){const br=new THREE.Mesh(new THREE.CylinderGeometry(.04,.09,.6+rnd()*.6,6),M);br.position.y=.3;br.rotation.set((rnd()-.5)*1.2,0,(rnd()-.5)*1.2);c.add(br);}
-    c.position.set(Math.cos(a)*r,-1.0,Math.sin(a)*r*.8);g.add(c);}
+    c.position.set(Math.cos(a)*r,-1.35,Math.sin(a)*r*.8);g.add(c);}
   g.traverse(o=>{if(o.isMesh)o.castShadow=true;});g.userData.hinge=hinge;return g;};
 
 /* ================= REEF SERPENT =================
@@ -4191,12 +4191,12 @@ function sharkTick(dt){
 function sharkHurt(b){const hy=1.5+Math.random()*1.5;spark(b.x,hy,b.z,{color:'#ffd27a',add:true,s:1.4,life:.12});for(let i=0;i<4;i++)spark(b.x,hy,b.z,{color:'#ffb04a',add:true,s:rnd(.3,.6),life:rnd(.15,.3),vx:rnd(-4,4),vy:rnd(1,4),vz:rnd(-4,4),g:10});smoke(b.x,hy,b.z,2,true,.7);
   noise(.12,1400,.22);shark.mine++;shark.hp=Math.max(0,shark.hp-1);if(MODE==='open')sharkHitShared(shark.slot);}
 const seam={on:false,slot:-1,kind:null,g:null,hp:SEAM.hp,max:SEAM.hp,mine:0,dead:false,claimed:-1,announced:-1,rise:0,x:0,z:0,cx:0,cz:0,a:0,y:0,vuln:false,bar:false,mode:'idle',mt:0,atkT:5,off:{x:0,z:0},tx:0,tz:0,sx:0,sz:0,sy:0,bit:0,shut:false,ring:null};
-let seamOff=null;
+let seamOff=null;const SEAM_CLAM=3;/* the Giant Clam is three times its model size (about three ships long) */
 function seamWatch(slot,cb){return FB&&NET.room?FB.seamWatch(slot,cb):()=>{};}
 function seamHitShared(slot){if(FB&&NET.room)FB.seamHit(slot);}
 // where it comes out: the clam beside an island, the others in open water (the same for everyone)
 function seamSpot(slot,kind){
-  if(kind==='clam'){const I=islands.filter(i=>!i.port&&i.r>2.4&&!PORTS.some(p=>Math.hypot(i.x-p.x,i.z-p.z)<SAFE_R+30));if(I.length){const i=I[seamHash(slot,0x9e3779b9)%I.length],a=(seamHash(slot,0x7f4a7c15)%628)/100;return{x:i.x+Math.cos(a)*(i.r*1.3+6),z:i.z+Math.sin(a)*(i.r*1.3+6)};}}
+  if(kind==='clam'){const I=islands.filter(i=>!i.port&&i.r>2.4&&!PORTS.some(p=>Math.hypot(i.x-p.x,i.z-p.z)<SAFE_R+30));if(I.length){const i=I[seamHash(slot,0x9e3779b9)%I.length],a=(seamHash(slot,0x7f4a7c15)%628)/100;return{x:i.x+Math.cos(a)*(i.r*1.3+16),z:i.z+Math.sin(a)*(i.r*1.3+16),rot:Math.atan2(Math.cos(a),Math.sin(a))};}}
   return krakenSpot(slot*11+5,48);}
 // distance from a point to the monster's body (the serpent is long, the others round)
 function seamDist(x,z){if(seam.kind!=='serpent')return Math.hypot(x-seam.x,z-seam.z);
@@ -4205,10 +4205,10 @@ function seamTick(dt){
   const now=krakenNow(),slot=Math.floor(now/SEAM.slot),age=now-slot*SEAM.slot;
   const kind=MODE==='open'||window.__seamForce?(window.__seamForce||seamKind(slot)):null,up=!!kind&&age<SEAM.life;
   if(slot!==seam.slot||(up&&kind!==seam.kind)){if(seamOff){seamOff();seamOff=null;}if(seam.g){scene.remove(seam.g);if(seam.ring)scene.remove(seam.ring);seam.g=seam.ring=null;seam.on=false;}const sp=seamSpot(slot,kind);
-    Object.assign(seam,{slot,kind,hp:SEAM.hp,max:SEAM.hp,mine:0,dead:false,cx:sp.x,cz:sp.z,x:sp.x,z:sp.z,mode:'idle',mt:0,atkT:5,off:{x:0,z:0},bit:0});
+    Object.assign(seam,{slot,kind,rot:sp.rot||0,hp:SEAM.hp,max:SEAM.hp,mine:0,dead:false,cx:sp.x,cz:sp.z,x:sp.x,z:sp.z,mode:'idle',mt:0,atkT:5,off:{x:0,z:0},bit:0});
     if(MODE==='open'&&up)seamOff=seamWatch(slot,v=>{if(typeof v==='number'&&v<seam.hp)seam.hp=v;});}
   const show=up&&!seam.dead;
-  if(show&&!seam.g){seamKit();const g=new THREE.Group(),m=MZ[kind](kind==='clam'?.02:0);g.add(m);seam.m=m;scene.add(g);seam.g=g;seam.rise=0;
+  if(show&&!seam.g){seamKit();const g=new THREE.Group(),m=MZ[kind](kind==='clam'?.02:0);if(kind==='clam')m.scale.setScalar(SEAM_CLAM);g.add(m);seam.m=m;scene.add(g);seam.g=g;seam.rise=0;
     if(kind==='bird'){const r=new THREE.Mesh(new THREE.RingGeometry(2.2,3,32),new THREE.MeshBasicMaterial({color:0xff4a3a,transparent:true,opacity:0,depthWrite:false}));r.rotation.x=-Math.PI/2;scene.add(r);seam.ring=r;}}
   if(!show&&seam.g){seam.rise-=dt*.5;if(seam.rise<=0){scene.remove(seam.g);if(seam.ring)scene.remove(seam.ring);seam.g=seam.ring=null;seam.on=false;}}
   seam.on=show&&!!seam.g;
@@ -4224,9 +4224,9 @@ function seamTick(dt){
   if(seam.kind==='clam'){// opens and shuts slowly; it can only be hurt while open, and snaps a jet of water at ships close by when it shuts
     const ph=(clock+slot)%9,open=ph<4.5,tgt=open?.34:.02,h=m.userData.hinge;h.rotation.x+=(-tgt-h.rotation.x)*Math.min(1,dt*(open?1.5:5));
     seam.vuln=-h.rotation.x>.15;seam.x=seam.cx;seam.z=seam.cz;
-    if(!open&&!seam.shut){seam.shut=true;noise(.25,160,.5);if(show&&state==='play'&&d<16&&!inSafe(P)){splash(P.x,P.z,true);NET.lastHitBy=null;hurtPlayer();}}
+    if(!open&&!seam.shut){seam.shut=true;noise(.25,160,.5);if(show&&state==='play'&&d<12+4.6*SEAM_CLAM&&!inSafe(P)){splash(P.x,P.z,true);NET.lastHitBy=null;hurtPlayer();}}
     if(open)seam.shut=false;
-    g.position.set(seam.x,.8+sink+Math.sin(clock*.9)*.08,seam.z);g.rotation.y=slot%7;}
+    g.position.set(seam.x,.8*SEAM_CLAM+sink*SEAM_CLAM+Math.sin(clock*.9)*.08,seam.z);g.rotation.y=seam.rot;/* it opens towards the open sea, away from its island */}
   else if(seam.kind==='serpent'){// circles the reef, diving and surfacing; only hittable above the water; bites ships that come close to its head
     const pa=now/1000*.1+slot,R=26,ph=(clock+slot)%10,upw=ph<6;seam.y+=((upw?0:-9)-seam.y)*Math.min(1,dt*1.4);seam.vuln=seam.y>-2;
     seam.x=seam.cx+Math.cos(pa)*R;seam.z=seam.cz+Math.sin(pa)*R;seam.a=pa+Math.PI/2;
@@ -4250,7 +4250,7 @@ function seamTick(dt){
     g.position.set(seam.x,seam.y+sink*2,seam.z);g.rotation.set(0,-seam.a,seam.mode==='dive'?0:-.25*Math.sign(Math.sin(pa))*.6);m.rotation.z=seam.mode==='dive'?-.5:seam.mode==='climb'?.35:0;
     if(seam.ring){seam.ring.position.set(seam.tx,wh(seam.tx,seam.tz,clock)+.3,seam.tz);seam.ring.material.opacity=seam.mode==='warn'||seam.mode==='dive'?.35+.3*Math.abs(Math.sin(clock*12)):0;}
     if(show&&WX.fx&&Math.random()<dt*.25){WX.flash=1;noise(1.2,50,.4);}}
-  if(show&&seam.kind!=='bird'){const sd=seamDist(P.x,P.z),rr=seam.kind==='clam'?4.4:2.4;// bumping into it pushes you off
+  if(show&&seam.kind!=='bird'){const sd=seamDist(P.x,P.z),rr=seam.kind==='clam'?4.4*SEAM_CLAM:2.4;// bumping into it pushes you off
     if(sd<rr+P.r&&(seam.kind==='clam'||seam.vuln)){const nx=(P.x-seam.x)||1,nz=P.z-seam.z,nl=Math.hypot(nx,nz)||1;P.x+=nx/nl*.8;P.z+=nz/nl*.8;P.v*=.6;}}
   // boss bar
   if(show){const near=d<90;if(near){$('bossname').textContent=SEAM.n[seam.kind];$('bossfill').style.width=(Math.max(0,seam.hp)/(seam.max||SEAM.hp)*100)+'%';}
@@ -4258,7 +4258,7 @@ function seamTick(dt){
   else if(seam.bar){seam.bar=false;$('boss').hidden=true;}
 }
 // a shot that reaches the monster: only counts while it can be hurt (clam open, serpent up, bird low in a dive)
-function seamShot(b){const r=seam.kind==='clam'?4.6:seam.kind==='serpent'?2.8:3.6;if(seamDist(b.x,b.z)>r)return false;
+function seamShot(b){const r=seam.kind==='clam'?4.6*SEAM_CLAM:seam.kind==='serpent'?2.8:3.6;if(seamDist(b.x,b.z)>r)return false;
   if(!seam.vuln){if(seam.kind==='clam'){b.life=0;spark(b.x,1.4,b.z,{color:'#fff4d6',add:true,s:.8,life:.1});noise(.08,2600,.25);return true;}return false;}
   b.life=0;const hy=seam.kind==='bird'?seam.y:1.5+Math.random();spark(b.x,hy,b.z,{color:'#ffd27a',add:true,s:1.4,life:.12});smoke(b.x,hy,b.z,2,true,.7);
   noise(.12,1400,.22);seam.mine++;seam.hp=Math.max(0,seam.hp-1);if(MODE==='open')seamHitShared(seam.slot);return true;}
