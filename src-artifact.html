@@ -703,7 +703,18 @@ const skyMat=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,fog:
   void main(){vec3 d=normalize(vDir);float h=max(d.y,0.);vec3 c=mix(hor,zen,pow(h,.5));
     if(night>0.&&d.y>0.){vec3 q=floor(d*260.);float st=step(.9975,hs(q))*night*(1.-cloud)*smoothstep(0.,.15,d.y);c+=vec3(st*(.6+.4*hs(q+1.)));}
     if(d.y<0.)c=mix(hor,hor*vec3(.55,.75,.8),min(1.,-d.y*3.));float s=max(dot(d,sunDir),0.);c+=sunCol*(pow(s,900.)*14.+pow(s,24.)*.35+pow(s,4.)*.08);
-    if(d.y>0.){vec2 q=d.xz/(d.y+.2)*.9+vec2(uT*.004,uT*.0015);float cv=fbm(q),cov=mix(.46,.28,cloud);float a=smoothstep(cov,cov+.16,cv)*smoothstep(0.,.07,d.y);
+    #ifdef HQ
+    c=mix(c,hor*1.06+sunCol*.04,exp(-h*9.)*.55);c+=sunCol*(pow(s,9.)*.22+pow(s,2400.)*40.)*(1.-cloud*.8);
+    #endif
+    if(d.y>0.){vec2 q=d.xz/(d.y+.2)*.9+vec2(uT*.004,uT*.0015);
+      #ifdef HQ
+      q+=vec2(fbm(q*1.7+3.1),fbm(q*1.7-5.3))*.45;
+      #endif
+      float cv=fbm(q),cov=mix(.46,.28,cloud);
+      #ifdef HQ
+      cv=cv*.8+fbm(q*3.1+9.)*.2;
+      #endif
+      float a=smoothstep(cov,cov+.16,cv)*smoothstep(0.,.07,d.y);
       float lit=clamp(.75+(fbm(q+sunDir.xz*.35)-cv)*-1.6,.55,1.);vec3 cc=mix(mix(hor*.72,vec3(1.,.99,.97),lit),hor*.6,cloud*.6)*(1.-night*.82)+sunCol*pow(s,6.)*.5*lit;c=mix(c,cc,a*.92);}
     gl_FragColor=vec4(c,1.);
     #include <tonemapping_fragment>
@@ -729,10 +740,11 @@ waterMat=new THREE.ShaderMaterial({fog:false,
   uniforms:{uTime:{value:0},uAmp:{value:1},uSun:{value:SUN},uSunCol:{value:SKY.sun},uZen:{value:SKY.zen},uHor:{value:SKY.hor},
     uDeep:{value:L('#05506e')},uMid:{value:L('#0b8fae')},uShallow:{value:L('#2fd0c2')},uSand:{value:L('#b7ead6')},uFoam:{value:L('#f4fbfa')},
     uFogCol:{value:SKY.hor},uFogNear:{value:100},uFogFar:{value:260},uCloudSh:{value:.8},
-    uIsl:{value:Array.from({length:ISL_MAX},()=>new THREE.Vector3())},uN:{value:0}},
+    uIsl:{value:Array.from({length:ISL_MAX},()=>new THREE.Vector3())},uN:{value:0},
+    uRefl:{value:null},uReflMat:{value:new THREE.Matrix4()},uDay:{value:1}},
   vertexShader:`uniform float uTime;varying vec3 vW;varying float vH;${WAVE_GLSL}
     void main(){vec4 w=modelMatrix*vec4(position,1.);float h=W(w.xz,uTime);w.y+=h;vH=h/uAmp*(1.+.12*clamp(uAmp-1.,0.,1.));vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
-  fragmentShader:`uniform float uTime,uFogNear,uFogFar,uAmp,uCloudSh;uniform vec3 uSun,uSunCol,uZen,uHor,uDeep,uMid,uShallow,uSand,uFoam,uFogCol;uniform vec3 uIsl[${ISL_MAX}];uniform int uN;
+  fragmentShader:`uniform float uTime,uFogNear,uFogFar,uAmp,uCloudSh,uDay;uniform sampler2D uRefl;uniform mat4 uReflMat;uniform vec3 uSun,uSunCol,uZen,uHor,uDeep,uMid,uShallow,uSand,uFoam,uFogCol;uniform vec3 uIsl[${ISL_MAX}];uniform int uN;
     varying vec3 vW;varying float vH;
     float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
     float noise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1.,0.)),u.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),u.x),u.y);}
@@ -742,13 +754,28 @@ waterMat=new THREE.ShaderMaterial({fog:false,
         g+=d*amp*f*cos(dot(d,p)*f+t*(1.1+fi*.41));}
       return g;}
     void main(){
-      vec2 g=grad(vW.xz,uTime);vec3 n=normalize(vec3(-g.x,1.,-g.y));
+      vec2 g=grad(vW.xz,uTime);
+      #ifdef HQ
+      // fine ripples on top of the swell, so the surface catches the light like real water
+      vec2 q1=vW.xz*1.35+uTime*vec2(.42,.27),q2=vW.xz*3.2-uTime*vec2(.31,.55);float e=.08;
+      vec2 mg=vec2(noise(q1+vec2(e,0.))-noise(q1-vec2(e,0.)),noise(q1+vec2(0.,e))-noise(q1-vec2(0.,e)))/(2.*e)*.11
+             +vec2(noise(q2+vec2(e,0.))-noise(q2-vec2(e,0.)),noise(q2+vec2(0.,e))-noise(q2-vec2(0.,e)))/(2.*e)*.05;
+      g+=mg*(.6+.4*clamp(uAmp,0.,2.));
+      #endif
+      vec3 n=normalize(vec3(-g.x,1.,-g.y));
       vec3 v=normalize(cameraPosition-vW);
       float fres=.02+.98*pow(1.-max(dot(n,v),0.),5.);
       vec3 r=reflect(-v,n);r.y=abs(r.y);
       vec3 sky=mix(uHor,uZen,pow(r.y,.5));
       float sd=max(dot(r,uSun),0.);
       vec3 spec=uSunCol*(pow(sd,1400.)*2.5+pow(sd,140.)*.18);
+      #ifdef HQ
+      // ships, islands and monsters mirrored in the sea, rippled by the waves
+      vec4 rc=uReflMat*vec4(vW,1.);vec4 rf=texture2D(uRefl,rc.xy/rc.w+n.xz*.045);sky=mix(sky,rf.rgb,rf.a*.92);
+      // sun glitter: tiny bright sparkles on the ripples
+      float gl=pow(sd,260.)*smoothstep(.72,.98,noise(vW.xz*6.5+uTime*vec2(1.7,-1.3))*noise(vW.xz*11.-uTime*1.1)*1.9);
+      spec+=uSunCol*gl*9.+uSunCol*pow(sd,48.)*.12;spec*=1.6;
+      #endif
       float sh=0.,shore=0.;
       for(int i=0;i<${ISL_MAX};i++){if(i>=uN)break;vec3 I=uIsl[i];float d=length(vW.xz-I.xy)-I.z*1.3;
         sh=max(sh,1.-smoothstep(0.,13.,d));
@@ -763,6 +790,13 @@ waterMat=new THREE.ShaderMaterial({fog:false,
       body*=1.-cshade*.42;
       float caust=pow(noise(vW.xz*1.4+uTime*.5)*noise(vW.xz*1.9-uTime*.45),1.5);
       body+=vec3(.55,.95,.9)*caust*sh*.5;
+      #ifdef HQ
+      // deep water reads darker and richer; waves facing the sun are lighter, troughs darker; sunlight glows through the wave tops
+      body=mix(body,body*vec3(.62,.8,.95),.45*(1.-sh));
+      body*=.8+.32*max(dot(n,uSun),0.)*uDay+.12*(1.-uDay)+.1*vH;
+      float sss=pow(clamp(dot(v,-uSun)*.6+.55,0.,1.),3.)*smoothstep(.15,.95,vH)*uDay;body+=uShallow*uSunCol*sss*.45;
+      fres=clamp(fres*1.15,0.,1.);
+      #endif
       vec3 col=mix(body,sky*(1.-cshade*.3),fres)+spec*(1.-cshade*.9);
       float fn=noise(vW.xz*2.4+vec2(uTime*.45,uTime*.25))*.6+noise(vW.xz*6.1-uTime*.3)*.4;
       float foam=smoothstep(.58,.8,vH+fn*.14)*(.3+.25*clamp(uAmp-1.,0.,1.))+shore*smoothstep(.35,.75,fn+.15)*.9;
@@ -2283,7 +2317,7 @@ function updWxTog(){$('wxtogv').textContent=WX.fx?'On':'Off';}
 function updGfxTog(){$('gfxtogv').textContent=GFX[gfxQ].n;}
 $('gfxtog').onclick=()=>{audio();gfxQ=(gfxQ+1)%GFX.length;try{localStorage.setItem('bb-gfx',String(gfxQ))}catch(e){}
   const G=GFX[gfxQ];R.setPixelRatio(Math.min(G.pr,window.devicePixelRatio||1));resize();
-  sunL.shadow.mapSize.set(G.sh,G.sh);if(sunL.shadow.map){sunL.shadow.map.dispose();sunL.shadow.map=null;}updGfxTog();};
+  sunL.shadow.mapSize.set(G.sh,G.sh);if(sunL.shadow.map){sunL.shadow.map.dispose();sunL.shadow.map=null;}updGfxTog();hqSetup();};
 updGfxTog();
 $('wxtog').onclick=()=>{audio();WX.fx=!WX.fx;try{localStorage.setItem('bb-wxfx',WX.fx?'1':'0')}catch(e){}updWxTog();};
 /* ---- notifications (phone app only, off until you switch them on) ---- */
@@ -3845,6 +3879,7 @@ function updWeather(dt){
   // lights
   sunL.intensity=(1.9*w.day+.5*WX.night)*(1-WX.cloud*.6)+WX.flash*1.5;sunL.color.copy(SKY.sun).lerp(tmpC.setRGB(1,1,1),.3);
   hemiL.intensity=.35*(1-WX.night*.45)+WX.cloud*.15+WX.flash*1.8;
+  if(HQ.on){sunL.intensity*=1.15;hemiL.intensity*=.8;}
   R.toneMappingExposure=1-WX.night*.22-WX.cloud*.08;
   const glow=Math.max(WX.night,WX.cloud*.5);lampGlowM.opacity=glow*.95;M.lamp.emissiveIntensity=2.2+glow*3;
   nightL.intensity=WX.night*1.4;nightL.position.set(P.x,4,P.z);
@@ -3868,6 +3903,75 @@ function updWeather(dt){
   WX.kind=label;
 }
 
+/* ================= High graphics: a more real sea, sky and light =================
+   Only on the High setting (and only where the phone can do it). The other settings draw exactly as before.
+   - the sea mirrors ships, islands and monsters (a half-size mirror picture each frame)
+   - sun glitter, light glowing through the wave tops, a hazier horizon, a glow round the sun, fuller clouds
+   - the picture is drawn in high range, then bright things bloom and it is graded like film (contrast, warm
+     highlights, cool shadows, a soft vignette) */
+const HQ={on:false};
+function hqSetup(){const want=gfxQ===2&&R.capabilities.isWebGL2&&!window.__noHQ;
+  if(HQ.rt){[HQ.rt,HQ.refl,HQ.b1,HQ.b2,HQ.b3,HQ.b4].forEach(t=>t&&t.dispose());HQ.rt=null;}
+  HQ.on=want;
+  const def=want?{HQ:1}:{};skyMat.defines=def;waterMat.defines=def;skyMat.needsUpdate=true;waterMat.needsUpdate=true;
+  R.toneMapping=want?THREE.NoToneMapping:THREE.ACESFilmicToneMapping;
+  if(!want)return;
+  const fl=!!(R.extensions.get('EXT_color_buffer_float')||R.extensions.get('EXT_color_buffer_half_float')),type=fl?THREE.HalfFloatType:THREE.UnsignedByteType;
+  const mk=(w,h,ms)=>{const o={type,format:THREE.RGBAFormat,depthBuffer:!!ms,stencilBuffer:false,minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter};
+    const t=ms&&THREE.WebGLMultisampleRenderTarget?new THREE.WebGLMultisampleRenderTarget(w,h,o):new THREE.WebGLRenderTarget(w,h,o);if(ms&&t.isWebGLMultisampleRenderTarget)t.samples=4;return t;};
+  HQ.mk=mk;HQ.w=0;HQ.h=0;HQ.hdr=fl;
+  if(!HQ.quad){HQ.cam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);HQ.quad=new THREE.Mesh(new THREE.PlaneGeometry(2,2));HQ.qs=new THREE.Scene();HQ.qs.add(HQ.quad);HQ.quad.frustumCulled=false;
+    const vs='varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}';
+    HQ.bright=new THREE.ShaderMaterial({uniforms:{t:{value:null},th:{value:1}},vertexShader:vs,depthTest:false,depthWrite:false,toneMapped:false,
+      fragmentShader:'uniform sampler2D t;uniform float th;varying vec2 vUv;void main(){vec3 c=texture2D(t,vUv).rgb;float l=max(c.r,max(c.g,c.b));gl_FragColor=vec4(c*smoothstep(th,th*1.8,l),1.);}'});
+    HQ.blur=new THREE.ShaderMaterial({uniforms:{t:{value:null},d:{value:new THREE.Vector2()}},vertexShader:vs,depthTest:false,depthWrite:false,toneMapped:false,
+      fragmentShader:'uniform sampler2D t;uniform vec2 d;varying vec2 vUv;void main(){vec3 c=texture2D(t,vUv).rgb*.227;c+=(texture2D(t,vUv+d*1.385).rgb+texture2D(t,vUv-d*1.385).rgb)*.316;c+=(texture2D(t,vUv+d*3.231).rgb+texture2D(t,vUv-d*3.231).rgb)*.07;gl_FragColor=vec4(c,1.);}'});
+    HQ.final=new THREE.ShaderMaterial({uniforms:{t:{value:null},b1:{value:null},b2:{value:null},ex:{value:1},px:{value:new THREE.Vector2()},bloom:{value:.55}},vertexShader:vs,depthTest:false,depthWrite:false,toneMapped:false,
+      fragmentShader:`uniform sampler2D t,b1,b2;uniform float ex,bloom;uniform vec2 px;varying vec2 vUv;
+        // the same film curve the other settings use (three.js ACES), so the base look matches
+        vec3 rrt(vec3 v){vec3 a=v*(v+.0245786)-.000090537;vec3 b=v*(.983729*v+.4329510)+.238081;return a/b;}
+        vec3 aces(vec3 c){c=mat3(vec3(.59719,.07600,.02840),vec3(.35458,.90834,.13383),vec3(.04823,.01566,.83777))*c;c=rrt(c);
+          return clamp(mat3(vec3(1.60475,-.10208,-.00327),vec3(-.53108,1.10813,-.07276),vec3(-.07367,-.00605,1.07602))*c,0.,1.);}
+        float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
+        void main(){vec3 c=texture2D(t,vUv).rgb+(texture2D(b1,vUv).rgb*.65+texture2D(b2,vUv).rgb*.35)*bloom;
+          c=aces(c*ex/.6);
+          // film grade: a touch more contrast and colour, warm light, cool shade
+          float l=dot(c,vec3(.2126,.7152,.0722));c=mix(vec3(l),c,1.06);c=mix(c,c*c*(3.-2.*c),.12);
+          c*=mix(vec3(.98,1.,1.03),vec3(1.03,1.01,.97),smoothstep(.25,.85,l));
+          vec2 q=vUv-.5;c*=1.-dot(q,q)*.38;c=clamp(c,0.,1.);
+          c=mix(pow(c,vec3(.41666))*1.055-.055,c*12.92,step(c,vec3(.0031308)));c+=(h(gl_FragCoord.xy)-.5)/255.;
+          gl_FragColor=vec4(c,1.);}`});
+    HQ.rcam=new THREE.PerspectiveCamera();HQ.clip=[new THREE.Plane(new THREE.Vector3(0,1,0),.02)];
+    HQ.bias=new THREE.Matrix4().set(.5,0,0,.5,0,.5,0,.5,0,0,.5,.5,0,0,0,1);}
+}
+function hqSize(){const pr=R.getPixelRatio(),w=Math.max(2,Math.round(W*pr)),h=Math.max(2,Math.round(H*pr));if(w===HQ.w&&h===HQ.h&&HQ.rt)return;HQ.w=w;HQ.h=h;
+  [HQ.rt,HQ.refl,HQ.b1,HQ.b2,HQ.b3,HQ.b4].forEach(t=>t&&t.dispose());
+  HQ.rt=HQ.mk(w,h,true);HQ.refl=HQ.mk(w>>1,h>>1,false);HQ.refl.depthBuffer=true;HQ.refl.texture.generateMipmaps=false;
+  HQ.refl.dispose();HQ.refl=new THREE.WebGLRenderTarget(w>>1,h>>1,{type:HQ.hdr?THREE.HalfFloatType:THREE.UnsignedByteType,format:THREE.RGBAFormat,depthBuffer:true});
+  HQ.b1=HQ.mk(w>>1,h>>1);HQ.b2=HQ.mk(w>>1,h>>1);HQ.b3=HQ.mk(w>>2,h>>2);HQ.b4=HQ.mk(w>>2,h>>2);
+  waterMat.uniforms.uRefl.value=HQ.refl.texture;}
+const _rv=new THREE.Vector3(),_rt=new THREE.Vector3();
+function hqPass(mat,src,dst){mat.uniforms.t.value=src;HQ.quad.material=mat;R.setRenderTarget(dst);R.render(HQ.qs,HQ.cam);}
+function hqRender(){hqSize();const prevAuto=R.autoClear;
+  // 1. the mirror picture for the sea (without the sea and the sky; clipped at the waterline)
+  const rc=HQ.rcam;rc.fov=cam.fov;rc.aspect=cam.aspect;rc.near=cam.near;rc.far=cam.far;rc.updateProjectionMatrix();
+  rc.position.set(cam.position.x,-cam.position.y,cam.position.z);_rt.set(0,0,-1).applyQuaternion(cam.quaternion).add(cam.position);_rt.y=-_rt.y;
+  _rv.set(0,1,0).applyQuaternion(cam.quaternion);rc.up.set(_rv.x,-_rv.y,_rv.z);rc.lookAt(_rt);rc.updateMatrixWorld();
+  waterMat.uniforms.uReflMat.value.copy(HQ.bias).multiply(rc.projectionMatrix).multiply(rc.matrixWorldInverse);
+  waterMat.uniforms.uDay.value=1-WX.night;
+  water.visible=false;sky.visible=false;rain.visible=false;const sa=R.shadowMap.autoUpdate;R.shadowMap.autoUpdate=false;
+  R.clippingPlanes=HQ.clip;R.setRenderTarget(HQ.refl);R.setClearColor(0x000000,0);R.clear();R.render(scene,rc);R.clippingPlanes=[];
+  R.shadowMap.autoUpdate=sa;water.visible=true;sky.visible=true;rain.visible=WX.rain>.03;
+  // 2. the scene in high range
+  R.setRenderTarget(HQ.rt);R.setClearColor(0x000000,1);R.clear();R.render(scene,cam);
+  // 3. bloom: keep what is brighter than white, blur it at two sizes
+  HQ.bright.uniforms.th.value=HQ.hdr?1.05:.82;hqPass(HQ.bright,HQ.rt.texture,HQ.b1);
+  HQ.blur.uniforms.d.value.set(1/HQ.b1.width,0);hqPass(HQ.blur,HQ.b1.texture,HQ.b2);HQ.blur.uniforms.d.value.set(0,1/HQ.b1.height);hqPass(HQ.blur,HQ.b2.texture,HQ.b1);
+  HQ.blur.uniforms.d.value.set(2/HQ.b3.width,0);hqPass(HQ.blur,HQ.b1.texture,HQ.b3);HQ.blur.uniforms.d.value.set(0,2/HQ.b3.height);hqPass(HQ.blur,HQ.b3.texture,HQ.b4);
+  // 4. to the screen: bloom, film tone curve and grade
+  const F=HQ.final.uniforms;F.b1.value=HQ.b1.texture;F.b2.value=HQ.b4.texture;F.ex.value=R.toneMappingExposure;
+  hqPass(HQ.final,HQ.rt.texture,null);R.autoClear=prevAuto;}
+hqSetup();
 /* ================= render ================= */
 const look=new THREE.Vector3(),camPos=new THREE.Vector3(0,40,40),EM_HIT=L('#7a1a0c'),EM_FAST=L('#0b2a40'),EM_NONE=new THREE.Color(0),EM_FLASH=new THREE.Color(.8,.8,.8);
 function render(dt){
@@ -3890,7 +3994,7 @@ function render(dt){
   sunL.position.set(P.x+SUN.x*70,SUN.y*70,P.z+SUN.z*70);sunL.target.position.set(P.x,0,P.z-6);
   gullsTick(dt);
   if(joy){stick.hidden=false;stick.style.left=joy.ox+'px';stick.style.top=joy.oy+'px';knob.style.transform=`translate(${joy.dx}px,${joy.dy}px)`;}else stick.hidden=true;
-  R.render(scene,cam);
+  if(HQ.on)hqRender();else R.render(scene,cam);
   drawMap();
 }
 const mapC=$('map'),mctx=mapC.getContext('2d'),mapDpr=Math.min(2,window.devicePixelRatio||1);mapC.width=mapC.height=Math.round(116*mapDpr);
