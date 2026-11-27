@@ -1542,7 +1542,7 @@ MZ.clam=(open)=>{const g=new THREE.Group(),R=3.6,NF=5;
   const sip=new THREE.Mesh(new THREE.TorusGeometry(.45,.16,10,24),mantleM);sip.rotation.x=Math.PI/2;sip.scale.set(1.6,1,1);sip.position.set(0,.98,R*.3);g.add(sip);
   const hole=new THREE.Mesh(new THREE.CircleGeometry(.4,20),std({color:L('#071c2a'),roughness:.9}));hole.rotation.x=-Math.PI/2;hole.scale.set(1.6,1,1);hole.position.set(0,1.0,R*.3);g.add(hole);
   // the pearl
-  const pearl=new THREE.Mesh(new THREE.SphereGeometry(.6,32,24),std({color:L('#fffaf2'),roughness:.08,metalness:.2,emissive:L('#ffe6c4'),emissiveIntensity:.7}));pearl.position.set(0,1.25,R*.55);g.add(pearl);
+  const pearl=new THREE.Mesh(new THREE.SphereGeometry(.6,32,24),std({color:L('#fffaf2'),roughness:.08,metalness:.2,emissive:L('#ffe6c4'),emissiveIntensity:.7}));pearl.position.set(0,.55,R*.55);g.add(pearl);
   const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:softTex,color:L('#fff0c8'),transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false}));glow.scale.setScalar(3.4);glow.position.copy(pearl.position);g.add(glow);
   // barnacles and weed on the shell, coral round the foot
   const barM=std({color:L('#cfc6b0'),roughness:.8}),weedM=std({color:L('#4f6b2a'),roughness:.8,side:THREE.DoubleSide});
