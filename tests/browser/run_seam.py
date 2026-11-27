@@ -47,6 +47,8 @@ with sync_playwright() as pw:
         E("P.inv=0;P.hp=P.max||9;window.__p0=P.hp;0")
         if kind == 'clam':
             E("P.x=seam.x+20;P.z=seam.z;P.v=0;seam.shut=false;0"); A.wait_for_function("__t.ev('seam.shut')", timeout=15000)
+            assert E("clamJets.length>0"), 'the water jet is in the air'
+            A.wait_for_function("__t.ev('P.hp<window.__p0')", timeout=20000)   # the jet lands on the ship
         elif kind == 'serpent':
             E("seam.bit=0;seam.y=0;0"); A.wait_for_timeout(50); E("P.x=seam.x+Math.cos(seam.a)*14;P.z=seam.z+Math.sin(seam.a)*14;P.v=0;0"); A.wait_for_timeout(600)
         else:

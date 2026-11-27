@@ -1507,14 +1507,14 @@ const shellT=ctex(1024,512,(x,w,h)=>{const g=x.createLinearGradient(0,0,0,h);g.a
   // green-brown algae towards the hinge and old pits
   for(let i=0;i<260;i++){const X=rnd()*w,Y=h*(.55+rnd()*.45);x.fillStyle=`rgba(${70+rnd()*40},${85+rnd()*40},${40+rnd()*20},${.15+rnd()*.3})`;x.beginPath();x.ellipse(X,Y,4+rnd()*22,2+rnd()*8,rnd(),0,7);x.fill();}
   for(let i=0;i<300;i++){x.fillStyle=`rgba(40,35,25,${.2+rnd()*.3})`;x.beginPath();x.arc(rnd()*w,rnd()*h,.8+rnd()*1.8,0,7);x.fill();}},[1,1]);
-const mantleT=ctex(512,512,(x,w,h)=>{const g=x.createLinearGradient(0,0,w,h);g.addColorStop(0,'#0f5470');g.addColorStop(.35,'#1aa59a');g.addColorStop(.7,'#2c6fb8');g.addColorStop(1,'#5b3a9a');x.fillStyle=g;x.fillRect(0,0,w,h);
-  // iridescent eye-spots and wavy bands, like a real giant clam's mantle
-  for(let i=0;i<22;i++){x.strokeStyle=`rgba(${rnd()<.5?'120,255,235':'255,220,120'},.35)`;x.lineWidth=3+rnd()*4;x.beginPath();const y=rnd()*h;x.moveTo(0,y);for(let X=0;X<=w;X+=8)x.lineTo(X,y+Math.sin(X*.06+i)*10);x.stroke();}
-  for(let i=0;i<700;i++){const X=rnd()*w,Y=rnd()*h,r=1+rnd()*5;const gr=x.createRadialGradient(X,Y,0,X,Y,r);gr.addColorStop(0,rnd()<.6?'rgba(170,255,240,.95)':'rgba(255,230,140,.9)');gr.addColorStop(1,'rgba(10,30,70,0)');x.fillStyle=gr;x.beginPath();x.arc(X,Y,r,0,7);x.fill();}
-  for(let i=0;i<300;i++){x.fillStyle='rgba(10,20,60,.35)';x.beginPath();x.arc(rnd()*w,rnd()*h,.8+rnd()*1.6,0,7);x.fill();}},[2,1]);
+const mantleT=ctex(512,512,(x,w,h)=>{const g=x.createLinearGradient(0,0,w,h);g.addColorStop(0,'#1b2f7a');g.addColorStop(.4,'#253f9c');g.addColorStop(.75,'#3a2a86');g.addColorStop(1,'#1c5c78');x.fillStyle=g;x.fillRect(0,0,w,h);
+  // living flesh, not water: soft mottling, bright iridescent spots with dark rims, fine dark speckles
+  for(let i=0;i<160;i++){x.fillStyle=`rgba(${rnd()<.5?'20,30,80':'70,40,130'},${.15+rnd()*.2})`;x.beginPath();x.ellipse(rnd()*w,rnd()*h,8+rnd()*26,6+rnd()*18,rnd()*3,0,7);x.fill();}
+  for(let i=0;i<520;i++){const X=rnd()*w,Y=rnd()*h,r=1.5+rnd()*4;x.fillStyle='rgba(8,12,40,.7)';x.beginPath();x.arc(X,Y,r+1.2,0,7);x.fill();x.fillStyle=rnd()<.65?'rgba(110,235,225,.95)':'rgba(190,150,255,.9)';x.beginPath();x.arc(X,Y,r,0,7);x.fill();}
+  for(let i=0;i<900;i++){x.fillStyle='rgba(5,8,30,.45)';x.fillRect(rnd()*w,rnd()*h,1.5,1.5);}},[2,1]);
 const shellM=std({color:L('#a89e88'),map:shellT,bumpMap:shellT,bumpScale:.04,roughness:.7,side:THREE.DoubleSide});
 const innerM=std({color:L('#e2d9c6'),roughness:.45,metalness:.0,side:THREE.DoubleSide});
-const mantleM=std({color:L('#7fb0ff'),map:mantleT,bumpMap:mantleT,bumpScale:.05,roughness:.22,metalness:.05,emissive:L('#0a4a52'),emissiveIntensity:.45,side:THREE.DoubleSide});
+const mantleM=std({map:mantleT,bumpMap:mantleT,bumpScale:.08,roughness:.55,metalness:0,emissive:L('#0a2a52'),emissiveIntensity:.2,side:THREE.DoubleSide});
 // one valve: a deep cup with five big folds; the lip is a zig-zag so the two valves interlock
 function valve(R,depth,top,NF){const NU=200,NV=36,P=[],UV=[],I=[];
   for(let j=0;j<=NV;j++)for(let i=0;i<=NU;i++){const u=i/NU,v=j/NV,th=-Math.PI*.52+u*Math.PI*1.04;
@@ -1536,10 +1536,11 @@ MZ.clam=(open)=>{const g=new THREE.Group(),R=3.6,NF=5;
   const lipG=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lip),300,.38,12,false),lp=lipG.attributes.position;
   for(let i=0;i<lp.count;i++){const k=1+.18*Math.sin(i*.37)*Math.sin(i*.013);lp.setXYZ(i,lp.getX(i)*1,lp.getY(i)*k,lp.getZ(i));}lipG.computeVertexNormals();g.add(new THREE.Mesh(lipG,mantleM));
   const floor=new THREE.Mesh(new THREE.SphereGeometry(R*.88,40,16,0,Math.PI*2,0,Math.PI/2),mantleM);floor.scale.set(.92,.12,.4);floor.position.set(0,.05,R*.78*.45);g.add(floor);
-  const sip=new THREE.Mesh(new THREE.TorusGeometry(.45,.16,10,24),mantleM);sip.rotation.x=Math.PI/2;sip.scale.set(1.6,1,1);sip.position.set(0,.3,R*.3);g.add(sip);
-  const hole=new THREE.Mesh(new THREE.CircleGeometry(.4,20),std({color:L('#071c2a'),roughness:.9}));hole.rotation.x=-Math.PI/2;hole.scale.set(1.6,1,1);hole.position.set(0,.33,R*.3);g.add(hole);
+  const fill=new THREE.Mesh(new THREE.SphereGeometry(1,40,20),mantleM);fill.scale.set(R*.88,.95,R*.78*.46);fill.position.set(0,.05,R*.78*.44);g.add(fill);
+  const sip=new THREE.Mesh(new THREE.TorusGeometry(.45,.16,10,24),mantleM);sip.rotation.x=Math.PI/2;sip.scale.set(1.6,1,1);sip.position.set(0,.98,R*.3);g.add(sip);
+  const hole=new THREE.Mesh(new THREE.CircleGeometry(.4,20),std({color:L('#071c2a'),roughness:.9}));hole.rotation.x=-Math.PI/2;hole.scale.set(1.6,1,1);hole.position.set(0,1.0,R*.3);g.add(hole);
   // the pearl
-  const pearl=new THREE.Mesh(new THREE.SphereGeometry(.6,32,24),std({color:L('#fffaf2'),roughness:.08,metalness:.2,emissive:L('#ffe6c4'),emissiveIntensity:.7}));pearl.position.set(0,.6,R*.55);g.add(pearl);
+  const pearl=new THREE.Mesh(new THREE.SphereGeometry(.6,32,24),std({color:L('#fffaf2'),roughness:.08,metalness:.2,emissive:L('#ffe6c4'),emissiveIntensity:.7}));pearl.position.set(0,1.25,R*.55);g.add(pearl);
   const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:softTex,color:L('#fff0c8'),transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false}));glow.scale.setScalar(3.4);glow.position.copy(pearl.position);g.add(glow);
   // barnacles and weed on the shell, coral round the foot
   const barM=std({color:L('#cfc6b0'),roughness:.8}),weedM=std({color:L('#4f6b2a'),roughness:.8,side:THREE.DoubleSide});
@@ -4194,10 +4195,8 @@ const seam={on:false,slot:-1,kind:null,g:null,hp:SEAM.hp,max:SEAM.hp,mine:0,dead
 let seamOff=null;const SEAM_CLAM=3;/* the Giant Clam is three times its model size (about three ships long) */
 function seamWatch(slot,cb){return FB&&NET.room?FB.seamWatch(slot,cb):()=>{};}
 function seamHitShared(slot){if(FB&&NET.room)FB.seamHit(slot);}
-// where it comes out: the clam beside an island, the others in open water (the same for everyone)
-function seamSpot(slot,kind){
-  if(kind==='clam'){const I=islands.filter(i=>!i.port&&i.r>2.4&&!PORTS.some(p=>Math.hypot(i.x-p.x,i.z-p.z)<SAFE_R+30));if(I.length){const i=I[seamHash(slot,0x9e3779b9)%I.length],a=(seamHash(slot,0x7f4a7c15)%628)/100;return{x:i.x+Math.cos(a)*(i.r*1.3+16),z:i.z+Math.sin(a)*(i.r*1.3+16),rot:Math.atan2(Math.cos(a),Math.sin(a))};}}
-  return krakenSpot(slot*11+5,48);}
+// where it comes out: out in the open sea, away from islands and harbours (the same for everyone)
+function seamSpot(slot,kind){const p=krakenSpot(slot*11+5,48);p.rot=(seamHash(slot,0x7f4a7c15)%628)/100;return p;}
 // distance from a point to the monster's body (the serpent is long, the others round)
 function seamDist(x,z){if(seam.kind!=='serpent')return Math.hypot(x-seam.x,z-seam.z);
   const ca=Math.cos(seam.a),sa=Math.sin(seam.a),dx=x-seam.x,dz=z-seam.z,t=Math.max(-16,Math.min(14,dx*ca+dz*sa));return Math.hypot(dx-ca*t,dz-sa*t);}
@@ -4224,9 +4223,9 @@ function seamTick(dt){
   if(seam.kind==='clam'){// opens and shuts slowly; it can only be hurt while open, and snaps a jet of water at ships close by when it shuts
     const ph=(clock+slot)%9,open=ph<4.5,tgt=open?.34:.02,h=m.userData.hinge;h.rotation.x+=(-tgt-h.rotation.x)*Math.min(1,dt*(open?1.5:5));
     seam.vuln=-h.rotation.x>.15;seam.x=seam.cx;seam.z=seam.cz;
-    if(!open&&!seam.shut){seam.shut=true;noise(.25,160,.5);if(show&&state==='play'&&d<12+4.6*SEAM_CLAM&&!inSafe(P)){splash(P.x,P.z,true);NET.lastHitBy=null;hurtPlayer();}}
+    if(!open&&!seam.shut){seam.shut=true;noise(.25,160,.5);if(show&&state==='play'&&d<12+4.6*SEAM_CLAM&&!inSafe(P))clamJet();}
     if(open)seam.shut=false;
-    g.position.set(seam.x,.8*SEAM_CLAM+sink*SEAM_CLAM+Math.sin(clock*.9)*.08,seam.z);g.rotation.y=seam.rot;/* it opens towards the open sea, away from its island */}
+    g.position.set(seam.x,.8*SEAM_CLAM+sink*SEAM_CLAM+Math.sin(clock*.9)*.08,seam.z);g.rotation.y=seam.rot;}
   else if(seam.kind==='serpent'){// circles the reef, diving and surfacing; only hittable above the water; bites ships that come close to its head
     const pa=now/1000*.1+slot,R=26,ph=(clock+slot)%10,upw=ph<6;seam.y+=((upw?0:-9)-seam.y)*Math.min(1,dt*1.4);seam.vuln=seam.y>-2;
     seam.x=seam.cx+Math.cos(pa)*R;seam.z=seam.cz+Math.sin(pa)*R;seam.a=pa+Math.PI/2;
@@ -4257,6 +4256,18 @@ function seamTick(dt){
     if(near!==seam.bar){seam.bar=near;$('boss').hidden=!near&&!kraken.bar&&!shark.bar&&!enemies.some(e=>e.kind==='boss'&&Math.hypot(e.x-P.x,e.z-P.z)<80);}}
   else if(seam.bar){seam.bar=false;$('boss').hidden=true;}
 }
+// the Giant Clam's water jet: shot from its mouth when it snaps shut, arcs through the air and lands on the ship (it follows the ship, so a ship in range is always hit)
+const clamJets=[];let jetGeo=null,jetMat=null;
+function clamJet(){if(!jetGeo){jetGeo=new THREE.SphereGeometry(1,10,8);jetMat=new THREE.MeshStandardMaterial({color:0xdff6ff,roughness:.15,metalness:0,transparent:true,opacity:.82,emissive:0x5fb8d8,emissiveIntensity:.35});}
+  const k=SEAM_CLAM,mx=seam.x+Math.sin(seam.rot)*2.3*k,mz=seam.z+Math.cos(seam.rot)*2.3*k,J={t:0,dur:.55,x0:mx,z0:mz,y0:1.1*k,hit:false,b:[]};
+  for(let i=0;i<18;i++){const m=new THREE.Mesh(jetGeo,jetMat);m.scale.setScalar((.55-.018*i)*(.7+Math.random()*.5));m.visible=false;scene.add(m);J.b.push({m,lag:i*.022,jx:(Math.random()-.5)*.5,jy:(Math.random()-.5)*.5});}
+  clamJets.push(J);noise(.35,420,.45);spark(mx,J.y0,mz,{color:'#e8fbff',add:true,s:3,life:.18});}
+function clamJetTick(dt){for(let j=clamJets.length-1;j>=0;j--){const J=clamJets[j];J.t+=dt;
+  const tx=P.x,tz=P.z,ty=wh(P.x,P.z,clock)+1.2;
+  J.b.forEach(o=>{const u=(J.t-o.lag)/J.dur;o.m.visible=u>0&&u<1.08;if(!o.m.visible)return;const v=Math.min(1,u);
+    o.m.position.set(J.x0+(tx-J.x0)*v+o.jx,J.y0+(ty-J.y0)*v+Math.sin(v*Math.PI)*7+o.jy,J.z0+(tz-J.z0)*v+o.jx);});
+  if(!J.hit&&J.t>=J.dur){J.hit=true;splash(P.x,P.z,true);splash(P.x+1.5,P.z-1,true);if(state==='play'&&!inSafe(P)){NET.lastHitBy=null;hurtPlayer();}}
+  if(J.t>J.dur+.5){J.b.forEach(o=>scene.remove(o.m));clamJets.splice(j,1);}}}
 // a shot that reaches the monster: only counts while it can be hurt (clam open, serpent up, bird low in a dive)
 function seamShot(b){const r=seam.kind==='clam'?4.6*SEAM_CLAM:seam.kind==='serpent'?2.8:3.6;if(seamDist(b.x,b.z)>r)return false;
   if(!seam.vuln){if(seam.kind==='clam'){b.life=0;spark(b.x,1.4,b.z,{color:'#fff4d6',add:true,s:.8,life:.1});noise(.08,2600,.25);return true;}return false;}
@@ -4276,7 +4287,7 @@ function seaEventsTick(dt){
   if(!convoy){if(MODE==='open'){convoyT-=dt;if(convoyT<=0){convoyT=360;spawnConvoy();}}}
   else if(!convoy.m||convoy.m.hp<=0||!enemies.includes(convoy.m)){convoy=null;}
   else if(Math.hypot(convoy.m.x-P.x,convoy.m.z-P.z)>260){for(const e of [convoy.m,...convoy.esc])if(e.hp>0){e.hp=-99;e.silent=true;}convoy=null;}
-  krakenTick(dt);sharkTick(dt);seamTick(dt);elfTick(dt);xmasTick(dt);
+  krakenTick(dt);sharkTick(dt);seamTick(dt);clamJetTick(dt);elfTick(dt);xmasTick(dt);
 }
 
 function seaEventsMap(g,tx,tz,S,edge){
